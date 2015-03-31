@@ -1,4 +1,6 @@
 *.py[cod]
+*.bak
+*.sw[op]
 output/
 .sqlmap_history
 traffic.txt

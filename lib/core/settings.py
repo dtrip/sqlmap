@@ -306,7 +306,7 @@ URI_INJECTABLE_REGEX = r"//[^/]*/([^\.*?]+)\Z"
 SENSITIVE_DATA_REGEX = "(\s|=)(?P<result>[^\s=]*%s[^\s]*)\s"
 
 # Maximum number of threads (avoiding connection issues and/or DoS)
-MAX_NUMBER_OF_THREADS = 10
+MAX_NUMBER_OF_THREADS = 50
 
 # Minimum range between minimum and maximum of statistical set
 MIN_STATISTICAL_RANGE = 0.01

@@ -25,15 +25,23 @@ VERSION_STRING = "sqlmap/%s%s" % (VERSION, "-%s" % REVISION if REVISION else "-n
 DESCRIPTION = "automatic SQL injection and database takeover tool"
 SITE = "http://sqlmap.org"
 ISSUES_PAGE = "https://github.com/sqlmapproject/sqlmap/issues/new"
-GIT_REPOSITORY = "git://github.com/sqlmapproject/sqlmap.git"
-GIT_PAGE = "https://github.com/sqlmapproject/sqlmap"
+GIT_REPOSITORY = "git://github.com/dtrip/sqlmap.git"
+GIT_PAGE = "https://github.com/dtrip/sqlmap"
 
 # colorful banner
-BANNER = """\033[01;33m         _
- ___ ___| |_____ ___ ___  \033[01;37m{\033[01;%dm%s\033[01;37m}\033[01;33m
-|_ -| . | |     | .'| . |
-|___|_  |_|_|_|_|__,|  _|
-      |_|           |_|   \033[0m\033[4;37m%s\033[0m\n
+BANNER = """\033[01;33m
+             .__                                           \033[01;37m{\033[01;%dm%s\033[01;37m}\033[01;33m
+  ___________|  |   _____ _____  ______                    
+ /  ___/ ____/  |  /     \\__   \ \____ \                   
+ \___ < <_|  |  |_|  Y Y  \/ __ \|  |_> >                  
+/____  >__   |____/__|_|  (____  /   __/                   
+     \/   |__|          \/     \/|__|                      
+                   ________   __         .__               
+                   \______ \_/  |________|__|_____ ______  
+  ______   ______   |    |  \   __\_  __ \  \____ \\____  \ 
+ /_____/  /_____/   |    `   \  |  |  | \/  |  |_> >  |_> >
+                   /_______  /__|  |__|  |__|   __/|   __/ 
+                           \/               |__|   |__|    \033[0m\033[4;37m%s\033[0m\n
 """ % ((31 + hash(REVISION) % 6) if REVISION else 30, VERSION_STRING.split('/')[-1], SITE)
 
 # Minimum distance of ratio from kb.matchRatio to result in True

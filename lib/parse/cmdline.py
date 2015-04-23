@@ -185,10 +185,16 @@ def cmdLineParser():
         request.add_option("--randomize", dest="rParam",
                            help="Randomly change value for given parameter(s)")
 
-        request.add_option("--safe-url", dest="safUrl",
+        request.add_option("--safe-url", dest="safeUrl",
                            help="URL address to visit frequently during testing")
 
-        request.add_option("--safe-freq", dest="saFreq", type="int",
+        request.add_option("--safe-post", dest="safePost",
+                           help="POST data to send to a safe URL")
+
+        request.add_option("--safe-req", dest="safeReqFile",
+                           help="Load safe HTTP request from a file")
+
+        request.add_option("--safe-freq", dest="safeFreq", type="int",
                            help="Test requests between two visits to a given safe URL")
 
         request.add_option("--skip-urlencode", dest="skipUrlEncode",

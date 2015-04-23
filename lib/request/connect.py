@@ -971,11 +971,13 @@ class Connect(object):
                     warnMsg += "10 or more)"
                     logger.critical(warnMsg)
 
-
-        if conf.safUrl and conf.saFreq > 0:
+        if conf.safeFreq > 0:
             kb.queryCounter += 1
-            if kb.queryCounter % conf.saFreq == 0:
-                Connect.getPage(url=conf.safUrl, cookie=cookie, direct=True, silent=True, ua=ua, referer=referer, host=host)
+            if kb.queryCounter % conf.safeFreq == 0:
+                if conf.safeUrl:
+                    Connect.getPage(url=conf.safeUrl, post=conf.safePost, cookie=cookie, direct=True, silent=True, ua=ua, referer=referer, host=host)
+                elif kb.safeReq:
+                    Connect.getPage(url=kb.safeReq.url, post=kb.safeReq.post, method=kb.safeReq.method, auxHeaders=kb.safeReq.headers)
 
         start = time.time()
 

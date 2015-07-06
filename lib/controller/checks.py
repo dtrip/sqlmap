@@ -386,9 +386,12 @@ def checkSqlInjection(place, parameter, value):
                     # Forge request payload by prepending with boundary's
                     # prefix and appending the boundary's suffix to the
                     # test's ' <payload><comment> ' string
-                    boundPayload = agent.prefixQuery(fstPayload, prefix, where, clause)
-                    boundPayload = agent.suffixQuery(boundPayload, comment, suffix, where)
-                    reqPayload = agent.payload(place, parameter, newValue=boundPayload, where=where)
+                    if fstPayload:
+                        boundPayload = agent.prefixQuery(fstPayload, prefix, where, clause)
+                        boundPayload = agent.suffixQuery(boundPayload, comment, suffix, where)
+                        reqPayload = agent.payload(place, parameter, newValue=boundPayload, where=where)
+                    else:
+                        reqPayload = None
 
                     # Perform the test's request and check whether or not the
                     # payload was successful
@@ -706,7 +709,8 @@ def checkFalsePositives(injection):
 
     retVal = injection
 
-    if all(_ in (PAYLOAD.TECHNIQUE.BOOLEAN, PAYLOAD.TECHNIQUE.TIME, PAYLOAD.TECHNIQUE.STACKED) for _ in injection.data):
+    if all(_ in (PAYLOAD.TECHNIQUE.BOOLEAN, PAYLOAD.TECHNIQUE.TIME, PAYLOAD.TECHNIQUE.STACKED) for _ in injection.data) or\
+      (len(injection.data) == 1 and PAYLOAD.TECHNIQUE.UNION in injection.data and "Generic" in injection.data[PAYLOAD.TECHNIQUE.UNION].title):
         pushValue(kb.injection)
 
         infoMsg = "checking if the injection point on %s " % injection.place

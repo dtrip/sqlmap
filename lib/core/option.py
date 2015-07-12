@@ -1788,6 +1788,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.followSitemapRecursion = None
     kb.forcedDbms = None
     kb.forcePartialUnion = False
+    kb.futileUnion = None
     kb.headersFp = {}
     kb.heuristicDbms = None
     kb.heuristicMode = False
@@ -1818,6 +1819,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.orderByColumns = None
     kb.originalCode = None
     kb.originalPage = None
+    kb.originalPageTime = None
     kb.originalTimeDelay = None
     kb.originalUrls = dict()
 

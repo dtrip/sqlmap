@@ -25,4 +25,4 @@ def tamper(payload, **kwargs):
     'cat \/etc\/passwd'
     """
 
-    return payload.replace("/", "\/")
+    return payload.replace(" ", "%20")

@@ -37,8 +37,11 @@ class Google(object):
     def __init__(self, handlers):
         self._cj = cookielib.CookieJar()
 
+        from lib.core.option import proxyHandler
+
+        handlers.append(proxyHandler)
         handlers.append(urllib2.HTTPCookieProcessor(self._cj))
-        handlers.append(HTTPSHandler())
+        # handlers.append(HTTPSHandler())
 
         self.opener = urllib2.build_opener(*handlers)
         self.opener.addheaders = conf.httpHeaders
@@ -46,6 +49,7 @@ class Google(object):
         try:
             conn = self.opener.open("http://www.google.com/ncr")
             conn.info()  # retrieve session cookie
+            print("Google cookie: %s" % conn.info())
         except Exception, ex:
             errMsg = "unable to connect to Google ('%s')" % ex
             raise SqlmapConnectionException(errMsg)

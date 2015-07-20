@@ -49,7 +49,6 @@ class Google(object):
         try:
             conn = self.opener.open("http://www.google.com/ncr")
             conn.info()  # retrieve session cookie
-            print("Google cookie: %s" % conn.info())
         except Exception, ex:
             errMsg = "unable to connect to Google ('%s')" % ex
             raise SqlmapConnectionException(errMsg)
@@ -104,6 +103,7 @@ class Google(object):
             errMsg = "unable to connect to Google"
             raise SqlmapConnectionException(errMsg)
 
+        print("\n REturn val: \n %s" % urllib.unquote(''))
         retVal = [urllib.unquote(match.group(1)) for match in re.finditer(GOOGLE_REGEX, page, re.I | re.S)]
 
         if not retVal and "detected unusual traffic" in page:

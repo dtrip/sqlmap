@@ -9,6 +9,7 @@ import cookielib
 import glob
 import inspect
 import logging
+import httplib
 import os
 import random
 import re
@@ -1685,6 +1686,13 @@ def _cleanupOptions():
     threadData = getCurrentThreadData()
     threadData.reset()
 
+def _dirtyPatches():
+    """
+    Place for "dirty" Python related patches
+    """
+
+    httplib._MAXLINE = 1 * 1024 * 1024  # to accept overly long result lines (e.g. SQLi results in HTTP header responses)
+
 def _purgeOutput():
     """
     Safely removes (purges) output directory.
@@ -1787,6 +1795,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.followSitemapRecursion = None
     kb.forcedDbms = None
     kb.forcePartialUnion = False
+    kb.forceWhere = None
     kb.futileUnion = None
     kb.headersFp = {}
     kb.heuristicDbms = None
@@ -2469,6 +2478,7 @@ def init():
     _saveCmdline()
     _setRequestFromFile()
     _cleanupOptions()
+    _dirtyPatches()
     _purgeOutput()
     _checkDependencies()
     _createTemporaryDirectory()

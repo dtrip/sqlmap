@@ -2281,6 +2281,7 @@ def findMultipartPostBoundary(post):
 
     for match in re.finditer(r"(?m)^--(.+?)(--)?$", post or ""):
         _ = match.group(1).strip().strip('-')
+
         if _ in done:
             continue
         else:

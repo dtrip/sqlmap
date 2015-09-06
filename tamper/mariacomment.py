@@ -42,6 +42,6 @@ def tamper(payload, **kwargs):
                 payload = payload[:payload.find(comment)]
                 break
         if ' ' in payload:
-            retVal = "%s /*M!30%s%s*/%s" % (payload[:payload.find(' ')], randomInt(3), payload[payload.find(' ') + 1:], postfix)
+            retVal = "%s /*M!50%s %s*/%s" % (payload[:payload.find(' ')], randomInt(3), payload[payload.find(' ') + 1:], postfix)
 
     return retVal

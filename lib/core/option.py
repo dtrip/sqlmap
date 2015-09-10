@@ -34,6 +34,7 @@ from lib.core.common import boldifyMessage
 from lib.core.common import checkFile
 from lib.core.common import dataToStdout
 from lib.core.common import getPublicTypeMembers
+from lib.core.common import getSafeExString
 from lib.core.common import extractRegexResult
 from lib.core.common import filterStringValue
 from lib.core.common import findPageForms
@@ -1523,7 +1524,7 @@ def _createTemporaryDirectory():
             os.makedirs(tempfile.gettempdir())
     except IOError, ex:
         errMsg = "there has been a problem while accessing "
-        errMsg += "system's temporary directory location(s) ('%s'). Please " % ex.message
+        errMsg += "system's temporary directory location(s) ('%s'). Please " % getSafeExString(ex)
         errMsg += "make sure that there is enough disk space left. If problem persists, "
         errMsg += "try to set environment variable 'TEMP' to a location "
         errMsg += "writeable by the current user"
@@ -2071,7 +2072,7 @@ def _mergeOptions(inputOptions, overrideOptions):
             inputOptions = base64unpickle(inputOptions.pickledOptions)
         except Exception, ex:
             errMsg = "provided invalid value '%s' for option '--pickled-options'" % inputOptions.pickledOptions
-            errMsg += " ('%s')" % ex.message if ex.message else ""
+            errMsg += " ('%s')" % ex if ex.message else ""
             raise SqlmapSyntaxException(errMsg)
 
     if inputOptions.configFile:

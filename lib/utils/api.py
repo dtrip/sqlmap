@@ -8,11 +8,16 @@ See the file 'doc/COPYING' for copying permission
 
 import logging
 import os
+import re
+import shlex
 import sqlite3
 import sys
 import tempfile
 import time
+import urllib2
 
+from lib.core.common import dataToStdout
+from lib.core.common import getSafeExString
 from lib.core.common import unArrayizeValue
 from lib.core.convert import base64pickle
 from lib.core.convert import hexencode
@@ -31,6 +36,7 @@ from lib.core.log import LOGGER_HANDLER
 from lib.core.optiondict import optDict
 from lib.core.settings import IS_WIN
 from lib.core.subprocessng import Popen
+from lib.parse.cmdline import cmdLineParser
 from thirdparty.bottle.bottle import error as return_error
 from thirdparty.bottle.bottle import get
 from thirdparty.bottle.bottle import hook
@@ -82,7 +88,7 @@ class Database(object):
                 else:
                     self.cursor.execute(statement)
             except sqlite3.OperationalError, ex:
-                if not "locked" in ex.message:
+                if not "locked" in getSafeExString(ex):
                     raise
             else:
                 break
@@ -554,7 +560,7 @@ def scan_log_limited(taskid, start, end):
     json_log_messages = list()
 
     if taskid not in DataStore.tasks:
-        logger.warning("[%s] Invalid task ID provided to scan_log_limited()")
+        logger.warning("[%s] Invalid task ID provided to scan_log_limited()" % taskid)
         return jsonize({"success": False, "message": "Invalid task ID"})
 
     if not start.isdigit() or not end.isdigit() or end < start:
@@ -583,7 +589,7 @@ def scan_log(taskid):
     json_log_messages = list()
 
     if taskid not in DataStore.tasks:
-        logger.warning("[%s] Invalid task ID provided to scan_log()")
+        logger.warning("[%s] Invalid task ID provided to scan_log()" % taskid)
         return jsonize({"success": False, "message": "Invalid task ID"})
 
     # Read all log messages from the IPC database
@@ -642,6 +648,22 @@ def server(host="0.0.0.0", port=RESTAPI_SERVER_PORT):
     run(host=host, port=port, quiet=True, debug=False)
 
 
+def _client(url, options=None):
+    logger.debug("Calling " + url)
+    try:
+        data = None
+        if options is not None:
+            data = jsonize(options)
+        req = urllib2.Request(url, data, {'Content-Type': 'application/json'})
+        response = urllib2.urlopen(req)
+        text = response.read()
+    except:
+        if options:
+            logger.error("Failed to load and parse " + url)
+        raise
+    return text
+
+
 def client(host=RESTAPI_SERVER_HOST, port=RESTAPI_SERVER_PORT):
     """
     REST-JSON API client
@@ -649,11 +671,91 @@ def client(host=RESTAPI_SERVER_HOST, port=RESTAPI_SERVER_PORT):
     addr = "http://%s:%d" % (host, port)
     logger.info("Starting REST-JSON API client to '%s'..." % addr)
 
-    # TODO: write a simple client with requests, for now use curl from command line
-    logger.error("Not yet implemented, use curl from command line instead for now, for example:")
-    print "\n\t$ taskid=$(curl http://%s:%d/task/new 2>1 | grep -o -I '[a-f0-9]\{16\}') && echo $taskid" % (host, port)
-    print ("\t$ curl -H \"Content-Type: application/json\" "
-           "-X POST -d '{\"url\": \"http://testphp.vulnweb.com/artists.php?artist=1\"}' "
-           "http://%s:%d/scan/$taskid/start") % (host, port)
-    print "\t$ curl http://%s:%d/scan/$taskid/data" % (host, port)
-    print "\t$ curl http://%s:%d/scan/$taskid/log\n" % (host, port)
+    try:
+        _client(addr)
+    except Exception, ex:
+        if not isinstance(ex, urllib2.HTTPError):
+            errMsg = "there has been a problem while connecting to the "
+            errMsg += "REST-JSON API server at '%s' " % addr
+            errMsg += "(%s)" % ex
+            logger.critical(errMsg)
+            return
+
+    taskid = None
+    logger.info("Type 'help' or '?' for list of available commands")
+
+    while True:
+        try:
+            command = raw_input("api%s> " % (" (%s)" % taskid if taskid else "")).strip()
+        except (EOFError, KeyboardInterrupt):
+            print
+            break
+
+        if command.lower() in ("data", "log", "status"):
+            if not taskid:
+                logger.error("No task ID in use")
+                continue
+            raw = _client(addr + "/scan/" + taskid + "/" + command)
+            res = dejsonize(raw)
+            if not res["success"]:
+                logger.error("Failed to execute command " + command)
+            dataToStdout("%s\n" % raw)
+
+        elif command.lower().startswith("new"):
+            if ' ' not in command:
+                logger.error("Program arguments are missing")
+                continue
+
+            argv = ["sqlmap.py"] + shlex.split(command)[1:]
+
+            try:
+                cmdLineOptions = cmdLineParser(argv).__dict__
+            except:
+                taskid = None
+                continue
+
+            cmdLineOptions = { k: v for k, v in cmdLineOptions.iteritems() if v is not None }
+
+            raw = _client(addr + "/task/new")
+            res = dejsonize(raw)
+            if not res["success"]:
+                logger.error("Failed to create new task")
+                continue
+            taskid = res["taskid"]
+            logger.info("New task ID is '%s'" % taskid)
+
+            raw = _client(addr + "/scan/" + taskid + "/start", cmdLineOptions)
+            res = dejsonize(raw)
+            if not res["success"]:
+                logger.error("Failed to start scan")
+                continue
+            logger.info("Scanning started")
+
+        elif command.lower().startswith("use"):
+            taskid = (command.split()[1] if ' ' in command else "").strip("'\"")
+            if not taskid:
+                logger.error("Task ID is missing")
+                taskid = None
+                continue
+            elif not re.search(r"\A[0-9a-fA-F]{16}\Z", taskid):
+                logger.error("Invalid task ID '%s'" % taskid)
+                taskid = None
+                continue
+            logger.info("Switching to task ID '%s' " % taskid)
+
+        elif command.lower() in ("exit", "bye", "quit", 'q'):
+            return
+
+        elif command.lower() in ("help", "?"):
+            msg =  "help        Show this help message\n"
+            msg += "new ARGS    Start a new scan task with provided arguments (e.g. 'new -u \"http://testphp.vulnweb.com/artists.php?artist=1\"')\n"
+            msg += "use TASKID  Switch current context to different task (e.g. 'use c04d8c5c7582efb4')\n"
+            msg += "data        Retrieve and show data for current task\n"
+            msg += "log         Retrieve and show log for current task\n"
+            msg += "status      Retrieve and show status for current task\n"
+            msg += "exit        Exit this client\n"
+
+            dataToStdout(msg)
+
+        elif command:
+            logger.error("Unknown command '%s'" % command)

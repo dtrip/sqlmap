@@ -39,6 +39,7 @@ from lib.core.common import singleTimeWarnMessage
 from lib.core.common import urlencode
 from lib.core.common import wasLastResponseDBMSError
 from lib.core.common import wasLastResponseHTTPError
+from lib.core.defaults import defaults
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -68,6 +69,7 @@ from lib.core.settings import URI_HTTP_HEADER
 from lib.core.settings import UPPER_RATIO_BOUND
 from lib.core.settings import IDS_WAF_CHECK_PAYLOAD
 from lib.core.settings import IDS_WAF_CHECK_RATIO
+from lib.core.settings import IDS_WAF_CHECK_TIMEOUT
 from lib.core.threads import getCurrentThreadData
 from lib.request.connect import Connect as Request
 from lib.request.inject import checkBooleanExpression
@@ -1140,12 +1142,12 @@ def checkWaf():
     Reference: http://seclists.org/nmap-dev/2011/q2/att-1005/http-waf-detect.nse
     """
 
-    if any((conf.string, conf.notString, conf.regexp, conf.dummy, conf.offline)):
+    if any((conf.string, conf.notString, conf.regexp, conf.dummy, conf.offline, conf.skipWaf)):
         return None
 
-    dbmMsg = "heuristically checking if the target is protected by "
-    dbmMsg += "some kind of WAF/IPS/IDS"
-    logger.debug(dbmMsg)
+    infoMsg = "checking if the target is protected by "
+    infoMsg += "some kind of WAF/IPS/IDS"
+    logger.info(infoMsg)
 
     retVal = False
     payload = "%d %s" % (randomInt(), IDS_WAF_CHECK_PAYLOAD)
@@ -1153,12 +1155,16 @@ def checkWaf():
     value = "" if not conf.parameters.get(PLACE.GET) else conf.parameters[PLACE.GET] + DEFAULT_GET_POST_DELIMITER
     value += agent.addPayloadDelimiters("%s=%s" % (randomStr(), payload))
 
+    pushValue(conf.timeout)
+    conf.timeout = IDS_WAF_CHECK_TIMEOUT
+
     try:
         retVal = Request.queryPage(place=PLACE.GET, value=value, getRatioValue=True, noteResponseTime=False, silent=True)[1] < IDS_WAF_CHECK_RATIO
     except SqlmapConnectionException:
         retVal = True
     finally:
         kb.matchRatio = None
+        conf.timeout = popValue()
 
     if retVal:
         warnMsg = "heuristics detected that the target "
@@ -1172,6 +1178,10 @@ def checkWaf():
 
             if output and output[0] in ("Y", "y"):
                 conf.identifyWaf = True
+
+        if conf.timeout == defaults.timeout:
+            logger.warning("dropping timeout to %d seconds (i.e. '--timeout=%d')" % (IDS_WAF_CHECK_TIMEOUT, IDS_WAF_CHECK_TIMEOUT))
+            conf.timeout = IDS_WAF_CHECK_TIMEOUT
 
     return retVal
 

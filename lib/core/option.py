@@ -2244,7 +2244,11 @@ def _checkTor():
     infoMsg = "checking Tor connection"
     logger.info(infoMsg)
 
-    page, _, _ = Request.getPage(url="https://check.torproject.org/", raise404=False)
+    try:
+        page, _, _ = Request.getPage(url="https://check.torproject.org/", raise404=False)
+    except SqlmapConnectionException:
+        page = None
+
     if not page or 'Congratulations' not in page:
         errMsg = "it seems that Tor is not properly set. Please try using options '--tor-type' and/or '--tor-port'"
         raise SqlmapConnectionException(errMsg)
@@ -2289,6 +2293,10 @@ def _basicOptionValidation():
 
     if conf.direct and conf.url:
         errMsg = "option '-d' is incompatible with option '-u' ('--url')"
+        raise SqlmapSyntaxException(errMsg)
+
+    if conf.identifyWaf and conf.skipWaf:
+        errMsg = "switch '--identify-waf' is incompatible with switch '--skip-waf'"
         raise SqlmapSyntaxException(errMsg)
 
     if conf.titles and conf.nullConnection:

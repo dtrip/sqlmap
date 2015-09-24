@@ -370,7 +370,7 @@ class Databases:
 
         return kb.data.cachedTables
 
-    def getColumns(self, onlyColNames=False, colTuple=None, bruteForce=None):
+    def getColumns(self, onlyColNames=False, colTuple=None, bruteForce=None, dumpMode=False):
         self.forceDbmsEnum()
 
         if conf.db is None or conf.db == CURRENT_DB:
@@ -509,17 +509,13 @@ class Databases:
                 if len(colList) > 0:
                     if colTuple:
                         _, colCondParam = colTuple
-                        infoMsg += "like '%s' " % ", ".join(unsafeSQLIdentificatorNaming(col) for col in sorted(colList))
+                        infoMsg += "LIKE '%s' " % ", ".join(unsafeSQLIdentificatorNaming(col) for col in sorted(colList))
                     else:
                         colCondParam = "='%s'"
                         infoMsg += "'%s' " % ", ".join(unsafeSQLIdentificatorNaming(col) for col in sorted(colList))
 
                     condQueryStr = "%%s%s" % colCondParam
                     condQuery = " AND (%s)" % " OR ".join(condQueryStr % (condition, unsafeSQLIdentificatorNaming(col)) for col in sorted(colList))
-
-                infoMsg += "for table '%s' " % unsafeSQLIdentificatorNaming(tbl)
-                infoMsg += "in database '%s'" % unsafeSQLIdentificatorNaming(conf.db)
-                logger.info(infoMsg)
 
                 if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB):
                     query = rootQuery.inband.query % (unsafeSQLIdentificatorNaming(tbl), unsafeSQLIdentificatorNaming(conf.db))
@@ -534,7 +530,14 @@ class Databases:
                 elif Backend.getIdentifiedDbms() in (DBMS.SQLITE, DBMS.FIREBIRD):
                     query = rootQuery.inband.query % tbl
 
-                values = inject.getValue(query, blind=False, time=False)
+                if dumpMode and colList:
+                    values = [(_,) for _ in colList]
+                else:
+                    infoMsg += "for table '%s' " % unsafeSQLIdentificatorNaming(tbl)
+                    infoMsg += "in database '%s'" % unsafeSQLIdentificatorNaming(conf.db)
+                    logger.info(infoMsg)
+
+                    values = inject.getValue(query, blind=False, time=False)
 
                 if Backend.isDbms(DBMS.MSSQL) and isNoneValue(values):
                     index, values = 1, []
@@ -604,17 +607,13 @@ class Databases:
                 if len(colList) > 0:
                     if colTuple:
                         _, colCondParam = colTuple
-                        infoMsg += "like '%s' " % ", ".join(unsafeSQLIdentificatorNaming(col) for col in sorted(colList))
+                        infoMsg += "LIKE '%s' " % ", ".join(unsafeSQLIdentificatorNaming(col) for col in sorted(colList))
                     else:
                         colCondParam = "='%s'"
                         infoMsg += "'%s' " % ", ".join(unsafeSQLIdentificatorNaming(col) for col in sorted(colList))
 
                     condQueryStr = "%%s%s" % colCondParam
                     condQuery = " AND (%s)" % " OR ".join(condQueryStr % (condition, unsafeSQLIdentificatorNaming(col)) for col in sorted(colList))
-
-                infoMsg += "for table '%s' " % unsafeSQLIdentificatorNaming(tbl)
-                infoMsg += "in database '%s'" % unsafeSQLIdentificatorNaming(conf.db)
-                logger.info(infoMsg)
 
                 if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB):
                     query = rootQuery.blind.count % (unsafeSQLIdentificatorNaming(tbl), unsafeSQLIdentificatorNaming(conf.db))
@@ -639,22 +638,31 @@ class Databases:
                     parseSqliteTableSchema(value)
                     return kb.data.cachedColumns
 
-                count = inject.getValue(query, union=False, error=False, expected=EXPECTED.INT, charsetType=CHARSET_TYPE.DIGITS)
-
                 table = {}
                 columns = {}
 
-                if not isNumPosStrValue(count):
-                    if Backend.isDbms(DBMS.MSSQL):
-                        count, index, values = 0, 1, []
-                        while True:
-                            query = rootQuery.blind.query3 % (conf.db, tbl, index)
-                            value = unArrayizeValue(inject.getValue(query, union=False, error=False))
-                            if isNoneValue(value) or value == " ":
-                                break
-                            else:
-                                columns[safeSQLIdentificatorNaming(value)] = None
-                                index += 1
+                if dumpMode and colList:
+                    count = 0
+                    for value in colList:
+                        columns[safeSQLIdentificatorNaming(value)] = None
+                else:
+                    infoMsg += "for table '%s' " % unsafeSQLIdentificatorNaming(tbl)
+                    infoMsg += "in database '%s'" % unsafeSQLIdentificatorNaming(conf.db)
+                    logger.info(infoMsg)
+
+                    count = inject.getValue(query, union=False, error=False, expected=EXPECTED.INT, charsetType=CHARSET_TYPE.DIGITS)
+
+                    if not isNumPosStrValue(count):
+                        if Backend.isDbms(DBMS.MSSQL):
+                            count, index, values = 0, 1, []
+                            while True:
+                                query = rootQuery.blind.query3 % (conf.db, tbl, index)
+                                value = unArrayizeValue(inject.getValue(query, union=False, error=False))
+                                if isNoneValue(value) or value == " ":
+                                    break
+                                else:
+                                    columns[safeSQLIdentificatorNaming(value)] = None
+                                    index += 1
 
                     if not columns:
                         errMsg = "unable to retrieve the %scolumns " % ("number of " if not Backend.isDbms(DBMS.MSSQL) else "")

@@ -1875,8 +1875,13 @@ def readCachedFileContent(filename, mode='rb'):
         with kb.locks.cache:
             if filename not in kb.cache.content:
                 checkFile(filename)
-                with openFile(filename, mode) as f:
-                    kb.cache.content[filename] = f.read()
+                try:
+	                with openFile(filename, mode) as f:
+	                    kb.cache.content[filename] = f.read()
+                except (IOError, OSError, MemoryError), ex:
+                    errMsg = "something went wrong while trying "
+                    errMsg += "to read the content of file '%s' ('%s')" % (filename, ex)
+                    raise SqlmapSystemException(errMsg)
 
     return kb.cache.content[filename]
 
@@ -2498,7 +2503,10 @@ def extractTextTagContent(page):
     page = page or ""
 
     if REFLECTED_VALUE_MARKER in page:
-        page = re.sub(r"(?si)[^\s>]*%s[^\s<]*" % REFLECTED_VALUE_MARKER, "", page)
+        try:
+            page = re.sub(r"(?i)[^\s>]*%s[^\s<]*" % REFLECTED_VALUE_MARKER, "", page)
+        except MemoryError:
+            page = page.replace(REFLECTED_VALUE_MARKER, "")
 
     return filter(None, (_.group('result').strip() for _ in re.finditer(TEXT_TAG_REGEX, page)))
 
@@ -3035,7 +3043,7 @@ def maskSensitiveData(msg):
 
     retVal = getUnicode(msg)
 
-    for item in filter(None, map(lambda x: conf.get(x), ("hostname", "googleDork", "authCred", "proxyCred", "tbl", "db", "col", "user", "cookie", "proxy", "rFile", "wFile", "dFile"))):
+    for item in filter(None, map(lambda x: conf.get(x), ("hostname", "data", "googleDork", "authCred", "proxyCred", "tbl", "db", "col", "user", "cookie", "proxy", "rFile", "wFile", "dFile"))):
         regex = SENSITIVE_DATA_REGEX % re.sub("(\W)", r"\\\1", getUnicode(item))
         while extractRegexResult(regex, retVal):
             value = extractRegexResult(regex, retVal)

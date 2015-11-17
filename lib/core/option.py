@@ -1014,9 +1014,47 @@ def _setDNSCache():
             kb.cache[args] = socket._getaddrinfo(*args, **kwargs)
             return kb.cache[args]
 
-    if not hasattr(socket, '_getaddrinfo'):
+    if not hasattr(socket, "_getaddrinfo"):
         socket._getaddrinfo = socket.getaddrinfo
         socket.getaddrinfo = _getaddrinfo
+
+def _setSocketPreConnect():
+    """
+    Makes a pre-connect version of socket.connect
+    """
+
+    def _():
+        while kb.threadContinue:
+            try:
+                for address in socket._ready:
+                    if len(socket._ready[address]) < conf.threads:
+                        s = socket.socket()
+                        s._connect(address)
+                        with kb.locks.socket:
+                            socket._ready[address].append(s._sock)
+            except socket.error:
+                pass
+            finally:
+                time.sleep(0.01)
+
+    def connect(self, address):
+        found = False
+        with kb.locks.socket:
+            if address not in socket._ready:
+                socket._ready[address] = []
+            if len(socket._ready[address]) > 0:
+                self._sock = socket._ready[address].pop(0)
+                found = True
+        if not found:
+            self._connect(address)
+
+    if not hasattr(socket, "_connect"):
+        socket._ready = {}
+        socket.socket._connect = socket.socket.connect
+        socket.socket.connect = connect
+
+        thread = threading.Thread(target=_)
+        thread.start()
 
 def _setHTTPHandlers():
     """
@@ -1803,7 +1841,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.lastParserStatus = None
 
     kb.locks = AttribDict()
-    for _ in ("cache", "count", "index", "io", "limit", "log", "redirect", "request", "value"):
+    for _ in ("cache", "count", "index", "io", "limit", "log", "socket", "redirect", "request", "value"):
         kb.locks[_] = threading.Lock()
 
     kb.matchRatio = None
@@ -2517,6 +2555,7 @@ def init():
         _setHTTPAuthentication()
         _setHTTPHandlers()
         _setDNSCache()
+        _setSocketPreConnect()
         _setSafeVisit()
         _doSearch()
         _setBulkMultipleTargets()

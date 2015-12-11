@@ -11,7 +11,9 @@ import subprocess
 import string
 import sys
 import time
+import types
 
+from lib.core.datatype import AttribDict
 from lib.core.enums import DBMS
 from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
@@ -435,6 +437,8 @@ HTML_TITLE_REGEX = "<title>(?P<result>[^<]+)</title>"
 # Table used for Base64 conversion in WordPress hash cracking routine
 ITOA64 = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
+PICKLE_REDUCE_WHITELIST = (types.BooleanType, types.DictType, types.FloatType, types.IntType, types.ListType, types.LongType, types.NoneType, types.StringType, types.TupleType, types.UnicodeType, types.XRangeType, type(AttribDict()), type(set()))
+
 # Chars used to quickly distinguish if the user provided tainted parameter values
 DUMMY_SQL_INJECTION_CHARS = ";()'"
 
@@ -511,7 +515,7 @@ DEFAULT_COOKIE_DELIMITER = ';'
 FORCE_COOKIE_EXPIRATION_TIME = "9999999999"
 
 # Github OAuth token used for creating an automatic Issue for unhandled exceptions
-GITHUB_REPORT_OAUTH_TOKEN = "YzQzM2M2YzgzMDExN2I5ZDMyYjAzNTIzODIwZDA2MDFmMmVjODI1Ng=="
+GITHUB_REPORT_OAUTH_TOKEN = "YzNkYTgyMTdjYzdjNjZjMjFjMWE5ODI5OGQyNzk2ODM1M2M0MzUyOA=="
 
 # Skip unforced HashDB flush requests below the threshold number of cached items
 HASHDB_FLUSH_THRESHOLD = 32

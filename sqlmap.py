@@ -188,14 +188,14 @@ def main():
             pass
 
     finally:
+        kb.threadContinue = False
+        kb.threadException = True
+
         if conf.get("showTime"):
             dataToStdout("\n[*] shutting down at %s\n\n" % time.strftime("%X"), forceOutput=True)
 
         if kb.get("tempDir"):
             shutil.rmtree(kb.tempDir, ignore_errors=True)
-
-        kb.threadContinue = False
-        kb.threadException = True
 
         if conf.get("hashDB"):
             try:

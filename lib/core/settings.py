@@ -22,7 +22,7 @@ from lib.core.revision import getRevisionNumber
 # sqlmap version and site
 VERSION = "1.0-dev"
 REVISION = getRevisionNumber()
-VERSION_STRING = "sqlmap/%s%s" % (VERSION, "-%s" % REVISION if REVISION else "-nongit-%s%04x" % (time.strftime("%Y%m%d", time.gmtime(os.path.getmtime(__file__))), os.path.getsize(os.path.join(os.path.dirname(__file__), "common.py")) & 0xffff))
+VERSION_STRING = "sqlmap/%s%s" % (VERSION, "-%s" % REVISION if REVISION else "-nongit-%s-%04x" % (time.strftime("%Y%m%d", time.gmtime(os.path.getmtime(__file__))), os.path.getsize(os.path.join(os.path.dirname(__file__), "common.py")) & 0xffff))
 DESCRIPTION = "automatic SQL injection and database takeover tool"
 SITE = "http://sqlmap.org"
 ISSUES_PAGE = "https://github.com/sqlmapproject/sqlmap/issues/new"
@@ -68,6 +68,9 @@ PARTIAL_HEX_VALUE_MARKER = "__PARTIAL_HEX_VALUE__"
 URI_QUESTION_MARKER = "__QUESTION_MARK__"
 ASTERISK_MARKER = "__ASTERISK_MARK__"
 REPLACEMENT_MARKER = "__REPLACEMENT_MARK__"
+
+RANDOM_INTEGER_MARKER = "[RANDINT]"
+RANDOM_STRING_MARKER = "[RANDSTR]"
 
 PAYLOAD_DELIMITER = "__PAYLOAD_DELIMITER__"
 CHAR_INFERENCE_MARK = "%c"

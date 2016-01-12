@@ -639,7 +639,7 @@ def _findPageForms():
             except KeyboardInterrupt:
                 break
             except Exception, ex:
-                errMsg = "problem occurred while searching for forms at '%s' ('%s')" % (target, ex)
+                errMsg = "problem occurred while searching for forms at '%s' ('%s')" % (target, getSafeExString(ex))
                 logger.error(errMsg)
 
 def _setDBMSAuthentication():
@@ -1028,7 +1028,7 @@ def _setSocketPreConnect():
         return
 
     def _():
-        while kb.threadContinue:
+        while kb.threadContinue and not conf.disablePrecon:
             try:
                 for key in socket._ready:
                     if len(socket._ready[key]) < SOCKET_PRE_CONNECT_QUEUE_SIZE:
@@ -1039,11 +1039,14 @@ def _setSocketPreConnect():
                             socket._ready[key].append(s._sock)
             except socket.error:
                 pass
+            except KeyboardInterrupt:
+                break
             finally:
                 time.sleep(0.01)
 
     def connect(self, address):
         found = False
+
         key = (self.family, self.type, self.proto, address)
         with kb.locks.socket:
             if key not in socket._ready:
@@ -1051,6 +1054,7 @@ def _setSocketPreConnect():
             if len(socket._ready[key]) > 0:
                 self._sock = socket._ready[key].pop(0)
                 found = True
+
         if not found:
             self._connect(address)
 
@@ -1891,7 +1895,9 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.reflectiveCounters = {REFLECTIVE_COUNTER.MISS: 0, REFLECTIVE_COUNTER.HIT: 0}
     kb.requestCounter = 0
     kb.resendPostOnRedirect = None
-    kb.responseTimes = []
+    kb.responseTimes = {}
+    kb.responseTimeMode = None
+    kb.responseTimePayload = None
     kb.resumeValues = True
     kb.safeCharEncode = False
     kb.safeReq = AttribDict()
@@ -2252,9 +2258,6 @@ def _setTorSocksProxySettings():
     socks.wrapmodule(urllib2)
 
 def _checkWebSocket():
-    infoMsg = "checking for WebSocket"
-    logger.debug(infoMsg)
-
     if conf.url and (conf.url.startswith("ws:/") or conf.url.startswith("wss:/")):
         try:
             from websocket import ABNF

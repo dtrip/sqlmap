@@ -108,7 +108,7 @@ def checkSqlInjection(place, parameter, value):
                 # then attempt to identify with a simple DBMS specific boolean-based
                 # test what the DBMS may be
                 if not injection.dbms and PAYLOAD.TECHNIQUE.BOOLEAN in injection.data:
-                    if not Backend.getIdentifiedDbms() and kb.heuristicDbms is False:
+                    if not Backend.getIdentifiedDbms() and kb.heuristicDbms is None:
                         kb.heuristicDbms = heuristicCheckDbms(injection)
 
                 # If the DBMS has already been fingerprinted (via DBMS-specific
@@ -711,11 +711,11 @@ def heuristicCheckDbms(injection):
     kb.injection = injection
 
     for dbms in getPublicTypeMembers(DBMS, True):
-        if not FROM_DUMMY_TABLE.get(dbms, ""):
-            continue
-
         randStr1, randStr2 = randomStr(), randomStr()
         Backend.forceDbms(dbms)
+
+        if conf.noEscape and dbms not in FROM_DUMMY_TABLE:
+            continue
 
         if checkBooleanExpression("(SELECT '%s'%s)='%s'" % (randStr1, FROM_DUMMY_TABLE.get(dbms, ""), randStr1)):
             if not checkBooleanExpression("(SELECT '%s'%s)='%s'" % (randStr1, FROM_DUMMY_TABLE.get(dbms, ""), randStr2)):
@@ -1243,7 +1243,7 @@ def identifyWaf():
             found = function(_)
         except Exception, ex:
             errMsg = "exception occurred while running "
-            errMsg += "WAF script for '%s' ('%s')" % (product, ex)
+            errMsg += "WAF script for '%s' ('%s')" % (product, getSafeExString(ex))
             logger.critical(errMsg)
 
             found = False

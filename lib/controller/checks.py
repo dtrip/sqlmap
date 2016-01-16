@@ -63,16 +63,17 @@ from lib.core.exception import SqlmapNoneDataException
 from lib.core.exception import SqlmapSilentQuitException
 from lib.core.exception import SqlmapUserQuitException
 from lib.core.settings import DEFAULT_GET_POST_DELIMITER
-from lib.core.settings import DUMMY_XSS_CHECK_APPENDIX
+from lib.core.settings import DUMMY_NON_SQLI_CHECK_APPENDIX
 from lib.core.settings import FORMAT_EXCEPTION_STRINGS
 from lib.core.settings import HEURISTIC_CHECK_ALPHABET
+from lib.core.settings import IDS_WAF_CHECK_PAYLOAD
+from lib.core.settings import IDS_WAF_CHECK_RATIO
+from lib.core.settings import IDS_WAF_CHECK_TIMEOUT
+from lib.core.settings import NON_SQLI_CHECK_PREFIX_SUFFIX_LENGTH
 from lib.core.settings import SUHOSIN_MAX_VALUE_LENGTH
 from lib.core.settings import SUPPORTED_DBMS
 from lib.core.settings import URI_HTTP_HEADER
 from lib.core.settings import UPPER_RATIO_BOUND
-from lib.core.settings import IDS_WAF_CHECK_PAYLOAD
-from lib.core.settings import IDS_WAF_CHECK_RATIO
-from lib.core.settings import IDS_WAF_CHECK_TIMEOUT
 from lib.core.threads import getCurrentThreadData
 from lib.request.connect import Connect as Request
 from lib.request.inject import checkBooleanExpression
@@ -446,10 +447,19 @@ def checkSqlInjection(place, parameter, value):
                             truePage = threadData.lastComparisonPage or ""
 
                             if trueResult and not(truePage == falsePage and not kb.nullConnection):
+                                # Perform the test's False request
                                 falseResult = Request.queryPage(genCmpPayload(), place, raise404=False)
 
-                                # Perform the test's False request
                                 if not falseResult:
+                                    if kb.negativeLogic:
+                                        boundPayload = agent.prefixQuery(kb.data.randomStr, prefix, where, clause)
+                                        boundPayload = agent.suffixQuery(boundPayload, comment, suffix, where)
+                                        errorPayload = agent.payload(place, parameter, newValue=boundPayload, where=where)
+
+                                        errorResult = Request.queryPage(errorPayload, place, raise404=False)
+                                        if errorResult:
+                                            continue
+
                                     infoMsg = "%s parameter '%s' seems to be '%s' injectable " % (paramType, parameter, title)
                                     logger.info(infoMsg)
 
@@ -782,6 +792,10 @@ def checkFalsePositives(injection):
                 retVal = None
                 break
 
+            elif checkBooleanExpression("%d %d" % (randInt3, randInt2)):
+                retVal = None
+                break
+
         if retVal is None:
             warnMsg = "false positive or unexploitable injection point detected"
             logger.warn(warnMsg)
@@ -919,17 +933,25 @@ def heuristicCheckSqlInjection(place, parameter):
 
     kb.heuristicMode = True
 
-    value = "%s%s%s" % (randomStr(), DUMMY_XSS_CHECK_APPENDIX, randomStr())
+    randStr1, randStr2 = randomStr(NON_SQLI_CHECK_PREFIX_SUFFIX_LENGTH), randomStr(NON_SQLI_CHECK_PREFIX_SUFFIX_LENGTH)
+    value = "%s%s%s" % (randStr1, DUMMY_NON_SQLI_CHECK_APPENDIX, randStr2)
     payload = "%s%s%s" % (prefix, "'%s" % value, suffix)
     payload = agent.payload(place, parameter, newValue=payload)
     page, _ = Request.queryPage(payload, place, content=True, raise404=False)
 
     paramType = conf.method if conf.method not in (None, HTTPMETHOD.GET, HTTPMETHOD.POST) else place
 
-    if value in (page or ""):
+    if value.lower() in (page or "").lower():
         infoMsg = "heuristic (XSS) test shows that %s parameter " % paramType
-        infoMsg += "'%s' might be vulnerable to XSS attacks" % parameter
+        infoMsg += "'%s' might be vulnerable to cross-site scripting attacks" % parameter
         logger.info(infoMsg)
+
+    for match in re.finditer("(?i)[^\n]*(no such file|failed (to )?open)[^\n]*", page or ""):
+        if randStr1.lower() in match.group(0).lower():
+            infoMsg = "heuristic (FI) test shows that %s parameter " % paramType
+            infoMsg += "'%s' might be vulnerable to file inclusion attacks" % parameter
+            logger.info(infoMsg)
+            break
 
     kb.heuristicMode = False
 

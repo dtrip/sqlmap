@@ -556,8 +556,11 @@ DNS_BOUNDARIES_ALPHABET = re.sub("[a-fA-F]", "", string.ascii_letters)
 # Alphabet used for heuristic checks
 HEURISTIC_CHECK_ALPHABET = ('"', '\'', ')', '(', ',', '.')
 
-# String used for dummy XSS check of a tested parameter value
-DUMMY_XSS_CHECK_APPENDIX = "<'\">"
+# String used for dummy non-SQLi (e.g. XSS) heuristic checks of a tested parameter value
+DUMMY_NON_SQLI_CHECK_APPENDIX = "<'\">"
+
+# Length of prefix and suffix used in non-SQLI heuristic checks
+NON_SQLI_CHECK_PREFIX_SUFFIX_LENGTH = 6
 
 # Connection chunk size (processing large responses in chunks to avoid MemoryError crashes - e.g. large table dump in full UNION injections)
 MAX_CONNECTION_CHUNK_SIZE = 10 * 1024 * 1024
@@ -572,7 +575,7 @@ MAX_BISECTION_LENGTH = 50 * 1024 * 1024
 LARGE_CHUNK_TRIM_MARKER = "__TRIMMED_CONTENT__"
 
 # Generic SQL comment formation
-GENERIC_SQL_COMMENT = "-- "
+GENERIC_SQL_COMMENT = "-- -"
 
 # Threshold value for turning back on time auto-adjustment mechanism
 VALID_TIME_CHARS_RUN_THRESHOLD = 100

@@ -317,6 +317,9 @@ BURP_REQUEST_REGEX = r"={10,}\s+[^=]+={10,}\s(.+?)\s={10,}"
 # Regex used for parsing XML Burp saved history items
 BURP_XML_HISTORY_REGEX = r'<port>(\d+)</port>.+?<request base64="true"><!\[CDATA\[([^]]+)'
 
+# Server header in CloudFlare responses
+CLOUDFLARE_SERVER_HEADER = "cloudflare-nginx"
+
 # Encoding used for Unicode data
 UNICODE_ENCODING = "utf8"
 
@@ -584,7 +587,7 @@ VALID_TIME_CHARS_RUN_THRESHOLD = 100
 CHECK_ZERO_COLUMNS_THRESHOLD = 10
 
 # Boldify all logger messages containing these "patterns"
-BOLD_PATTERNS = ("' injectable", "provided empty", "leftover chars", "might be injectable", "' is vulnerable", "is not injectable", "test failed", "test passed", "live test final result", "test shows that", "the back-end DBMS is", "created Github", "blocked by the target server", "protection is involved")
+BOLD_PATTERNS = ("' injectable", "provided empty", "leftover chars", "might be injectable", "' is vulnerable", "is not injectable", "test failed", "test passed", "live test final result", "test shows that", "the back-end DBMS is", "created Github", "blocked by the target server", "protection is involved", "CloudFlare")
 
 # Generic www root directory names
 GENERIC_DOC_ROOT_DIRECTORY_NAMES = ("htdocs", "httpdocs", "public", "wwwroot", "www")

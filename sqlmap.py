@@ -12,9 +12,12 @@ import os
 import re
 import shutil
 import sys
+import thread
 import time
 import traceback
 import warnings
+
+sys.dont_write_bytecode = True
 
 warnings.filterwarnings(action="ignore", message=".*was already imported", category=UserWarning)
 warnings.filterwarnings(action="ignore", category=DeprecationWarning)
@@ -107,7 +110,15 @@ def main():
         elif conf.liveTest:
             liveTest()
         else:
-            start()
+            try:
+                start()
+            except thread.error as ex:
+                if "can't start new thread" in getSafeExString(ex):
+                    errMsg = "unable to start new threads. Please check OS (u)limits"
+                    logger.critical(errMsg)
+                    raise SystemExit
+                else:
+                    raise
 
     except SqlmapUserQuitException:
         errMsg = "user quit"
@@ -128,7 +139,6 @@ def main():
             logger.critical(errMsg)
         except KeyboardInterrupt:
             pass
-
         raise SystemExit
 
     except KeyboardInterrupt:

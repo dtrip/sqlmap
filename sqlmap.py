@@ -5,6 +5,12 @@ Copyright (c) 2006-2016 sqlmap developers (http://sqlmap.org/)
 See the file 'doc/COPYING' for copying permission
 """
 
+import sys
+
+sys.dont_write_bytecode = True
+
+from lib.utils import versioncheck  # this has to be the first non-standard import
+
 import bdb
 import inspect
 import logging
@@ -17,12 +23,8 @@ import time
 import traceback
 import warnings
 
-sys.dont_write_bytecode = True
-
 warnings.filterwarnings(action="ignore", message=".*was already imported", category=UserWarning)
 warnings.filterwarnings(action="ignore", category=DeprecationWarning)
-
-from lib.utils import versioncheck  # this has to be the first non-standard import
 
 from lib.controller.controller import start
 from lib.core.common import banner
@@ -170,6 +172,11 @@ def main():
         try:
             if any(_ in excMsg for _ in ("No space left", "Disk quota exceeded")):
                 errMsg = "no space left on output device"
+                logger.error(errMsg)
+                raise SystemExit
+
+            elif "_mkstemp_inner" in excMsg:
+                errMsg = "there has been a problem while accessing temporary files"
                 logger.error(errMsg)
                 raise SystemExit
 

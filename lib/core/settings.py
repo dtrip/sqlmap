@@ -19,8 +19,8 @@ from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
 from lib.core.revision import getRevisionNumber
 
-# sqlmap version and site
-VERSION = "1.0.0.21"
+# sqlmap version (<major>.<minor>.<month>.<monthly commit>)
+VERSION = "1.0.3.4"
 REVISION = getRevisionNumber()
 STABLE = VERSION.count('.') <= 2
 VERSION_STRING = "sqlmap/%s#%s" % (VERSION, "stable" if STABLE else "dev")
@@ -147,6 +147,9 @@ MAX_BUFFERED_PARTIAL_UNION_LENGTH = 1024
 
 # Suffix used for naming meta databases in DBMS(es) without explicit database name
 METADB_SUFFIX = "_masterdb"
+
+# Number of times to retry the pushValue during the exceptions (e.g. KeyboardInterrupt)
+PUSH_VALUE_EXCEPTION_RETRY_COUNT = 3
 
 # Minimum time response set needed for time-comparison based on standard deviation
 MIN_TIME_RESPONSES = 30

@@ -177,10 +177,11 @@ def checkSqlInjection(place, parameter, value):
                     lower, upper = int(match.group(1)), int(match.group(2))
                     for _ in (lower, upper):
                         if _ > 1:
+                            __ = 2 * (_ - 1) + 1 if _ == lower else 2 * _
                             unionExtended = True
-                            test.request.columns = re.sub(r"\b%d\b" % _, str(2 * _), test.request.columns)
-                            title = re.sub(r"\b%d\b" % _, str(2 * _), title)
-                            test.title = re.sub(r"\b%d\b" % _, str(2 * _), test.title)
+                            test.request.columns = re.sub(r"\b%d\b" % _, str(__), test.request.columns)
+                            title = re.sub(r"\b%d\b" % _, str(__), title)
+                            test.title = re.sub(r"\b%d\b" % _, str(__), test.title)
 
             # Skip test if the user's wants to test only for a specific
             # technique
@@ -470,11 +471,20 @@ def checkSqlInjection(place, parameter, value):
 
                             if not injectable and not any((conf.string, conf.notString, conf.regexp)) and kb.pageStable:
                                 trueSet = set(extractTextTagContent(truePage))
+                                trueSet = trueSet.union(__ for _ in trueSet for __ in _.split())
+
                                 falseSet = set(extractTextTagContent(falsePage))
+                                falseSet = falseSet.union(__ for _ in falseSet for __ in _.split())
+
                                 candidates = filter(None, (_.strip() if _.strip() in (kb.pageTemplate or "") and _.strip() not in falsePage and _.strip() not in threadData.lastComparisonHeaders else None for _ in (trueSet - falseSet)))
 
                                 if candidates:
-                                    conf.string = candidates[0]
+                                    candidates = sorted(candidates, key=lambda _: len(_))
+                                    for candidate in candidates:
+                                        if re.match(r"\A\w+\Z", candidate):
+                                            break
+                                    conf.string = candidate
+
                                     infoMsg = "%s parameter '%s' seems to be '%s' injectable (with --string=\"%s\")" % (paramType, parameter, title, repr(conf.string).lstrip('u').strip("'"))
                                     logger.info(infoMsg)
 
@@ -693,7 +703,7 @@ def checkSqlInjection(place, parameter, value):
     # Return the injection object
     if injection.place is not None and injection.parameter is not None:
         if not conf.dropSetCookie and PAYLOAD.TECHNIQUE.BOOLEAN in injection.data and injection.data[PAYLOAD.TECHNIQUE.BOOLEAN].vector.startswith('OR'):
-            warnMsg = "in OR boolean-based injections, please consider usage "
+            warnMsg = "in OR boolean-based injection cases, please consider usage "
             warnMsg += "of switch '--drop-set-cookie' if you experience any "
             warnMsg += "problems during data retrieval"
             logger.warn(warnMsg)
@@ -1289,7 +1299,7 @@ def identifyWaf():
         if output and output[0] not in ("Y", "y"):
             raise SqlmapUserQuitException
     else:
-        warnMsg = "no WAF/IDS/IPS product has been identified (this doesn't mean that there is none)"
+        warnMsg = "WAF/IDS/IPS product hasn't been identified (generic protection response)"
         logger.warn(warnMsg)
 
     kb.testType = None

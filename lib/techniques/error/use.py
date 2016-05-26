@@ -16,6 +16,7 @@ from lib.core.common import calculateDeltaSeconds
 from lib.core.common import dataToStdout
 from lib.core.common import decodeHexValue
 from lib.core.common import extractRegexResult
+from lib.core.common import getConsoleWidth
 from lib.core.common import getPartRun
 from lib.core.common import getUnicode
 from lib.core.common import hashDBRetrieve
@@ -43,6 +44,7 @@ from lib.core.settings import MIN_ERROR_CHUNK_LENGTH
 from lib.core.settings import MAX_ERROR_CHUNK_LENGTH
 from lib.core.settings import NULL
 from lib.core.settings import PARTIAL_VALUE_MARKER
+from lib.core.settings import ROTATING_CHARS
 from lib.core.settings import SLOW_ORDER_COUNT_THRESHOLD
 from lib.core.settings import SQL_SCALAR_REGEX
 from lib.core.settings import TURN_OFF_RESUME_INFO_LIMIT
@@ -54,6 +56,7 @@ from lib.utils.progress import ProgressBar
 
 def _oneShotErrorUse(expression, field=None, chunkTest=False):
     offset = 1
+    rotator = 0
     partialValue = None
     threadData = getCurrentThreadData()
     retVal = hashDBRetrieve(expression, checkConf=True)
@@ -173,8 +176,16 @@ def _oneShotErrorUse(expression, field=None, chunkTest=False):
                     else:
                         break
 
-                    if kb.fileReadMode and output:
-                        dataToStdout(_formatPartialContent(output).replace(r"\n", "\n").replace(r"\t", "\t"))
+                    if output:
+                        if kb.fileReadMode:
+                            dataToStdout(_formatPartialContent(output).replace(r"\n", "\n").replace(r"\t", "\t"))
+                        elif offset > 1:
+                            rotator += 1
+
+                            if rotator >= len(ROTATING_CHARS):
+                                rotator = 0
+
+                            dataToStdout("\r%s\r" % ROTATING_CHARS[rotator])
                 else:
                     retVal = output
                     break
@@ -203,6 +214,7 @@ def _errorFields(expression, expressionFields, expressionFieldsList, num=None, e
     values = []
     origExpr = None
 
+    width = getConsoleWidth()
     threadData = getCurrentThreadData()
 
     for field in expressionFieldsList:
@@ -229,7 +241,12 @@ def _errorFields(expression, expressionFields, expressionFieldsList, num=None, e
             if kb.fileReadMode and output and output.strip():
                 print
             elif output is not None and not (threadData.resumed and kb.suppressResumeInfo) and not (emptyFields and field in emptyFields):
-                dataToStdout("[%s] [INFO] %s: %s\n" % (time.strftime("%X"), "resumed" if threadData.resumed else "retrieved", safecharencode(output)))
+                status = "[%s] [INFO] %s: %s" % (time.strftime("%X"), "resumed" if threadData.resumed else "retrieved", output if kb.safeCharEncode else safecharencode(output))
+
+                if len(status) > width:
+                    status = "%s..." % status[:width - 3]
+
+                dataToStdout("%s\n" % status, True)
 
         if isinstance(num, int):
             expression = origExpr

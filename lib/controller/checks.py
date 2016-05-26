@@ -464,7 +464,7 @@ def checkSqlInjection(place, parameter, value):
                                         if errorResult:
                                             continue
 
-                                    infoMsg = "%s parameter '%s' seems to be '%s' injectable " % (paramType, parameter, title)
+                                    infoMsg = "%s parameter '%s' appears to be '%s' injectable " % (paramType, parameter, title)
                                     logger.info(infoMsg)
 
                                     injectable = True
@@ -485,7 +485,7 @@ def checkSqlInjection(place, parameter, value):
                                             break
                                     conf.string = candidate
 
-                                    infoMsg = "%s parameter '%s' seems to be '%s' injectable (with --string=\"%s\")" % (paramType, parameter, title, repr(conf.string).lstrip('u').strip("'"))
+                                    infoMsg = "%s parameter '%s' appears to be '%s' injectable (with --string=\"%s\")" % (paramType, parameter, title, repr(conf.string).lstrip('u').strip("'"))
                                     logger.info(infoMsg)
 
                                     injectable = True
@@ -530,7 +530,7 @@ def checkSqlInjection(place, parameter, value):
                                 trueResult = Request.queryPage(reqPayload, place, timeBasedCompare=True, raise404=False)
 
                                 if trueResult:
-                                    infoMsg = "%s parameter '%s' seems to be '%s' injectable " % (paramType, parameter, title)
+                                    infoMsg = "%s parameter '%s' appears to be '%s' injectable " % (paramType, parameter, title)
                                     logger.info(infoMsg)
 
                                     injectable = True
@@ -710,7 +710,8 @@ def checkSqlInjection(place, parameter, value):
 
         if not checkFalsePositives(injection):
             kb.vulnHosts.remove(conf.hostname)
-            injection.notes.add(NOTE.FALSE_POSITIVE_OR_UNEXPLOITABLE)
+            if NOTE.FALSE_POSITIVE_OR_UNEXPLOITABLE not in injection.notes:
+                injection.notes.append(NOTE.FALSE_POSITIVE_OR_UNEXPLOITABLE)
 
     else:
         injection = None

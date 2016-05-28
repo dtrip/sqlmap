@@ -15,8 +15,9 @@ def detect(get_page):
     retval = False
 
     for vector in WAF_ATTACK_VECTORS:
-        _, headers, _ = get_page(get=vector)
+        page, headers, code = get_page(get=vector)
         retval = re.search(r"MISS", headers.get("X-Powered-By-Anquanbao", ""), re.I) is not None
+        retval |= code == 405 and "/aqb_cc/error/" in (page or "")
         if retval:
             break
 

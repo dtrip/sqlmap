@@ -9,16 +9,20 @@ import re
 
 from lib.core.settings import WAF_ATTACK_VECTORS
 
-__product__ = "AppWall (Radware)"
+__product__ = "Generic (Unknown)"
 
 def detect(get_page):
     retval = False
 
+    page, _, code = get_page()
+    if page is None or code >= 400:
+        return False
+
     for vector in WAF_ATTACK_VECTORS:
-        page, headers, _ = get_page(get=vector)
-        retval = re.search(r"Unauthorized Activity Has Been Detected.+Case Number:", page or "", re.I | re.S) is not None
-        retval |= headers.get("X-SL-CompState") is not None
-        if retval:
+        page, _, code = get_page(get=vector)
+
+        if code >= 400:
+            retval = True
             break
 
     return retval

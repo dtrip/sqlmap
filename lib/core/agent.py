@@ -281,7 +281,7 @@ class Agent(object):
             where = kb.injection.data[kb.technique].where if where is None else where
             comment = kb.injection.data[kb.technique].comment if comment is None else comment
 
-        if Backend.getIdentifiedDbms() == DBMS.ACCESS and "--" in (comment or ""):
+        if Backend.getIdentifiedDbms() == DBMS.ACCESS and any((comment or "").startswith(_) for _ in ("--", "[GENERIC_SQL_COMMENT]")):
             comment = queries[DBMS.ACCESS].comment.query
 
         if comment is not None:
@@ -721,8 +721,11 @@ class Agent(object):
 
         if conf.uFrom:
             fromTable = " FROM %s" % conf.uFrom
-        else:
-            fromTable = fromTable or FROM_DUMMY_TABLE.get(Backend.getIdentifiedDbms(), "")
+        elif not fromTable:
+            if kb.tableFrom:
+                fromTable = " FROM %s" % kb.tableFrom
+            else:
+                fromTable = FROM_DUMMY_TABLE.get(Backend.getIdentifiedDbms(), "")
 
         if query.startswith("SELECT "):
             query = query[len("SELECT "):]

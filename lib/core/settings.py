@@ -19,7 +19,7 @@ from lib.core.enums import OS
 from lib.core.revision import getRevisionNumber
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.0.5.107"
+VERSION = "1.0.5.126"
 REVISION = getRevisionNumber()
 STABLE = VERSION.count('.') <= 2
 VERSION_STRING = "sqlmap/%s#%s" % (VERSION, "stable" if STABLE else "dev")
@@ -77,6 +77,9 @@ RANDOM_STRING_MARKER = "[RANDSTR]"
 PAYLOAD_DELIMITER = "__PAYLOAD_DELIMITER__"
 CHAR_INFERENCE_MARK = "%c"
 PRINTABLE_CHAR_REGEX = r"[^\x00-\x1f\x7f-\xff]"
+
+# Regular expression used for extraction of table names (useful for (e.g.) MsAccess)
+SELECT_FROM_TABLE_REGEX = r"\bSELECT .+? FROM (?P<result>[\w.]+)\b"
 
 # Regular expression used for recognition of textual content-type
 TEXT_CONTENT_TYPE_REGEX = r"(?i)(text|form|message|xml|javascript|ecmascript|json)"
@@ -294,14 +297,15 @@ BLANK = "<blank>"
 CURRENT_DB = "CD"
 
 # Regular expressions used for finding file paths in error messages
-FILE_PATH_REGEXES = (r" in (file )?<b>(?P<result>.*?)</b> on line", r"(?:>|\s)(?P<result>[A-Za-z]:[\\/][\w.\\/-]*)", r"(?:>|\s)(?P<result>/\w[/\w.-]+)")
+FILE_PATH_REGEXES = (r" in (file )?<b>(?P<result>.*?)</b> on line", r"(?:[>(\[\s])(?P<result>[A-Za-z]:[\\/][\w.\\/-]*)", r"(?:[>(\[\s])(?P<result>/\w[/\w.-]+)", r"href=['\"]file://(?P<result>/[^'\"]+)")
 
 # Regular expressions used for parsing error messages (--parse-errors)
 ERROR_PARSING_REGEXES = (
                           r"<b>[^<]*(fatal|error|warning|exception)[^<]*</b>:?\s*(?P<result>.+?)<br\s*/?\s*>",
-                          r"(?m)^(fatal|error|warning|exception):?\s*(?P<result>.+?)$",
+                          r"(?m)^(fatal|error|warning|exception):?\s*(?P<result>[^\n]+?)$",
                           r"<li>Error Type:<br>(?P<result>.+?)</li>",
                           r"error '[0-9a-f]{8}'((<[^>]+>)|\s)+(?P<result>[^<>]+)",
+                          r"(?m)^\s*\[[^\n]+(ODBC|JDBC)[^\n]+\](?P<result>[^\]]+in query expression[^\n]+)$"
                         )
 
 # Regular expression used for parsing charset info from meta html headers
@@ -472,7 +476,7 @@ BRUTE_TABLE_EXISTS_TEMPLATE = "EXISTS(SELECT %d FROM %s)"
 BRUTE_COLUMN_EXISTS_TEMPLATE = "EXISTS(SELECT %s FROM %s)"
 
 # Payload used for checking of existence of IDS/WAF (dummier the better)
-IDS_WAF_CHECK_PAYLOAD = "AND 1=1 UNION ALL SELECT 1,2,'<script>',table_name FROM information_schema.tables WHERE 2>1-- ../../../etc/passwd"
+IDS_WAF_CHECK_PAYLOAD = "AND 1=1 UNION ALL SELECT 1,NULL,'<script>alert(\"XSS\")</script>',table_name FROM information_schema.tables WHERE 2>1--/**/../../../etc/passwd"
 
 # Data inside shellcodeexec to be filled with random string
 SHELLCODEEXEC_RANDOM_STRING_MARKER = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
@@ -574,6 +578,9 @@ HEURISTIC_CHECK_ALPHABET = ('"', '\'', ')', '(', ',', '.')
 # String used for dummy non-SQLi (e.g. XSS) heuristic checks of a tested parameter value
 DUMMY_NON_SQLI_CHECK_APPENDIX = "<'\">"
 
+# Regular expression used for recognition of file inclusion errors
+FI_ERROR_REGEX = "(?i)[^\n]*(no such file|failed (to )?open)[^\n]*"
+
 # Length of prefix and suffix used in non-SQLI heuristic checks
 NON_SQLI_CHECK_PREFIX_SUFFIX_LENGTH = 6
 
@@ -611,7 +618,7 @@ MAX_HELP_OPTION_LENGTH = 18
 MAX_CONNECT_RETRIES = 100
 
 # Strings for detecting formatting errors
-FORMAT_EXCEPTION_STRINGS = ("Type mismatch", "Error converting", "Conversion failed", "String or binary data would be truncated", "Failed to convert", "System.FormatException", "java.lang.NumberFormatException", "ValueError: invalid literal")
+FORMAT_EXCEPTION_STRINGS = ("Type mismatch", "Error converting", "Conversion failed", "String or binary data would be truncated", "Failed to convert", "System.FormatException", "java.lang.NumberFormatException", "ValueError: invalid literal", "DataTypeMismatchException")
 
 # Regular expression used for extracting ASP.NET view state values
 VIEWSTATE_REGEX = r'(?i)(?P<name>__VIEWSTATE[^"]*)[^>]+value="(?P<result>[^"]+)'

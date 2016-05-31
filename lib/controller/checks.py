@@ -66,6 +66,7 @@ from lib.core.exception import SqlmapSilentQuitException
 from lib.core.exception import SqlmapUserQuitException
 from lib.core.settings import DEFAULT_GET_POST_DELIMITER
 from lib.core.settings import DUMMY_NON_SQLI_CHECK_APPENDIX
+from lib.core.settings import FI_ERROR_REGEX
 from lib.core.settings import FORMAT_EXCEPTION_STRINGS
 from lib.core.settings import HEURISTIC_CHECK_ALPHABET
 from lib.core.settings import IDS_WAF_CHECK_PAYLOAD
@@ -78,6 +79,7 @@ from lib.core.settings import URI_HTTP_HEADER
 from lib.core.settings import UPPER_RATIO_BOUND
 from lib.core.threads import getCurrentThreadData
 from lib.request.connect import Connect as Request
+from lib.request.comparison import comparison
 from lib.request.inject import checkBooleanExpression
 from lib.request.templates import getPageTemplate
 from lib.techniques.union.test import unionTest
@@ -463,6 +465,11 @@ def checkSqlInjection(place, parameter, value):
                                         errorResult = Request.queryPage(errorPayload, place, raise404=False)
                                         if errorResult:
                                             continue
+                                    elif not any((conf.string, conf.notString, conf.regexp, conf.code, kb.nullConnection)):
+                                        _ = comparison(kb.heuristicPage, None, getRatioValue=True)
+                                        if _ > kb.matchRatio:
+                                            kb.matchRatio = _
+                                            logger.debug("adjusting match ratio for current parameter to %.3f" % kb.matchRatio)
 
                                     infoMsg = "%s parameter '%s' appears to be '%s' injectable " % (paramType, parameter, title)
                                     logger.info(infoMsg)
@@ -550,7 +557,7 @@ def checkSqlInjection(place, parameter, value):
                                     warnMsg = "using unescaped version of the test "
                                     warnMsg += "because of zero knowledge of the "
                                     warnMsg += "back-end DBMS. You can try to "
-                                    warnMsg += "explicitly set it using option '--dbms'"
+                                    warnMsg += "explicitly set it with option '--dbms'"
                                     singleTimeWarnMessage(warnMsg)
                                 else:
                                     Backend.forceDbms(kb.heuristicDbms)
@@ -716,7 +723,7 @@ def checkSqlInjection(place, parameter, value):
     else:
         injection = None
 
-    if injection:
+    if injection and NOTE.FALSE_POSITIVE_OR_UNEXPLOITABLE not in injection.notes:
         checkSuhosinPatch(injection)
         checkFilteredChars(injection)
 
@@ -898,6 +905,7 @@ def heuristicCheckSqlInjection(place, parameter):
     payload = agent.payload(place, parameter, newValue=payload)
     page, _ = Request.queryPage(payload, place, content=True, raise404=False)
 
+    kb.heuristicPage = page
     kb.heuristicMode = False
 
     parseFilePaths(page)
@@ -960,7 +968,7 @@ def heuristicCheckSqlInjection(place, parameter):
         infoMsg += "'%s' might be vulnerable to cross-site scripting attacks" % parameter
         logger.info(infoMsg)
 
-    for match in re.finditer("(?i)[^\n]*(no such file|failed (to )?open)[^\n]*", page or ""):
+    for match in re.finditer(FI_ERROR_REGEX, page or ""):
         if randStr1.lower() in match.group(0).lower():
             infoMsg = "heuristic (FI) test shows that %s parameter " % paramType
             infoMsg += "'%s' might be vulnerable to file inclusion attacks" % parameter

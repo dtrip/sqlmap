@@ -1612,7 +1612,7 @@ def _cleanupOptions():
         conf.testParameter = []
 
     if conf.agent:
-        conf.agent = conf.agent.strip("\r\n")
+        conf.agent = re.sub(r"[\r\n]", "", conf.agent)
 
     if conf.user:
         conf.user = conf.user.replace(" ", "")
@@ -1832,6 +1832,8 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.cache.content = {}
     kb.cache.regex = {}
     kb.cache.stdev = {}
+
+    kb.captchaDetected = None
 
     kb.chars = AttribDict()
     kb.chars.delimiter = randomStr(length=6, lowercase=True)

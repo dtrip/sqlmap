@@ -628,6 +628,9 @@ class Connect(object):
                 warnMsg = "connection timed out to the target URL"
             elif "URLError" in tbMsg or "error" in tbMsg:
                 warnMsg = "unable to connect to the target URL"
+                match = re.search(r"Errno \d+\] ([^>]+)", tbMsg)
+                if match:
+                    warnMsg += " ('%s')" % match.group(1)
             elif "NTLM" in tbMsg:
                 warnMsg = "there has been a problem with NTLM authentication"
             elif "BadStatusLine" in tbMsg:
@@ -986,7 +989,7 @@ class Connect(object):
 
             while True:
                 try:
-                    compiler.parse(conf.evalCode.replace(';', '\n'))
+                    compiler.parse(unicodeencode(conf.evalCode.replace(';', '\n')))
                 except SyntaxError, ex:
                     original = replacement = ex.text.strip()
                     for _ in re.findall(r"[A-Za-z_]+", original)[::-1]:

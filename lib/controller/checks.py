@@ -446,11 +446,13 @@ def checkSqlInjection(place, parameter, value):
                             kb.matchRatio = None
                             kb.negativeLogic = (where == PAYLOAD.WHERE.NEGATIVE)
                             Request.queryPage(genCmpPayload(), place, raise404=False)
-                            falsePage = threadData.lastComparisonPage or ""
+                            falsePage, falseHeaders, falseCode = threadData.lastComparisonPage or "", threadData.lastComparisonHeaders, threadData.lastComparisonCode
+                            falseRawResponse = "%s%s" % (falseHeaders, falsePage)
 
                             # Perform the test's True request
                             trueResult = Request.queryPage(reqPayload, place, raise404=False)
-                            truePage = threadData.lastComparisonPage or ""
+                            truePage, trueHeaders, trueCode = threadData.lastComparisonPage or "", threadData.lastComparisonHeaders, threadData.lastComparisonCode
+                            trueRawResponse = "%s%s" % (trueHeaders, truePage)
 
                             if trueResult and not(truePage == falsePage and not kb.nullConnection):
                                 # Perform the test's False request
@@ -471,31 +473,51 @@ def checkSqlInjection(place, parameter, value):
                                             kb.matchRatio = _
                                             logger.debug("adjusting match ratio for current parameter to %.3f" % kb.matchRatio)
 
+                                    injectable = True
+
+                            if injectable and kb.pageStable and not any((conf.string, conf.notString, conf.regexp, conf.code, kb.nullConnection)):
+                                if all((falseCode, trueCode)) and falseCode != trueCode:
+                                    conf.code = trueCode
+
+                                    infoMsg = "%s parameter '%s' appears to be '%s' injectable (with --code=%d)" % (paramType, parameter, title, conf.code)
+                                    logger.info(infoMsg)
+                                else:
+                                    trueSet = set(extractTextTagContent(trueRawResponse))
+                                    trueSet = trueSet.union(__ for _ in trueSet for __ in _.split())
+
+                                    falseSet = set(extractTextTagContent(falseRawResponse))
+                                    falseSet = falseSet.union(__ for _ in falseSet for __ in _.split())
+
+                                    candidates = filter(None, (_.strip() if _.strip() in trueRawResponse and _.strip() not in falseRawResponse else None for _ in (trueSet - falseSet)))
+
+                                    if candidates:
+                                        candidates = sorted(candidates, key=lambda _: len(_))
+                                        for candidate in candidates:
+                                            if re.match(r"\A\w+\Z", candidate):
+                                                break
+
+                                        conf.string = candidate
+
+                                        infoMsg = "%s parameter '%s' appears to be '%s' injectable (with --string=\"%s\")" % (paramType, parameter, title, repr(conf.string).lstrip('u').strip("'"))
+                                        logger.info(infoMsg)
+
+                                    if not any((conf.string, conf.notString)):
+                                        candidates = filter(None, (_.strip() if _.strip() in falseRawResponse and _.strip() not in trueRawResponse else None for _ in (falseSet - trueSet)))
+
+                                        if candidates:
+                                            candidates = sorted(candidates, key=lambda _: len(_))
+                                            for candidate in candidates:
+                                                if re.match(r"\A\w+\Z", candidate):
+                                                    break
+
+                                            conf.notString = candidate
+
+                                            infoMsg = "%s parameter '%s' appears to be '%s' injectable (with --not-string=\"%s\")" % (paramType, parameter, title, repr(conf.notString).lstrip('u').strip("'"))
+                                            logger.info(infoMsg)
+
+                                if not any((conf.string, conf.notString, conf.code)):
                                     infoMsg = "%s parameter '%s' appears to be '%s' injectable " % (paramType, parameter, title)
                                     logger.info(infoMsg)
-
-                                    injectable = True
-
-                            if not injectable and not any((conf.string, conf.notString, conf.regexp)) and kb.pageStable:
-                                trueSet = set(extractTextTagContent(truePage))
-                                trueSet = trueSet.union(__ for _ in trueSet for __ in _.split())
-
-                                falseSet = set(extractTextTagContent(falsePage))
-                                falseSet = falseSet.union(__ for _ in falseSet for __ in _.split())
-
-                                candidates = filter(None, (_.strip() if _.strip() in (kb.pageTemplate or "") and _.strip() not in falsePage and _.strip() not in threadData.lastComparisonHeaders else None for _ in (trueSet - falseSet)))
-
-                                if candidates:
-                                    candidates = sorted(candidates, key=lambda _: len(_))
-                                    for candidate in candidates:
-                                        if re.match(r"\A\w+\Z", candidate):
-                                            break
-                                    conf.string = candidate
-
-                                    infoMsg = "%s parameter '%s' appears to be '%s' injectable (with --string=\"%s\")" % (paramType, parameter, title, repr(conf.string).lstrip('u').strip("'"))
-                                    logger.info(infoMsg)
-
-                                    injectable = True
 
                         # In case of error-based SQL injection
                         elif method == PAYLOAD.METHOD.GREP:
@@ -646,6 +668,7 @@ def checkSqlInjection(place, parameter, value):
 
                         injection.conf.textOnly = conf.textOnly
                         injection.conf.titles = conf.titles
+                        injection.conf.code = conf.code
                         injection.conf.string = conf.string
                         injection.conf.notString = conf.notString
                         injection.conf.regexp = conf.regexp

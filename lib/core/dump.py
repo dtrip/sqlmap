@@ -9,6 +9,7 @@ import cgi
 import hashlib
 import os
 import re
+import shutil
 import tempfile
 import threading
 
@@ -449,8 +450,19 @@ class Dump(object):
                         dumpFileName = os.path.join(dumpDbPath, "%s-%s.%s" % (_, hashlib.md5(unicodeencode(table)).hexdigest()[:8], conf.dumpFormat.lower()))
                     else:
                         dumpFileName = os.path.join(dumpDbPath, "%s.%s" % (_, conf.dumpFormat.lower()))
+            else:
+                appendToFile = any((conf.limitStart, conf.limitStop))
 
-            appendToFile = any((conf.limitStart, conf.limitStop)) and checkFile(dumpFileName, False)
+                if not appendToFile:
+                    count = 1
+                    while True:
+                        candidate = "%s.%d" % (dumpFileName, count)
+                        if not checkFile(candidate, False):
+                            shutil.copyfile(dumpFileName, candidate)
+                            break
+                        else:
+                            count += 1
+
             dumpFP = openFile(dumpFileName, "wb" if not appendToFile else "ab", buffering=DUMP_FILE_BUFFER_SIZE)
 
         count = int(tableValues["__infos__"]["count"])

@@ -940,8 +940,8 @@ def dataToOutFile(filename, data):
         retVal = os.path.join(conf.filePath, filePathToSafeString(filename))
 
         try:
-            with openFile(retVal, "w+b") as f:
-                f.write(data)
+            with open(retVal, "w+b") as f:  # has to stay as non-codecs because data is raw ASCII encoded data
+                f.write(unicodeencode(data))
         except IOError, ex:
             errMsg = "something went wrong while trying to write "
             errMsg += "to the output file ('%s')" % getSafeExString(ex)
@@ -1397,6 +1397,10 @@ def parseTargetUrl():
         conf.port = 443
     else:
         conf.port = 80
+
+    if conf.port < 0 or conf.port > 65535:
+        errMsg = "invalid target URL's port (%d)" % conf.port
+        raise SqlmapSyntaxException(errMsg)
 
     conf.url = getUnicode("%s://%s:%d%s" % (conf.scheme, ("[%s]" % conf.hostname) if conf.ipv6 else conf.hostname, conf.port, conf.path))
     conf.url = conf.url.replace(URI_QUESTION_MARKER, '?')

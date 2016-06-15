@@ -630,7 +630,7 @@ class Connect(object):
                 warnMsg = "unable to connect to the target URL"
                 match = re.search(r"Errno \d+\] ([^>]+)", tbMsg)
                 if match:
-                    warnMsg += " ('%s')" % match.group(1)
+                    warnMsg += " ('%s')" % match.group(1).strip()
             elif "NTLM" in tbMsg:
                 warnMsg = "there has been a problem with NTLM authentication"
             elif "BadStatusLine" in tbMsg:
@@ -649,7 +649,7 @@ class Connect(object):
             else:
                 warnMsg = "unable to connect to the target URL"
 
-            if "BadStatusLine" not in tbMsg:
+            if "BadStatusLine" not in tbMsg and any((conf.proxy, conf.tor)):
                 warnMsg += " or proxy"
 
             if silent:

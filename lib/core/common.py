@@ -1011,9 +1011,13 @@ def readInput(message, default=None, checkBatch=True):
                 retVal = raw_input() or default
                 retVal = getUnicode(retVal, encoding=sys.stdin.encoding) if retVal else retVal
             except:
-                time.sleep(0.05)  # Reference: http://www.gossamer-threads.com/lists/python/python/781893
-                kb.prependFlag = True
-                raise SqlmapUserQuitException
+                try:
+                    time.sleep(0.05)  # Reference: http://www.gossamer-threads.com/lists/python/python/781893
+                except:
+                    pass
+                finally:
+                    kb.prependFlag = True
+                    raise SqlmapUserQuitException
 
             finally:
                 logging._releaseLock()
@@ -1196,7 +1200,7 @@ def setPaths():
     paths.SQLMAP_XML_PAYLOADS_PATH = os.path.join(paths.SQLMAP_XML_PATH, "payloads")
 
     _ = os.path.join(os.path.expandvars(os.path.expanduser("~")), ".sqlmap")
-    paths.SQLMAP_OUTPUT_PATH = getUnicode(paths.get("SQLMAP_OUTPUT_PATH", os.path.join(_, "output")), encoding=sys.getfilesystemencoding())
+    paths.SQLMAP_OUTPUT_PATH = getUnicode(paths.get("SQLMAP_OUTPUT_PATH", os.path.join(_, "output")), encoding=sys.getfilesystemencoding() or UNICODE_ENCODING)
     paths.SQLMAP_DUMP_PATH = os.path.join(paths.SQLMAP_OUTPUT_PATH, "%s", "dump")
     paths.SQLMAP_FILES_PATH = os.path.join(paths.SQLMAP_OUTPUT_PATH, "%s", "files")
 

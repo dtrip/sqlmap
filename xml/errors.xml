@@ -27,14 +27,17 @@
     <dbms value="Microsoft SQL Server">
         <error regexp="Driver.* SQL[\-\_\ ]*Server"/>
         <error regexp="OLE DB.* SQL Server"/>
-        <error regexp="\bSQL Server.*Driver"/>
+        <error regexp="\bSQL Server[^&lt;&quot;]+Driver"/>
         <error regexp="Warning.*(mssql|sqlsrv)_"/>
-        <error regexp="\bSQL Server.*[0-9a-fA-F]{8}"/>
+        <error regexp="\bSQL Server[^&lt;&quot;]+[0-9a-fA-F]{8}"/>
         <error regexp="(?s)Exception.*\WSystem\.Data\.SqlClient\."/>
         <error regexp="(?s)Exception.*\WRoadhouse\.Cms\."/>
-        <error regexp="Microsoft SQL Native Client.*[0-9a-fA-F]{8}"/>
+        <error regexp="Microsoft SQL Native Client error '[0-9a-fA-F]{8}"/>
         <error regexp="com\.microsoft\.sqlserver\.jdbc\.SQLServerException"/>
         <error regexp="ODBC SQL Server Driver"/>
+        <error regexp="SQLServer JDBC Driver"/>
+        <error regexp="macromedia\.jdbc\.sqlserverbase"/>
+        <error regexp="com\.jnetdirect\.jsql"/>
     </dbms>
 
     <!-- Microsoft Access -->
@@ -52,6 +55,7 @@
         <error regexp="Oracle.*Driver"/>
         <error regexp="Warning.*\Woci_.*"/>
         <error regexp="Warning.*\Wora_.*"/>
+        <error regexp="oracle\.jdbc\.driver"/>
     </dbms>
 
     <!-- IBM DB2 -->
@@ -65,6 +69,9 @@
     <!-- Informix -->
     <dbms value="Informix">
         <error regexp="Exception.*Informix"/>
+        <error regexp="Informix ODBC Driver"/>
+        <error regexp="com\.informix\.jdbc"/>
+        <error regexp="weblogic\.jdbc\.informix"/>
     </dbms>
 
     <!-- Interbase/Firebird -->
@@ -76,8 +83,8 @@
     <!-- SQLite -->
     <dbms value="SQLite">
         <error regexp="SQLite/JDBCDriver"/>
-        <error regexp="SQLite.Exception"/>
-        <error regexp="System.Data.SQLite.SQLiteException"/>
+        <error regexp="SQLite\.Exception"/>
+        <error regexp="System\.Data\.SQLite\.SQLiteException"/>
         <error regexp="Warning.*sqlite_.*"/>
         <error regexp="Warning.*SQLite3::"/>
         <error regexp="\[SQLITE_ERROR\]"/>

@@ -51,6 +51,7 @@ from lib.core.settings import MAX_BUFFERED_PARTIAL_UNION_LENGTH
 from lib.core.settings import NULL
 from lib.core.settings import SQL_SCALAR_REGEX
 from lib.core.settings import TURN_OFF_RESUME_INFO_LIMIT
+from lib.core.settings import UNICODE_ENCODING
 from lib.core.threads import getCurrentThreadData
 from lib.core.threads import runThreads
 from lib.core.unescaper import unescaper
@@ -105,13 +106,18 @@ def _oneShotUnionUse(expression, unpack=True, limited=False):
             output = extractRegexResult(r"(?P<result>(<row.+?/>)+)", page)
             if output:
                 try:
-                    root = xml.etree.ElementTree.fromstring("<root>%s</root>" % output)
+                    root = xml.etree.ElementTree.fromstring("<root>%s</root>" % output.encode(UNICODE_ENCODING))
                     retVal = ""
                     for column in kb.dumpColumns:
                         base64 = True
                         for child in root:
+                            value = child.attrib.get(column, "").strip()
+                            if value and not re.match(r"\A[a-zA-Z0-9+/]+={0,2}\Z", value):
+                                base64 = False
+                                break
+
                             try:
-                                child.attrib.get(column, "").decode("base64")
+                                value.decode("base64")
                             except binascii.Error:
                                 base64 = False
                                 break
@@ -128,6 +134,8 @@ def _oneShotUnionUse(expression, unpack=True, limited=False):
 
                 except xml.etree.ElementTree.ParseError:
                     pass
+                else:
+                    retVal = getUnicode(retVal)
 
         if retVal is not None:
             retVal = getUnicode(retVal, kb.pageEncoding)

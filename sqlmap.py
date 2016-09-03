@@ -195,12 +195,17 @@ def main():
 
         try:
             if not checkIntegrity():
-                errMsg = "code integrity check failed. "
+                errMsg = "code integrity check failed (turning off automatic issue creation). "
                 errMsg += "You should retrieve the latest development version from official GitHub "
                 errMsg += "repository at '%s'" % GIT_PAGE
                 logger.critical(errMsg)
                 print
                 dataToStdout(excMsg)
+                raise SystemExit
+
+            elif "MemoryError" in excMsg:
+                errMsg = "memory exhaustion detected"
+                logger.error(errMsg)
                 raise SystemExit
 
             elif any(_ in excMsg for _ in ("No space left", "Disk quota exceeded")):

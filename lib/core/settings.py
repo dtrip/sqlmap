@@ -19,11 +19,11 @@ from lib.core.enums import OS
 from lib.core.revision import getRevisionNumber
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.0.8.24"
+VERSION = "1.0.9.3"
 REVISION = getRevisionNumber()
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
-VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[::-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
+VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
 DESCRIPTION = "automatic SQL injection and database takeover tool"
 SITE = "http://sqlmap.org"
 ISSUES_PAGE = "https://github.com/sqlmapproject/sqlmap/issues/new"
@@ -592,7 +592,7 @@ NON_SQLI_CHECK_PREFIX_SUFFIX_LENGTH = 6
 MAX_CONNECTION_CHUNK_SIZE = 10 * 1024 * 1024
 
 # Maximum response total page size (trimmed if larger)
-MAX_CONNECTION_TOTAL_SIZE = 100 * 1024 * 1024
+MAX_CONNECTION_TOTAL_SIZE = 50 * 1024 * 1024
 
 # For preventing MemoryError exceptions (caused when using large sequences in difflib.SequenceMatcher)
 MAX_DIFFLIB_SEQUENCE_LENGTH = 10 * 1024 * 1024

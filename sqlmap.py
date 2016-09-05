@@ -101,6 +101,15 @@ def checkEnvironment():
         logger.critical(errMsg)
         raise SystemExit
 
+    # Patch for pip (import) environment
+    if "sqlmap.sqlmap" in sys.modules:
+        for _ in ("cmdLineOptions", "conf", "kb"):
+            globals()[_] = getattr(sys.modules["lib.core.data"], _)
+
+        for _ in ("SqlmapBaseException", "SqlmapShellQuitException", "SqlmapSilentQuitException", "SqlmapUserQuitException"):
+            globals()[_] = getattr(sys.modules["lib.core.exception"], _)
+
+
 def main():
     """
     Main function of sqlmap when running from command line.

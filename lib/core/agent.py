@@ -486,7 +486,7 @@ class Agent(object):
         @rtype: C{str}
         """
 
-        prefixRegex = r"(?:\s+(?:FIRST|SKIP|LIMIT \d+)\s+\d+)*"
+        prefixRegex = r"(?:\s+(?:FIRST|SKIP|LIMIT(?: \d+)?)\s+\d+)*"
         fieldsSelectTop = re.search(r"\ASELECT\s+TOP\s+[\d]+\s+(.+?)\s+FROM", query, re.I)
         fieldsSelectRownum = re.search(r"\ASELECT\s+([^()]+?),\s*ROWNUM AS LIMIT FROM", query, re.I)
         fieldsSelectDistinct = re.search(r"\ASELECT%s\s+DISTINCT\((.+?)\)\s+FROM" % prefixRegex, query, re.I)
@@ -507,26 +507,26 @@ class Agent(object):
         if fieldsSubstr:
             fieldsToCastStr = query
         elif fieldsMinMaxstr:
-            fieldsToCastStr = fieldsMinMaxstr.groups()[0]
+            fieldsToCastStr = fieldsMinMaxstr.group(1)
         elif fieldsExists:
             if fieldsSelect:
-                fieldsToCastStr = fieldsSelect.groups()[0]
+                fieldsToCastStr = fieldsSelect.group(1)
         elif fieldsSelectTop:
-            fieldsToCastStr = fieldsSelectTop.groups()[0]
+            fieldsToCastStr = fieldsSelectTop.group(1)
         elif fieldsSelectRownum:
-            fieldsToCastStr = fieldsSelectRownum.groups()[0]
+            fieldsToCastStr = fieldsSelectRownum.group(1)
         elif fieldsSelectDistinct:
             if Backend.getDbms() in (DBMS.HSQLDB,):
                 fieldsToCastStr = fieldsNoSelect
             else:
-                fieldsToCastStr = fieldsSelectDistinct.groups()[0]
+                fieldsToCastStr = fieldsSelectDistinct.group(1)
         elif fieldsSelectCase:
-            fieldsToCastStr = fieldsSelectCase.groups()[0]
+            fieldsToCastStr = fieldsSelectCase.group(1)
         elif fieldsSelectFrom:
             fieldsToCastStr = query[:unArrayizeValue(_)] if _ else query
             fieldsToCastStr = re.sub(r"\ASELECT%s\s+" % prefixRegex, "", fieldsToCastStr)
         elif fieldsSelect:
-            fieldsToCastStr = fieldsSelect.groups()[0]
+            fieldsToCastStr = fieldsSelect.group(1)
 
         # Function
         if re.search("\A\w+\(.*\)", fieldsToCastStr, re.I) or (fieldsSelectCase and "WHEN use" not in query) or fieldsSubstr:

@@ -110,7 +110,10 @@ class Entries:
                 kb.data.cachedColumns = foundData
 
             try:
-                kb.dumpTable = "%s.%s" % (conf.db, tbl)
+                if Backend.isDbms(DBMS.INFORMIX):
+                    kb.dumpTable = "%s:%s" % (conf.db, tbl)
+                else:
+                    kb.dumpTable = "%s.%s" % (conf.db, tbl)
 
                 if not safeSQLIdentificatorNaming(conf.db) in kb.data.cachedColumns \
                    or safeSQLIdentificatorNaming(tbl, True) not in \
@@ -236,6 +239,8 @@ class Entries:
                         query = rootQuery.blind.count % ("%s.%s" % (conf.db, tbl))
                     elif Backend.isDbms(DBMS.MAXDB):
                         query = rootQuery.blind.count % tbl
+                    elif Backend.isDbms(DBMS.INFORMIX):
+                        query = rootQuery.blind.count % (conf.db, tbl)
                     else:
                         query = rootQuery.blind.count % (conf.db, tbl)
 
@@ -316,14 +321,13 @@ class Entries:
                                     if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB):
                                         query = rootQuery.blind.query % (agent.preprocessField(tbl, column), conf.db, conf.tbl, sorted(colList, key=len)[0], index)
                                     elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2):
-                                        query = rootQuery.blind.query % (agent.preprocessField(tbl, column),
-                                                                        tbl.upper() if not conf.db else ("%s.%s" % (conf.db.upper(), tbl.upper())),
-                                                                        index)
+                                        query = rootQuery.blind.query % (agent.preprocessField(tbl, column), tbl.upper() if not conf.db else ("%s.%s" % (conf.db.upper(), tbl.upper())), index)
                                     elif Backend.isDbms(DBMS.SQLITE):
                                         query = rootQuery.blind.query % (agent.preprocessField(tbl, column), tbl, index)
-
                                     elif Backend.isDbms(DBMS.FIREBIRD):
                                         query = rootQuery.blind.query % (index, agent.preprocessField(tbl, column), tbl)
+                                    elif Backend.isDbms(DBMS.INFORMIX):
+                                        query = rootQuery.blind.query % (index, agent.preprocessField(tbl, column), conf.db, tbl, sorted(colList, key=len)[0])
 
                                     query = whereQuery(query)
 

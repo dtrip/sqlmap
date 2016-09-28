@@ -42,6 +42,7 @@ class _ThreadData(threading.local):
         self.disableStdOut = False
         self.hashDBCursor = None
         self.inTransaction = False
+        self.lastCode = None
         self.lastComparisonPage = None
         self.lastComparisonHeaders = None
         self.lastComparisonCode = None
@@ -58,6 +59,7 @@ class _ThreadData(threading.local):
         self.retriesCount = 0
         self.seqMatcher = difflib.SequenceMatcher(None)
         self.shared = shared
+        self.validationRun = 0
         self.valueStack = []
 
 ThreadData = _ThreadData()

@@ -19,7 +19,7 @@ from lib.core.enums import OS
 from lib.core.revision import getRevisionNumber
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.0.9.32"
+VERSION = "1.0.9.46"
 REVISION = getRevisionNumber()
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
@@ -74,6 +74,7 @@ BOUNDED_INJECTION_MARKER = "__BOUNDED_INJECTION_MARK__"
 
 RANDOM_INTEGER_MARKER = "[RANDINT]"
 RANDOM_STRING_MARKER = "[RANDSTR]"
+SLEEP_TIME_MARKER = "[SLEEPTIME]"
 
 PAYLOAD_DELIMITER = "__PAYLOAD_DELIMITER__"
 CHAR_INFERENCE_MARK = "%c"
@@ -93,6 +94,9 @@ MAX_CONNECTIONS_REGEX = r"max.+connections"
 
 # Timeout before the pre-connection candidate is being disposed (because of high probability that the web server will reset it)
 PRECONNECT_CANDIDATE_TIMEOUT = 10
+
+# Maximum sleep time in "Murphy" (testing) mode
+MAX_MURPHY_SLEEP_TIME = 3
 
 # Regular expression used for extracting results from Google search
 GOOGLE_REGEX = r"webcache\.googleusercontent\.com/search\?q=cache:[^:]+:([^+]+)\+&amp;cd=|url\?\w+=((?![^>]+webcache\.googleusercontent\.com)http[^>]+)&(sa=U|rct=j)"
@@ -311,7 +315,7 @@ ERROR_PARSING_REGEXES = (
                           r"(?m)^(fatal|error|warning|exception):?\s*(?P<result>[^\n]+?)$",
                           r"<li>Error Type:<br>(?P<result>.+?)</li>",
                           r"error '[0-9a-f]{8}'((<[^>]+>)|\s)+(?P<result>[^<>]+)",
-                          r"(?m)^\s*\[[^\n]+(ODBC|JDBC)[^\n]+\](?P<result>[^\]]+in query expression[^\n]+)$"
+                          r"\[[^\n\]]+(ODBC|JDBC)[^\n\]]+\](\[[^\]]+\])?(?P<result>[^\n]+(in query expression|\(SQL| at /[^ ]+pdo)[^\n<]+)"
                         )
 
 # Regular expression used for parsing charset info from meta html headers
@@ -518,8 +522,8 @@ PARSE_HEADERS_LIMIT = 3
 # Step used in ORDER BY technique used for finding the right number of columns in UNION query injections
 ORDER_BY_STEP = 10
 
-# Maximum number of times for revalidation of a character in time-based injections
-MAX_TIME_REVALIDATION_STEPS = 5
+# Maximum number of times for revalidation of a character in inference (as required)
+MAX_REVALIDATION_STEPS = 5
 
 # Characters that can be used to split parameter values in provided command line (e.g. in --tamper)
 PARAMETER_SPLITTING_REGEX = r'[,|;]'
@@ -555,7 +559,7 @@ HASHDB_FLUSH_RETRIES = 3
 HASHDB_END_TRANSACTION_RETRIES = 3
 
 # Unique milestone value used for forced deprecation of old HashDB values (e.g. when changing hash/pickle mechanism)
-HASHDB_MILESTONE_VALUE = "baFJusZrel"  # python -c 'import random, string; print "".join(random.sample(string.ascii_letters, 10))'
+HASHDB_MILESTONE_VALUE = "BkfRWrtCYK"  # python -c 'import random, string; print "".join(random.sample(string.ascii_letters, 10))'
 
 # Warn user of possible delay due to large page dump in full UNION query injections
 LARGE_OUTPUT_THRESHOLD = 1024 ** 2

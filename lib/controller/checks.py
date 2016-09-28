@@ -74,6 +74,7 @@ from lib.core.settings import IDS_WAF_CHECK_RATIO
 from lib.core.settings import IDS_WAF_CHECK_TIMEOUT
 from lib.core.settings import MAX_DIFFLIB_SEQUENCE_LENGTH
 from lib.core.settings import NON_SQLI_CHECK_PREFIX_SUFFIX_LENGTH
+from lib.core.settings import SLEEP_TIME_MARKER
 from lib.core.settings import SUHOSIN_MAX_VALUE_LENGTH
 from lib.core.settings import SUPPORTED_DBMS
 from lib.core.settings import URI_HTTP_HEADER
@@ -156,6 +157,7 @@ def checkSqlInjection(place, parameter, value):
             kb.testType = stype = test.stype
             clause = test.clause
             unionExtended = False
+            trueCode, falseCode = None, None
 
             if stype == PAYLOAD.TECHNIQUE.UNION:
                 configUnion(test.request.char)
@@ -520,7 +522,7 @@ def checkSqlInjection(place, parameter, value):
 
                                 if not any((conf.string, conf.notString, conf.code)):
                                     infoMsg = "%s parameter '%s' appears to be '%s' injectable " % (paramType, parameter, title)
-                                    logger.info(infoMsg)
+                                    singleTimeLogMessage(infoMsg)
 
                         # In case of error-based SQL injection
                         elif method == PAYLOAD.METHOD.GREP:
@@ -556,8 +558,15 @@ def checkSqlInjection(place, parameter, value):
                         elif method == PAYLOAD.METHOD.TIME:
                             # Perform the test's request
                             trueResult = Request.queryPage(reqPayload, place, timeBasedCompare=True, raise404=False)
+                            trueCode = threadData.lastCode
 
                             if trueResult:
+                                # Extra validation step (e.g. to check for DROP protection mechanisms)
+                                if SLEEP_TIME_MARKER in reqPayload:
+                                    falseResult = Request.queryPage(reqPayload.replace(SLEEP_TIME_MARKER, "0"), place, timeBasedCompare=True, raise404=False)
+                                    if falseResult:
+                                        continue
+
                                 # Confirm test's results
                                 trueResult = Request.queryPage(reqPayload, place, timeBasedCompare=True, raise404=False)
 
@@ -668,6 +677,8 @@ def checkSqlInjection(place, parameter, value):
                         injection.data[stype].comment = comment
                         injection.data[stype].templatePayload = templatePayload
                         injection.data[stype].matchRatio = kb.matchRatio
+                        injection.data[stype].trueCode = trueCode
+                        injection.data[stype].falseCode = falseCode
 
                         injection.conf.textOnly = conf.textOnly
                         injection.conf.titles = conf.titles
@@ -1318,7 +1329,7 @@ def identifyWaf():
             kb.redirectChoice = popValue()
         return page or "", headers or {}, code
 
-    retVal = False
+    retVal = []
 
     for function, product in kb.wafFunctions:
         try:
@@ -1332,17 +1343,19 @@ def identifyWaf():
             found = False
 
         if found:
-            retVal = product
-            break
+            errMsg = "WAF/IDS/IPS identified as '%s'" % product
+            logger.critical(errMsg)
+
+            retVal.append(product)
 
     if retVal:
-        errMsg = "WAF/IDS/IPS identified as '%s'. Please " % retVal
-        errMsg += "consider usage of tamper scripts (option '--tamper')"
-        logger.critical(errMsg)
-
         message = "are you sure that you want to "
         message += "continue with further target testing? [y/N] "
         output = readInput(message, default="N")
+
+        if not conf.tamper:
+            warnMsg = "please consider usage of tamper scripts (option '--tamper')"
+            singleTimeWarnMessage(warnMsg)
 
         if output and output[0] not in ("Y", "y"):
             raise SqlmapUserQuitException

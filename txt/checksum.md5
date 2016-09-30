@@ -21,12 +21,12 @@ cc9c82cfffd8ee9b25ba3af6284f057e  extra/sqlharvest/__init__.py
 4f2f817596540d82f9fcc0c5b2228beb  extra/sqlharvest/sqlharvest.py
 2daa39e4d59526acb4772b6c47eb315f  lib/controller/action.py
 66cddf7f40c002d663d4401a440ec1aa  lib/controller/checks.py
-7c5ba631796f12d6de9b667e4cc7812b  lib/controller/controller.py
+242eb9edf447e09fa3f5d154495308e6  lib/controller/controller.py
 0a64305c3b3a01a2fc3a5e6204f442f1  lib/controller/handler.py
 cc9c82cfffd8ee9b25ba3af6284f057e  lib/controller/__init__.py
 04f16204c899438dc7599a9a8426bfee  lib/core/agent.py
 eb0bd28b0bd9fbf67dcc3119116df377  lib/core/bigarray.py
-33b28a65ab1a9467203f63d798fd9ddf  lib/core/common.py
+b1e2ccdeea8bf12feb839d403dc05796  lib/core/common.py
 5680d0c446a3bed5c0f2a0402d031557  lib/core/convert.py
 e77cca1cb063016f71f6e6bdebf4ec73  lib/core/data.py
 1d042f0bc0557d3fd564ea5a46deb77e  lib/core/datatype.py
@@ -45,7 +45,7 @@ e60456db5380840a586654344003d4e6  lib/core/readlineng.py
 5ef56abb8671c2ca6ceecb208258e360  lib/core/replication.py
 99a2b496b9d5b546b335653ca801153f  lib/core/revision.py
 7c15dd2777af4dac2c89cab6df17462e  lib/core/session.py
-64b3a63e09b45fbe5e811aa4b1ce50aa  lib/core/settings.py
+301f39ba100694664d23d315551e12fd  lib/core/settings.py
 7af83e4f18cab6dff5e67840eb65be80  lib/core/shell.py
 23657cd7d924e3c6d225719865855827  lib/core/subprocessng.py
 c3ace7874a536d801f308cf1fd03df99  lib/core/target.py
@@ -65,9 +65,9 @@ cc9c82cfffd8ee9b25ba3af6284f057e  lib/parse/__init__.py
 af6b8e1c6eb074b56bbd9cd80aebcd97  lib/parse/payloads.py
 b40a4c5d91770d347df36d3065b63798  lib/parse/sitemap.py
 9299f21804033f099681525bb9bf51c0  lib/request/basicauthhandler.py
-ca9879ea9277810c5fce0f0d8d2f8e03  lib/request/basic.py
+083e7f446909b12009e72ae8e5e5737c  lib/request/basic.py
 c48285682a61d49982cb508351013cb4  lib/request/comparison.py
-c8aeed55d933b4944da038fdee4cdbc6  lib/request/connect.py
+3b35467cd761ed53dfb35a85d8d6590d  lib/request/connect.py
 49b4c583af68689de5f9acb162de2939  lib/request/direct.py
 1a46f7bb26b23ec0c0d9d9c95828241b  lib/request/dns.py
 70ceefe39980611494d4f99afb96f652  lib/request/httpshandler.py
@@ -84,7 +84,7 @@ cc9c82cfffd8ee9b25ba3af6284f057e  lib/takeover/__init__.py
 2d39688ec1b871005b520b6f1ed97ba6  lib/takeover/metasploit.py
 7083825564c051a7265cfdd1a5e6629c  lib/takeover/registry.py
 7d6cd7bdfc8f4bc4e8aed60c84cdf87f  lib/takeover/udf.py
-6836c641c554bd26fd57f28868ffa245  lib/takeover/web.py
+d9bdcc17091374c53ad2eea7fd72a909  lib/takeover/web.py
 9af83a62de360184f1c14e69b8a95cfe  lib/takeover/xp_cmdshell.py
 27d41f38de7348600309e1cb6741fb2e  lib/techniques/blind/inference.py
 cc9c82cfffd8ee9b25ba3af6284f057e  lib/techniques/blind/__init__.py

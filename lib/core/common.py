@@ -119,6 +119,7 @@ from lib.core.settings import IP_ADDRESS_REGEX
 from lib.core.settings import ISSUES_PAGE
 from lib.core.settings import IS_WIN
 from lib.core.settings import LARGE_OUTPUT_THRESHOLD
+from lib.core.settings import LOCALHOST
 from lib.core.settings import MIN_ENCODED_LEN_CHECK
 from lib.core.settings import MIN_TIME_RESPONSES
 from lib.core.settings import MIN_VALID_DELAYED_RESPONSE
@@ -2400,6 +2401,29 @@ def extractErrorMessage(page):
 
     return retVal
 
+def findLocalPort(ports):
+    """
+    Find the first opened localhost port from a given list of ports (e.g. for Tor port checks)
+    """
+
+    retVal = None
+
+    for port in ports:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((LOCALHOST, port))
+            retVal = port
+            break
+        except socket.error:
+            pass
+        finally:
+            try:
+                s.close()
+            except socket.error:
+                pass
+
+    return retVal
+
 def findMultipartPostBoundary(post):
     """
     Finds value for a boundary parameter in given multipart POST body
@@ -3154,13 +3178,28 @@ def createGithubIssue(errMsg, excMsg):
         ex = None
         errMsg = errMsg[errMsg.find("\n"):]
 
+        req = urllib2.Request(url="https://api.github.com/search/issues?q=%s" % urllib.quote("repo:sqlmapproject/sqlmap Unhandled exception (#%s)" % key))
+
+        try:
+            content = urllib2.urlopen(req).read()
+            _ = json.loads(content)
+            duplicate = _["total_count"] > 0
+            closed = duplicate and _["items"][0]["state"] == "closed"
+            if duplicate:
+                warnMsg = "issue seems to be already reported"
+                if closed:
+                    warnMsg += " and resolved. Please update to the latest "
+                    warnMsg += "development version from official GitHub repository at '%s'" % GIT_PAGE
+                logger.warn(warnMsg)
+                return
+        except:
+            pass
 
         data = {"title": "Unhandled exception (#%s)" % key, "body": "```%s\n```\n```\n%s```" % (errMsg, excMsg)}
         req = urllib2.Request(url="https://api.github.com/repos/sqlmapproject/sqlmap/issues", data=json.dumps(data), headers={"Authorization": "token %s" % GITHUB_REPORT_OAUTH_TOKEN.decode("base64")})
 
         try:
-            f = urllib2.urlopen(req)
-            content = f.read()
+            content = urllib2.urlopen(req).read()
         except Exception, ex:
             content = None
 

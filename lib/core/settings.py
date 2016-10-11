@@ -17,11 +17,9 @@ from lib.core.datatype import AttribDict
 from lib.core.enums import DBMS
 from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
-from lib.core.revision import getRevisionNumber
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.0.10.20"
-REVISION = getRevisionNumber()
+VERSION = "1.0.10.28"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -51,10 +49,10 @@ BANNER = """\033[01;33m
 DIFF_TOLERANCE = 0.05
 CONSTANT_RATIO = 0.9
 
-# Ratio used in heuristic check for WAF/IDS/IPS protected targets
+# Ratio used in heuristic check for WAF/IPS/IDS protected targets
 IDS_WAF_CHECK_RATIO = 0.5
 
-# Timeout used in heuristic check for WAF/IDS/IPS protected targets
+# Timeout used in heuristic check for WAF/IPS/IDS protected targets
 IDS_WAF_CHECK_TIMEOUT = 10
 
 # Lower and upper values for match ratio in case of stable page
@@ -438,10 +436,10 @@ IGNORE_SAVE_OPTIONS = ("saveConfig",)
 # IP address of the localhost
 LOCALHOST = "127.0.0.1"
 
-# Default port used by Tor
-DEFAULT_TOR_SOCKS_PORT = 9050
+# Default SOCKS ports used by Tor
+DEFAULT_TOR_SOCKS_PORTS = (9050, 9150)
 
-# Default ports used in Tor proxy bundles
+# Default HTTP ports used by Tor
 DEFAULT_TOR_HTTP_PORTS = (8123, 8118)
 
 # Percentage below which comparison engine could have problems
@@ -488,7 +486,7 @@ IDS_WAF_CHECK_PAYLOAD = "AND 1=1 UNION ALL SELECT 1,NULL,'<script>alert(\"XSS\")
 # Data inside shellcodeexec to be filled with random string
 SHELLCODEEXEC_RANDOM_STRING_MARKER = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
-# Vectors used for provoking specific WAF/IDS/IPS behavior(s)
+# Vectors used for provoking specific WAF/IPS/IDS behavior(s)
 WAF_ATTACK_VECTORS = (
                         "",  # NIL
                         "search=<script>alert(1)</script>",

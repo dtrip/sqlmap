@@ -251,7 +251,7 @@ class Connect(object):
         timeout = kwargs.get("timeout",             None) or conf.timeout
         auxHeaders = kwargs.get("auxHeaders",       None)
         response = kwargs.get("response",           False)
-        ignoreTimeout = kwargs.get("ignoreTimeout", False) or kb.ignoreTimeout
+        ignoreTimeout = kwargs.get("ignoreTimeout", False) or kb.ignoreTimeout or conf.ignoreTimeouts
         refreshing = kwargs.get("refreshing",       False)
         retrying = kwargs.get("retrying",           False)
         crawling = kwargs.get("crawling",           False)
@@ -590,7 +590,7 @@ class Connect(object):
                     processResponse(page, responseHeaders)
             elif ex.code == httplib.GATEWAY_TIMEOUT:
                 if ignoreTimeout:
-                    return None, None, None
+                    return None if not conf.ignoreTimeouts else "", None, None
                 else:
                     warnMsg = "unable to connect to the target URL (%d - %s)" % (ex.code, httplib.responses[ex.code])
                     if threadData.retriesCount < conf.retries and not kb.threadException:
@@ -623,7 +623,7 @@ class Connect(object):
                         kb.responseTimes.clear()
 
                 if kb.testMode and kb.testType not in (None, PAYLOAD.TECHNIQUE.TIME, PAYLOAD.TECHNIQUE.STACKED):
-                    singleTimeWarnMessage("there is a possibility that the target (or WAF) is dropping 'suspicious' requests")
+                    singleTimeWarnMessage("there is a possibility that the target (or WAF/IPS/IDS) is dropping 'suspicious' requests")
                 warnMsg = "connection timed out to the target URL"
             elif "URLError" in tbMsg or "error" in tbMsg:
                 warnMsg = "unable to connect to the target URL"
@@ -669,7 +669,7 @@ class Connect(object):
                 logger.critical(warnMsg)
                 return None, None, None
             elif ignoreTimeout and any(_ in tbMsg for _ in ("timed out", "IncompleteRead")):
-                return None, None, None
+                return None if not conf.ignoreTimeouts else "", None, None
             elif threadData.retriesCount < conf.retries and not kb.threadException:
                 warnMsg += ". sqlmap is going to retry the request"
                 if not retrying:

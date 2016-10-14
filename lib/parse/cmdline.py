@@ -152,6 +152,12 @@ def cmdLineParser(argv=None):
         request.add_option("--ignore-401", dest="ignore401", action="store_true",
                           help="Ignore HTTP Error 401 (Unauthorized)")
 
+        request.add_option("--ignore-proxy", dest="ignoreProxy", action="store_true",
+                           help="Ignore system default proxy settings")
+
+        request.add_option("--ignore-timeouts", dest="ignoreTimeouts", action="store_true",
+                          help="Ignore connection timeouts")
+
         request.add_option("--proxy", dest="proxy",
                            help="Use a proxy to connect to the target URL")
 
@@ -161,9 +167,6 @@ def cmdLineParser(argv=None):
 
         request.add_option("--proxy-file", dest="proxyFile",
                            help="Load proxy list from a file")
-
-        request.add_option("--ignore-proxy", dest="ignoreProxy", action="store_true",
-                           help="Ignore system default proxy settings")
 
         request.add_option("--tor", dest="tor",
                                   action="store_true",
@@ -888,6 +891,9 @@ def cmdLineParser(argv=None):
         for i in xrange(len(argv)):
             if argv[i] == "-hh":
                 argv[i] = "-h"
+            elif len(argv[i]) > 1 and all(ord(_) in xrange(0x2018, 0x2020) for _ in (argv[i][0], argv[i][-1])):
+                dataToStdout("[!] copy-pasting illegal (non-console) quote characters from Internet is, well, illegal (%s)\n" % argv[i])
+                raise SystemExit
             elif re.search(r"\A-\w=.+", argv[i]):
                 dataToStdout("[!] potentially miswritten (illegal '=') short option detected ('%s')\n" % argv[i])
                 raise SystemExit

@@ -45,7 +45,7 @@ e60456db5380840a586654344003d4e6  lib/core/readlineng.py
 5ef56abb8671c2ca6ceecb208258e360  lib/core/replication.py
 99a2b496b9d5b546b335653ca801153f  lib/core/revision.py
 7c15dd2777af4dac2c89cab6df17462e  lib/core/session.py
-abca6a255fedbc0e92687793abf08e40  lib/core/settings.py
+d4200890061c99da6b976755b4aebd83  lib/core/settings.py
 7af83e4f18cab6dff5e67840eb65be80  lib/core/shell.py
 23657cd7d924e3c6d225719865855827  lib/core/subprocessng.py
 c3ace7874a536d801f308cf1fd03df99  lib/core/target.py
@@ -86,7 +86,7 @@ cc9c82cfffd8ee9b25ba3af6284f057e  lib/takeover/__init__.py
 7d6cd7bdfc8f4bc4e8aed60c84cdf87f  lib/takeover/udf.py
 d9bdcc17091374c53ad2eea7fd72a909  lib/takeover/web.py
 9af83a62de360184f1c14e69b8a95cfe  lib/takeover/xp_cmdshell.py
-27d41f38de7348600309e1cb6741fb2e  lib/techniques/blind/inference.py
+c066bd01bd02135841e4f6875644ebd2  lib/techniques/blind/inference.py
 cc9c82cfffd8ee9b25ba3af6284f057e  lib/techniques/blind/__init__.py
 cc9c82cfffd8ee9b25ba3af6284f057e  lib/techniques/brute/__init__.py
 d36effffe64e63ef9b3be490f850e2cc  lib/techniques/brute/use.py
@@ -103,7 +103,7 @@ f5d6884cdeed28281187c111d3e49e3b  lib/techniques/union/test.py
 8cdc8c1e663c3b92a756fb7b02cc3c02  lib/utils/crawler.py
 84604ae4cf0f31602b412036b51f5dae  lib/utils/deps.py
 4dfd3a95e73e806f62372d63bc82511f  lib/utils/getch.py
-b1e83fc549334fae8f60552dcdad28cb  lib/utils/hashdb.py
+1ee6c7c7736790298345fc4f2a08c0c7  lib/utils/hashdb.py
 0330607242d4f704ae6d7bba5f52ccae  lib/utils/hash.py
 a3e885f7d4c6ff05db1156244bb84158  lib/utils/htmlentities.py
 cc9c82cfffd8ee9b25ba3af6284f057e  lib/utils/__init__.py
@@ -349,7 +349,7 @@ ff80a22ee858f5331b0c088efa98b3ff  thirdparty/prettyprint/prettyprint.py
 5c70f8e5f7353aedc6d8d21d4fb72b37  thirdparty/pydes/__init__.py
 a7f735641c5b695f3d6220fe7c91b030  thirdparty/pydes/pyDes.py
 d41d8cd98f00b204e9800998ecf8427e  thirdparty/socks/__init__.py
-ec6bab337d529037fb7db0b126bce7cd  thirdparty/socks/socks.py
+a2f0ee74ccc895150f310ef8d680edca  thirdparty/socks/socks.py
 d41d8cd98f00b204e9800998ecf8427e  thirdparty/termcolor/__init__.py
 ea649aae139d8551af513769dd913dbf  thirdparty/termcolor/termcolor.py
 855372c870a23d46683f8aa39d75f6a1  thirdparty/xdot/__init__.py

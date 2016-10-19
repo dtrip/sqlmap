@@ -1794,6 +1794,8 @@ def _dirtyPatches():
 
     httplib._MAXLINE = 1 * 1024 * 1024  # to accept overly long result lines (e.g. SQLi results in HTTP header responses)
 
+    from thirdparty.wininetpton import win_inet_pton
+
 def _purgeOutput():
     """
     Safely removes (purges) output directory.
@@ -2240,9 +2242,10 @@ def _mergeOptions(inputOptions, overrideOptions):
         if key not in conf or value not in (None, False) or overrideOptions:
             conf[key] = value
 
-    for key, value in conf.items():
-        if value is not None:
-            kb.explicitSettings.add(key)
+    if not hasattr(conf, "api"):
+        for key, value in conf.items():
+            if value is not None:
+                kb.explicitSettings.add(key)
 
     for key, value in defaults.items():
         if hasattr(conf, key) and conf[key] is None:

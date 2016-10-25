@@ -931,15 +931,26 @@ def dataToOutFile(filename, data):
     retVal = None
 
     if data:
-        retVal = os.path.join(conf.filePath, filePathToSafeString(filename))
+        while True:
+            retVal = os.path.join(conf.filePath, filePathToSafeString(filename))
 
-        try:
-            with open(retVal, "w+b") as f:  # has to stay as non-codecs because data is raw ASCII encoded data
-                f.write(unicodeencode(data))
-        except IOError, ex:
-            errMsg = "something went wrong while trying to write "
-            errMsg += "to the output file ('%s')" % getSafeExString(ex)
-            raise SqlmapGenericException(errMsg)
+            try:
+                with open(retVal, "w+b") as f:  # has to stay as non-codecs because data is raw ASCII encoded data
+                    f.write(unicodeencode(data))
+            except UnicodeEncodeError, ex:
+                _ = normalizeUnicode(filename)
+                if filename != _:
+                    filename = _
+                else:
+                    errMsg = "couldn't write to the "
+                    errMsg += "output file ('%s')" % getSafeExString(ex)
+                    raise SqlmapGenericException(errMsg)
+            except IOError, ex:
+                errMsg = "something went wrong while trying to write "
+                errMsg += "to the output file ('%s')" % getSafeExString(ex)
+                raise SqlmapGenericException(errMsg)
+            else:
+                break
 
     return retVal
 
@@ -2410,7 +2421,10 @@ def findLocalPort(ports):
 
     for port in ports:
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                s = socket._orig_socket(socket.AF_INET, socket.SOCK_STREAM)
+            except AttributeError:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((LOCALHOST, port))
             retVal = port
             break
@@ -3228,7 +3242,7 @@ def maskSensitiveData(msg):
 
     retVal = getUnicode(msg)
 
-    for item in filter(None, map(lambda x: conf.get(x), ("hostname", "data", "googleDork", "authCred", "proxyCred", "tbl", "db", "col", "user", "cookie", "proxy", "rFile", "wFile", "dFile"))):
+    for item in filter(None, map(lambda x: conf.get(x), ("hostname", "data", "dnsDomain", "googleDork", "authCred", "proxyCred", "tbl", "db", "col", "user", "cookie", "proxy", "rFile", "wFile", "dFile"))):
         regex = SENSITIVE_DATA_REGEX % re.sub("(\W)", r"\\\1", getUnicode(item))
         while extractRegexResult(regex, retVal):
             value = extractRegexResult(regex, retVal)

@@ -15,7 +15,7 @@ d229479d02d21b29f209143cb0547780  extra/shellcodeexec/linux/shellcodeexec.x32_
 2fe2f94eebc62f7614f0391a8a90104f  extra/shellcodeexec/linux/shellcodeexec.x64_
 c55b400b72acc43e0e59c87dd8bb8d75  extra/shellcodeexec/windows/shellcodeexec.x32.exe_
 b46521e29ea3d813bab5aeb16cac6498  extra/shutils/duplicates.py
-4bf52b3fd5e906b9bbe104dda769f5c5  extra/shutils/pylint.py
+8cd064eea3506e5dd913e03171bc418f  extra/shutils/pylint.py
 a8dd1f5799ed863a80b94c36b5428528  extra/shutils/regressiontest.py
 cc9c82cfffd8ee9b25ba3af6284f057e  extra/sqlharvest/__init__.py
 4f2f817596540d82f9fcc0c5b2228beb  extra/sqlharvest/sqlharvest.py
@@ -26,7 +26,7 @@ ec007a1424da78cfdae90da6ae49ed9b  lib/controller/handler.py
 cc9c82cfffd8ee9b25ba3af6284f057e  lib/controller/__init__.py
 04f16204c899438dc7599a9a8426bfee  lib/core/agent.py
 eb0bd28b0bd9fbf67dcc3119116df377  lib/core/bigarray.py
-136246c879e7a15309ed892ea4c1c3eb  lib/core/common.py
+aef64655185ac789696de9ba73d65ec9  lib/core/common.py
 ab5ef8fe4e4beaef4016d458d0fdefe3  lib/core/convert.py
 e77cca1cb063016f71f6e6bdebf4ec73  lib/core/data.py
 1d042f0bc0557d3fd564ea5a46deb77e  lib/core/datatype.py
@@ -42,10 +42,10 @@ d027df65e7cbb99758daf77aaa6ab61c  lib/core/optiondict.py
 eb5e96b4baef52ad172e0359c1783d83  lib/core/option.py
 7af487340c138f7b5dbd443161cbb428  lib/core/profiling.py
 e60456db5380840a586654344003d4e6  lib/core/readlineng.py
-5ef56abb8671c2ca6ceecb208258e360  lib/core/replication.py
+b3a62d41a5af6cd7fa733b6227febb0c  lib/core/replication.py
 99a2b496b9d5b546b335653ca801153f  lib/core/revision.py
 7c15dd2777af4dac2c89cab6df17462e  lib/core/session.py
-f2af4d009e24068b5a6f41063d35ff25  lib/core/settings.py
+7f7273907a344eddfae58c91a02171c4  lib/core/settings.py
 7af83e4f18cab6dff5e67840eb65be80  lib/core/shell.py
 23657cd7d924e3c6d225719865855827  lib/core/subprocessng.py
 c3ace7874a536d801f308cf1fd03df99  lib/core/target.py
@@ -86,7 +86,7 @@ cc9c82cfffd8ee9b25ba3af6284f057e  lib/takeover/__init__.py
 7d6cd7bdfc8f4bc4e8aed60c84cdf87f  lib/takeover/udf.py
 d9bdcc17091374c53ad2eea7fd72a909  lib/takeover/web.py
 9af83a62de360184f1c14e69b8a95cfe  lib/takeover/xp_cmdshell.py
-c066bd01bd02135841e4f6875644ebd2  lib/techniques/blind/inference.py
+0ad6fbd71649f736083c00e58de750b9  lib/techniques/blind/inference.py
 cc9c82cfffd8ee9b25ba3af6284f057e  lib/techniques/blind/__init__.py
 cc9c82cfffd8ee9b25ba3af6284f057e  lib/techniques/brute/__init__.py
 d36effffe64e63ef9b3be490f850e2cc  lib/techniques/brute/use.py
@@ -103,7 +103,7 @@ f5d6884cdeed28281187c111d3e49e3b  lib/techniques/union/test.py
 8cdc8c1e663c3b92a756fb7b02cc3c02  lib/utils/crawler.py
 84604ae4cf0f31602b412036b51f5dae  lib/utils/deps.py
 4dfd3a95e73e806f62372d63bc82511f  lib/utils/getch.py
-b3f589e6e634b1d57f6bc6f1709c8ab1  lib/utils/hashdb.py
+f71a7b0aec145ba77edd3c4543621fb9  lib/utils/hashdb.py
 0330607242d4f704ae6d7bba5f52ccae  lib/utils/hash.py
 a3e885f7d4c6ff05db1156244bb84158  lib/utils/htmlentities.py
 cc9c82cfffd8ee9b25ba3af6284f057e  lib/utils/__init__.py
@@ -456,4 +456,4 @@ a279656ea3fcb85c727249b02f828383  xml/livetests.xml
 3194e2688a7576e1f877d5b137f7c260  xml/payloads/stacked_queries.xml
 c2d8dd03db5a663e79eabb4495dd0723  xml/payloads/time_blind.xml
 ac649aff0e7db413e4937e446e398736  xml/payloads/union_query.xml
-1587a02322a96ac48973e782d6fedf73  xml/queries.xml
+5bd467d86d7cb55fbe5f66e4ff9a6bec  xml/queries.xml

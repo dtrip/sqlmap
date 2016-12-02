@@ -45,7 +45,7 @@ e60456db5380840a586654344003d4e6  lib/core/readlineng.py
 b3a62d41a5af6cd7fa733b6227febb0c  lib/core/replication.py
 99a2b496b9d5b546b335653ca801153f  lib/core/revision.py
 7c15dd2777af4dac2c89cab6df17462e  lib/core/session.py
-7f04f7e55179f45470b137dbb15657c6  lib/core/settings.py
+36df24ce03ae666431af14bf24f4c953  lib/core/settings.py
 7af83e4f18cab6dff5e67840eb65be80  lib/core/shell.py
 23657cd7d924e3c6d225719865855827  lib/core/subprocessng.py
 c3ace7874a536d801f308cf1fd03df99  lib/core/target.py
@@ -252,6 +252,7 @@ c16c3ed0ce302034d99ee0b8f34fbd0b  tamper/modsecurityzeroversioned.py
 e65ff0680df2fc89444ec5953bb2f161  tamper/nonrecursivereplacement.py
 6780d738236ac200d230c4cb497bd1a2  tamper/overlongutf8.py
 3f05d5218b22280adcd91fe53830bcb4  tamper/percentage.py
+9741ad2359382dc8673189224995a5f7  tamper/plus2concat.py
 7a93f510f231278897650da1c7d13b23  tamper/randomcase.py
 34c255f3bca6d5fee2dfb18ed86d406f  tamper/randomcomments.py
 f5e9eb84d4c5e9a19fe7154a8aebe13d  tamper/securesphere.py
@@ -384,6 +385,7 @@ ca3ab78d6ed53b7f2c07ed2530d47efd  udf/postgresql/windows/32/8.4/lib_postgresqlud
 deb8dd4543177479b185af8b383a8bdf  waf/airlock.py
 0da662422cde266dd47cea3f5be6a309  waf/anquanbao.py
 012b4acd41f0c12df88cf0276c2afd1a  waf/armor.py
+64415c1d49defb6a931db731f4a9d972  waf/aws.py
 757fe0f66a24719fa596cb974ee6ae71  waf/baidu.py
 8a26fe9e0ae48e8f28272769aa7dc16e  waf/barracuda.py
 826b64868a10caf1229d3bfcbbb4d594  waf/bigip.py
@@ -391,7 +393,7 @@ deb8dd4543177479b185af8b383a8bdf  waf/airlock.py
 e75422b8487f9937e050a60bc5c35896  waf/blockdos.py
 f60078f702612da43dd2a8ed07e26694  waf/ciscoacexml.py
 ac2edfa1d49b00b4bf730a9317090566  waf/cloudflare.py
-c69e1091521671452eaedf4787817ede  waf/cloudfront.py
+8035c255d55023f8c999ad5f7798e7fa  waf/cloudfront.py
 765d0663658257ef0ab1060519c6e175  waf/comodo.py
 33633c9a2b9d53c325ba1110607d566f  waf/datapower.py
 e0ad6e34b6082558e9f8f652d938c785  waf/denyall.py

@@ -2226,10 +2226,19 @@ def _mergeOptions(inputOptions, overrideOptions):
 
     if inputOptions.pickledOptions:
         try:
-            inputOptions = base64unpickle(inputOptions.pickledOptions, unsafe=True)
-            if type(inputOptions) == dict:
-                inputOptions = AttribDict(inputOptions)
-            _normalizeOptions(inputOptions)
+            unpickledOptions = base64unpickle(inputOptions.pickledOptions, unsafe=True)
+
+            if type(unpickledOptions) == dict:
+                unpickledOptions = AttribDict(unpickledOptions)
+
+            _normalizeOptions(unpickledOptions)
+
+            unpickledOptions["pickledOptions"] = None
+            for key in inputOptions:
+                if key not in unpickledOptions:
+                    unpickledOptions[key] = inputOptions[key]
+
+            inputOptions = unpickledOptions
         except Exception, ex:
             errMsg = "provided invalid value '%s' for option '--pickled-options'" % inputOptions.pickledOptions
             errMsg += " (%s)" % repr(ex)
@@ -2473,14 +2482,14 @@ def _basicOptionValidation():
     if conf.regexp:
         try:
             re.compile(conf.regexp)
-        except re.error, ex:
+        except Exception, ex:
             errMsg = "invalid regular expression '%s' ('%s')" % (conf.regexp, getSafeExString(ex))
             raise SqlmapSyntaxException(errMsg)
 
     if conf.crawlExclude:
         try:
             re.compile(conf.crawlExclude)
-        except re.error, ex:
+        except Exception, ex:
             errMsg = "invalid regular expression '%s' ('%s')" % (conf.crawlExclude, getSafeExString(ex))
             raise SqlmapSyntaxException(errMsg)
 

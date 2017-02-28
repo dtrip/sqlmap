@@ -465,6 +465,8 @@ class Backend:
 
         if not kb:
             pass
+        elif not kb.testMode and conf.dbmsHandler and getattr(conf.dbmsHandler, "_dbms", None):
+            dbms = conf.dbmsHandler._dbms
         elif Backend.getForcedDbms() is not None:
             dbms = Backend.getForcedDbms()
         elif Backend.getDbms() is not None:
@@ -589,7 +591,7 @@ def paramToDict(place, parameters=None):
                       or re.search(r'\A9{3,}', _) or re.search(r'\A-\d+\Z', _) or re.search(DUMMY_USER_INJECTION, _))\
                       and not parameter.upper().startswith(GOOGLE_ANALYTICS_COOKIE_PREFIX):
                         warnMsg = "it appears that you have provided tainted parameter values "
-                        warnMsg += "('%s') with most probably leftover " % element
+                        warnMsg += "('%s') with most likely leftover " % element
                         warnMsg += "chars/statements from manual SQL injection test(s). "
                         warnMsg += "Please, always use only valid parameter values "
                         warnMsg += "so sqlmap could be able to run properly"
@@ -2327,7 +2329,7 @@ def wasLastResponseDBMSError():
 
 def wasLastResponseHTTPError():
     """
-    Returns True if the last web request resulted in an errornous HTTP code (like 500)
+    Returns True if the last web request resulted in an erroneous HTTP code (like 500)
     """
 
     threadData = getCurrentThreadData()

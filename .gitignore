@@ -6,3 +6,4 @@ output/
 traffic.txt
 *.orig
 *~
+.idea/

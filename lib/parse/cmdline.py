@@ -482,10 +482,10 @@ def cmdLineParser(argv=None):
                                help="Use WHERE condition while table dumping")
 
         enumeration.add_option("--start", dest="limitStart", type="int",
-                               help="First query output entry to retrieve")
+                               help="First dump table entry to retrieve")
 
         enumeration.add_option("--stop", dest="limitStop", type="int",
-                               help="Last query output entry to retrieve")
+                               help="Last dump table entry to retrieve")
 
         enumeration.add_option("--first", dest="firstChar", type="int",
                                help="First query output word character to retrieve")
@@ -755,6 +755,9 @@ def cmdLineParser(argv=None):
 
         miscellaneous.add_option("--tmp-dir", dest="tmpDir",
                                   help="Local directory for storing temporary files")
+
+        miscellaneous.add_option("--web-root", dest="webRoot",
+                                  help="Web server document root directory (e.g. \"/var/www\")")
 
         miscellaneous.add_option("--wizard", dest="wizard",
                                   action="store_true",

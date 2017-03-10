@@ -35,6 +35,7 @@ class DBMS:
     SYBASE = "Sybase"
     HSQLDB = "HSQLDB"
     INFORMIX = "Informix"
+    FILEMAKERPRO = "FileMaker Pro"
 
 class DBMS_DIRECTORY_NAME:
     ACCESS = "access"
@@ -49,6 +50,7 @@ class DBMS_DIRECTORY_NAME:
     SYBASE = "sybase"
     HSQLDB = "hsqldb"
     INFORMIX = "informix"
+    FILEMAKERPRO = "filemakerpro"
 
 class CUSTOM_LOGGING:
     PAYLOAD = 9

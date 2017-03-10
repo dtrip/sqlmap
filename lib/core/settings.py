@@ -238,6 +238,7 @@ SYBASE_ALIASES = ("sybase", "sybase sql server")
 DB2_ALIASES = ("db2", "ibm db2", "ibmdb2")
 HSQLDB_ALIASES = ("hsql", "hsqldb", "hs", "hypersql")
 INFORMIX_ALIASES = ("informix", "ibm informix", "ibminformix")
+FILEMAKERPRO_ALIASES = ("filemaker", "filemaker pro", "fmp")
 
 DBMS_DIRECTORY_DICT = dict((getattr(DBMS, _), getattr(DBMS_DIRECTORY_NAME, _)) for _ in dir(DBMS) if not _.startswith("_"))
 

@@ -45,7 +45,7 @@ a8143dab9d3a27490f7d49b6b29ea530  lib/core/data.py
 d8e9250f3775119df07e9070eddccd16  lib/core/replication.py
 785f86e3f963fa3798f84286a4e83ff2  lib/core/revision.py
 40c80b28b3a5819b737a5a17d4565ae9  lib/core/session.py
-ba6399c8321f618d237051e1e7110aeb  lib/core/settings.py
+17a78d5c8c8135e2d8b45f7ac4319618  lib/core/settings.py
 d91291997d2bd2f6028aaf371bf1d3b6  lib/core/shell.py
 2ad85c130cc5f2b3701ea85c2f6bbf20  lib/core/subprocessng.py
 afd0636d2e93c23f4f0a5c9b6023ea17  lib/core/target.py
@@ -67,7 +67,7 @@ a0444cc351cd6d29015ad16d9eb46ff4  lib/parse/sitemap.py
 403d873f1d2fd0c7f73d83f104e41850  lib/request/basicauthhandler.py
 0035612a620934d7ebe6d18426cfb065  lib/request/basic.py
 ef48de622b0a6b4a71df64b0d2785ef8  lib/request/comparison.py
-a4e3e939d059bb604309f5089c78c1dc  lib/request/connect.py
+74a2a83e3af11ab02088c79b6367ef29  lib/request/connect.py
 fb6b788d0016ab4ec5e5f661f0f702ad  lib/request/direct.py
 cc1163d38e9b7ee5db2adac6784c02bb  lib/request/dns.py
 5dcdb37823a0b5eff65cd1018bcf09e4  lib/request/httpshandler.py
@@ -81,7 +81,7 @@ b581e0c5e27cd927883f2c7f1705bf4e  lib/request/redirecthandler.py
 36518b36ae0cf199490457916a85b367  lib/takeover/abstraction.py
 c6bc7961a186baabe0a9f5b7e0d8974b  lib/takeover/icmpsh.py
 310efc965c862cfbd7b0da5150a5ad36  lib/takeover/__init__.py
-5e8c8153683b39857f7fd6016add75e8  lib/takeover/metasploit.py
+c90c993b020a6ae0f0e497fd84f37466  lib/takeover/metasploit.py
 ac541a0d38e4ecb4e41e97799a7235f4  lib/takeover/registry.py
 4cd0322f22fbc26284cffa9f8f7545ef  lib/takeover/udf.py
 a610e0ef2fb8512604c2b6c081174850  lib/takeover/web.py
@@ -200,7 +200,7 @@ deed74334b637767fc9de8f74b37647a  plugins/dbms/sybase/fingerprint.py
 45436a42c2bb8075e1482a950d993d55  plugins/dbms/sybase/__init__.py
 89412a921c8c598c19d36762d5820f05  plugins/dbms/sybase/syntax.py
 654cd5e69cf5e5c644bfa5d284e61206  plugins/dbms/sybase/takeover.py
-1f46f2eac95cfdc3fa150ec5b0500eba  plugins/generic/connector.py
+be7481a96214220bcd8f51ca00239bed  plugins/generic/connector.py
 a8f9d0516509e9e4226516ab4f13036a  plugins/generic/custom.py
 3b54fd65feb9f70c551d315e82653384  plugins/generic/databases.py
 f7387352380136ac05c0bc3decb85638  plugins/generic/entries.py

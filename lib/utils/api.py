@@ -50,6 +50,7 @@ from thirdparty.bottle.bottle import post
 from thirdparty.bottle.bottle import request
 from thirdparty.bottle.bottle import response
 from thirdparty.bottle.bottle import run
+from thirdparty.bottle.bottle import server_names
 
 
 # global settings
@@ -665,6 +666,9 @@ def server(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, adapter=REST
 
     # Run RESTful API
     try:
+        # Supported adapters: aiohttp, auto, bjoern, cgi, cherrypy, diesel, eventlet, fapws3, flup, gae, gevent, geventSocketIO, gunicorn, meinheld, paste, rocket, tornado, twisted, waitress, wsgiref
+        # Reference: https://bottlepy.org/docs/dev/deployment.html || bottle.server_names
+
         if adapter == "gevent":
             from gevent import monkey
             monkey.patch_all()
@@ -679,9 +683,12 @@ def server(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, adapter=REST
         else:
             raise
     except ImportError:
-        errMsg = "Adapter '%s' is not available on this system" % adapter
-        if adapter in ("gevent", "eventlet"):
-            errMsg += " (e.g.: 'sudo apt-get install python-%s')" % adapter
+        if adapter.lower() not in server_names:
+            errMsg = "Adapter '%s' is unknown. " % adapter
+            errMsg += "(Note: available adapters '%s')" % ', '.join(sorted(server_names.keys()))
+        else:
+            errMsg = "Server support for adapter '%s' is not installed on this system " % adapter
+            errMsg += "(Note: you can try to install it with 'sudo apt-get install python-%s' or 'sudo pip install %s')" % (adapter, adapter)
         logger.critical(errMsg)
 
 def _client(url, options=None):
@@ -690,7 +697,7 @@ def _client(url, options=None):
         data = None
         if options is not None:
             data = jsonize(options)
-        req = urllib2.Request(url, data, {'Content-Type': 'application/json'})
+        req = urllib2.Request(url, data, {"Content-Type": "application/json"})
         response = urllib2.urlopen(req)
         text = response.read()
     except:

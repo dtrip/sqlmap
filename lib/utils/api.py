@@ -20,8 +20,8 @@ import urllib2
 
 from lib.core.common import dataToStdout
 from lib.core.common import getSafeExString
+from lib.core.common import saveConfig
 from lib.core.common import unArrayizeValue
-from lib.core.convert import base64pickle
 from lib.core.convert import hexencode
 from lib.core.convert import dejsonize
 from lib.core.convert import jsonize
@@ -163,12 +163,16 @@ class Task(object):
         self.options = AttribDict(self._original_options)
 
     def engine_start(self):
+        handle, configFile = tempfile.mkstemp(prefix=MKSTEMP_PREFIX.CONFIG, text=True)
+        os.close(handle)
+        saveConfig(self.options, configFile)
+
         if os.path.exists("sqlmap.py"):
-            self.process = Popen(["python", "sqlmap.py", "--pickled-options", base64pickle(self.options)], shell=False, close_fds=not IS_WIN)
+            self.process = Popen(["python", "sqlmap.py", "--api", "-c", configFile], shell=False, close_fds=not IS_WIN)
         elif os.path.exists(os.path.join(os.getcwd(), "sqlmap.py")):
-            self.process = Popen(["python", "sqlmap.py", "--pickled-options", base64pickle(self.options)], shell=False, cwd=os.getcwd(), close_fds=not IS_WIN)
+            self.process = Popen(["python", "sqlmap.py", "--api", "-c", configFile], shell=False, cwd=os.getcwd(), close_fds=not IS_WIN)
         else:
-            self.process = Popen(["sqlmap", "--pickled-options", base64pickle(self.options)], shell=False, close_fds=not IS_WIN)
+            self.process = Popen(["sqlmap", "--api", "-c", configFile], shell=False, close_fds=not IS_WIN)
 
     def engine_stop(self):
         if self.process:
@@ -279,7 +283,7 @@ class LogRecorder(logging.StreamHandler):
 
 
 def setRestAPILog():
-    if hasattr(conf, "api"):
+    if conf.api:
         try:
             conf.databaseCursor = Database(conf.database)
             conf.databaseCursor.connect("client")
@@ -648,7 +652,8 @@ def server(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, adapter=REST
     REST-JSON API server
     """
     DataStore.admin_id = hexencode(os.urandom(16))
-    Database.filepath = tempfile.mkstemp(prefix=MKSTEMP_PREFIX.IPC, text=False)[1]
+    handle, Database.filepath = tempfile.mkstemp(prefix=MKSTEMP_PREFIX.IPC, text=False)
+    os.close(handle)
 
     if port == 0:  # random
         with contextlib.closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
@@ -657,7 +662,7 @@ def server(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, adapter=REST
 
     logger.info("Running REST-JSON API server at '%s:%d'.." % (host, port))
     logger.info("Admin ID: %s" % DataStore.admin_id)
-    logger.debug("IPC database: %s" % Database.filepath)
+    logger.debug("IPC database: '%s'" % Database.filepath)
 
     # Initialize IPC database
     DataStore.current_db = Database()

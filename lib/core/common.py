@@ -26,6 +26,7 @@ import string
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib
 import urllib2
@@ -72,6 +73,7 @@ from lib.core.enums import HEURISTIC_TEST
 from lib.core.enums import HTTP_HEADER
 from lib.core.enums import HTTPMETHOD
 from lib.core.enums import MKSTEMP_PREFIX
+from lib.core.enums import OPTION_TYPE
 from lib.core.enums import OS
 from lib.core.enums import PLACE
 from lib.core.enums import PAYLOAD
@@ -112,6 +114,7 @@ from lib.core.settings import GITHUB_REPORT_OAUTH_TOKEN
 from lib.core.settings import GOOGLE_ANALYTICS_COOKIE_PREFIX
 from lib.core.settings import HASHDB_MILESTONE_VALUE
 from lib.core.settings import HOST_ALIASES
+from lib.core.settings import IGNORE_SAVE_OPTIONS
 from lib.core.settings import INFERENCE_UNKNOWN_CHAR
 from lib.core.settings import INVALID_UNICODE_CHAR_FORMAT
 from lib.core.settings import IP_ADDRESS_REGEX
@@ -137,6 +140,7 @@ from lib.core.settings import REFERER_ALIASES
 from lib.core.settings import REFLECTED_BORDER_REGEX
 from lib.core.settings import REFLECTED_MAX_REGEX_PARTS
 from lib.core.settings import REFLECTED_REPLACEMENT_REGEX
+from lib.core.settings import REFLECTED_REPLACEMENT_TIMEOUT
 from lib.core.settings import REFLECTED_VALUE_MARKER
 from lib.core.settings import REFLECTIVE_MISS_THRESHOLD
 from lib.core.settings import SENSITIVE_DATA_REGEX
@@ -268,7 +272,7 @@ class Format(object):
         infoApi = {}
 
         if info and "type" in info:
-            if hasattr(conf, "api"):
+            if conf.api:
                 infoApi["%s operating system" % target] = info
             else:
                 infoStr += "%s operating system: %s" % (target, Format.humanize(info["type"]))
@@ -286,12 +290,12 @@ class Format(object):
                     infoStr += " (%s)" % Format.humanize(info["codename"])
 
         if "technology" in info:
-            if hasattr(conf, "api"):
+            if conf.api:
                 infoApi["web application technology"] = Format.humanize(info["technology"], ", ")
             else:
                 infoStr += "\nweb application technology: %s" % Format.humanize(info["technology"], ", ")
 
-        if hasattr(conf, "api"):
+        if conf.api:
             return infoApi
         else:
             return infoStr.lstrip()
@@ -894,7 +898,7 @@ def dataToStdout(data, forceOutput=False, bold=False, content_type=None, status=
                 message = data
 
             try:
-                if hasattr(conf, "api"):
+                if conf.get("api"):
                     sys.stdout.write(message, status, content_type)
                 else:
                     sys.stdout.write(setColor(message, bold))
@@ -1145,7 +1149,7 @@ def banner():
     This function prints sqlmap banner with its version
     """
 
-    if not any(_ in sys.argv for _ in ("--version", "--pickled-options")):
+    if not any(_ in sys.argv for _ in ("--version", "--api")):
         _ = BANNER
 
         if not getattr(LOGGER_HANDLER, "is_tty", False) or "--disable-coloring" in sys.argv:
@@ -1957,7 +1961,7 @@ def getSQLSnippet(dbms, sfile, **variables):
 
     retVal = readCachedFileContent(filename)
     retVal = re.sub(r"#.+", "", retVal)
-    retVal = re.sub(r"(?s);\s+", "; ", retVal).strip("\r\n")
+    retVal = re.sub(r";\s+", "; ", retVal).strip("\r\n")
 
     for _ in variables.keys():
         retVal = re.sub(r"%%%s%%" % _, variables[_], retVal)
@@ -2928,6 +2932,58 @@ def setOptimize():
         debugMsg = "turning off switch '--null-connection' used indirectly by switch '-o'"
         logger.debug(debugMsg)
 
+def saveConfig(conf, filename):
+    """
+    Saves conf to configuration filename
+    """
+
+    config = UnicodeRawConfigParser()
+    userOpts = {}
+
+    for family in optDict.keys():
+        userOpts[family] = []
+
+    for option, value in conf.items():
+        for family, optionData in optDict.items():
+            if option in optionData:
+                userOpts[family].append((option, value, optionData[option]))
+
+    for family, optionData in userOpts.items():
+        config.add_section(family)
+
+        optionData.sort()
+
+        for option, value, datatype in optionData:
+            if datatype and isListLike(datatype):
+                datatype = datatype[0]
+
+            if option in IGNORE_SAVE_OPTIONS:
+                continue
+
+            if value is None:
+                if datatype == OPTION_TYPE.BOOLEAN:
+                    value = "False"
+                elif datatype in (OPTION_TYPE.INTEGER, OPTION_TYPE.FLOAT):
+                    if option in defaults:
+                        value = str(defaults[option])
+                    else:
+                        value = "0"
+                elif datatype == OPTION_TYPE.STRING:
+                    value = ""
+
+            if isinstance(value, basestring):
+                value = value.replace("\n", "\n ")
+
+            config.set(family, option, value)
+
+    with openFile(filename, "wb") as f:
+        try:
+            config.write(f)
+        except IOError, ex:
+            errMsg = "something went wrong while trying "
+            errMsg += "to write to the configuration file '%s' ('%s')" % (filename, getSafeExString(ex))
+            raise SqlmapSystemException(errMsg)
+
 def initTechnique(technique=None):
     """
     Prepares data for technique specified
@@ -3133,6 +3189,9 @@ def checkIntegrity():
     """
     Checks integrity of code files during the unhandled exceptions
     """
+
+    if not paths:
+        return
 
     logger.debug("running code integrity check")
 
@@ -3372,11 +3431,27 @@ def removeReflectiveValues(content, payload, suppressWarning=False):
                     else:
                         regex = r"%s\b" % regex
 
-                    retVal = re.sub(r"(?i)%s" % regex, REFLECTED_VALUE_MARKER, retVal)
+                    _retVal = [retVal]
+                    def _thread(regex):
+                        _retVal[0] = re.sub(r"(?i)%s" % regex, REFLECTED_VALUE_MARKER, _retVal[0])
 
-                    if len(parts) > 2:
-                        regex = REFLECTED_REPLACEMENT_REGEX.join(parts[1:])
-                        retVal = re.sub(r"(?i)\b%s\b" % regex, REFLECTED_VALUE_MARKER, retVal)
+                        if len(parts) > 2:
+                            regex = REFLECTED_REPLACEMENT_REGEX.join(parts[1:])
+                            _retVal[0] = re.sub(r"(?i)\b%s\b" % regex, REFLECTED_VALUE_MARKER, _retVal[0])
+
+                    thread = threading.Thread(target=_thread, args=(regex,))
+                    thread.daemon = True
+                    thread.start()
+                    thread.join(REFLECTED_REPLACEMENT_TIMEOUT)
+
+                    if thread.isAlive():
+                        kb.reflectiveMechanism = False
+                        retVal = content
+                        if not suppressWarning:
+                            debugMsg = "turning off reflection removal mechanism (because of timeouts)"
+                            logger.debug(debugMsg)
+                    else:
+                        retVal = _retVal[0]
 
                 if retVal != content:
                     kb.reflectiveCounters[REFLECTIVE_COUNTER.HIT] += 1

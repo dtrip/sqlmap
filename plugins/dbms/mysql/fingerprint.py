@@ -20,7 +20,6 @@ from lib.core.enums import HASHDB_KEYS
 from lib.core.enums import OS
 from lib.core.session import setDbms
 from lib.core.settings import MYSQL_ALIASES
-from lib.core.settings import UNKNOWN_DBMS_VERSION
 from lib.request import inject
 from plugins.generic.fingerprint import Fingerprint as GenericFingerprint
 
@@ -95,13 +94,13 @@ class Fingerprint(GenericFingerprint):
         value = ""
         wsOsFp = Format.getOs("web server", kb.headersFp)
 
-        if wsOsFp and not hasattr(conf, "api"):
+        if wsOsFp and not conf.api:
             value += "%s\n" % wsOsFp
 
         if kb.data.banner:
             dbmsOsFp = Format.getOs("back-end DBMS", kb.bannerFp)
 
-            if dbmsOsFp and not hasattr(conf, "api"):
+            if dbmsOsFp and not conf.api:
                 value += "%s\n" % dbmsOsFp
 
         value += "back-end DBMS: "

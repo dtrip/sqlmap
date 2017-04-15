@@ -140,7 +140,7 @@ def _formatInjection(inj):
         if inj.place == PLACE.CUSTOM_HEADER:
             payload = payload.split(',', 1)[1]
         if stype == PAYLOAD.TECHNIQUE.UNION:
-            count = re.sub(r"(?i)(\(.+\))|(\blimit[^A-Za-z]+)", "", sdata.payload).count(',') + 1
+            count = re.sub(r"(?i)(\(.+\))|(\blimit[^a-z]+)", "", sdata.payload).count(',') + 1
             title = re.sub(r"\d+ to \d+", str(count), title)
             vector = agent.forgeUnionQuery("[QUERY]", vector[0], vector[1], vector[2], None, None, vector[5], vector[6])
             if count == 1:
@@ -161,7 +161,7 @@ def _showInjections():
     else:
         header = "sqlmap resumed the following injection point(s) from stored session"
 
-    if hasattr(conf, "api"):
+    if conf.api:
         conf.dumper.string("", {"url": conf.url, "query": conf.parameters.get(PLACE.GET), "data": conf.parameters.get(PLACE.POST)}, content_type=CONTENT_TYPE.TARGET)
         conf.dumper.string("", kb.injections, content_type=CONTENT_TYPE.TECHNIQUES)
     else:

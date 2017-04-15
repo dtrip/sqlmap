@@ -215,7 +215,7 @@ def unionUse(expression, unpack=True, dump=False):
     _, _, _, _, _, expressionFieldsList, expressionFields, _ = agent.getFields(origExpr)
 
     # Set kb.partRun in case the engine is called from the API
-    kb.partRun = getPartRun(alias=False) if hasattr(conf, "api") else None
+    kb.partRun = getPartRun(alias=False) if conf.api else None
 
     if Backend.isDbms(DBMS.MSSQL) and kb.dumpColumns:
         kb.rowXmlMode = True
@@ -226,7 +226,7 @@ def unionUse(expression, unpack=True, dump=False):
 
     if expressionFieldsList and len(expressionFieldsList) > 1 and "ORDER BY" in expression.upper():
         # Removed ORDER BY clause because UNION does not play well with it
-        expression = re.sub("\s*ORDER BY\s+[\w,]+", "", expression, re.I)
+        expression = re.sub("(?i)\s*ORDER BY\s+[\w,]+", "", expression)
         debugMsg = "stripping ORDER BY clause from statement because "
         debugMsg += "it does not play well with UNION query SQL injection"
         singleTimeDebugMessage(debugMsg)

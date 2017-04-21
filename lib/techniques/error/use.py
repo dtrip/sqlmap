@@ -176,7 +176,7 @@ def _oneShotErrorUse(expression, field=None, chunkTest=False):
                     else:
                         break
 
-                    if output:
+                    if output and conf.verbose in (1, 2) and not conf.api:
                         if kb.fileReadMode:
                             dataToStdout(_formatPartialContent(output).replace(r"\n", "\n").replace(r"\t", "\t"))
                         elif offset > 1:
@@ -421,8 +421,8 @@ def errorUse(expression, dump=False):
                             index = None
                             if threadData.shared.showEta:
                                 threadData.shared.progress.progress(time.time() - valueStart, threadData.shared.counter)
-                            for index in xrange(len(threadData.shared.buffered)):
-                                if threadData.shared.buffered[index][0] >= num:
+                            for index in xrange(1 + len(threadData.shared.buffered)):
+                                if index < len(threadData.shared.buffered) and threadData.shared.buffered[index][0] >= num:
                                     break
                             threadData.shared.buffered.insert(index or 0, (num, output))
                             while threadData.shared.buffered and threadData.shared.lastFlushed + 1 == threadData.shared.buffered[0][0]:

@@ -240,6 +240,7 @@ def _feedTargetsDict(reqFile, addedTargetUrls):
             if schemePort:
                 scheme = schemePort.group(1)
                 port = schemePort.group(2)
+                request = re.sub(r"\n=+\Z", "", request.split(schemePort.group(0))[-1].lstrip())
             else:
                 scheme, port = None, None
 

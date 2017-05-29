@@ -128,7 +128,7 @@ def checkSqlInjection(place, parameter, value):
                 # then attempt to identify with a simple DBMS specific boolean-based
                 # test what the DBMS may be
                 if not injection.dbms and PAYLOAD.TECHNIQUE.BOOLEAN in injection.data:
-                    if not Backend.getIdentifiedDbms() and kb.heuristicDbms is None:
+                    if not Backend.getIdentifiedDbms() and kb.heuristicDbms is None and not kb.droppingRequests:
                         kb.heuristicDbms = heuristicCheckDbms(injection)
 
                 # If the DBMS has already been fingerprinted (via DBMS-specific
@@ -493,7 +493,7 @@ def checkSqlInjection(place, parameter, value):
                                         if candidates:
                                             candidates = sorted(candidates, key=lambda _: len(_))
                                             for candidate in candidates:
-                                                if re.match(r"\A[\w.,! ]+\Z", candidate) and ' ' in candidate and len(candidate) > CANDIDATE_SENTENCE_MIN_LENGTH:
+                                                if re.match(r"\A[\w.,! ]+\Z", candidate) and ' ' in candidate and candidate.strip() and len(candidate) > CANDIDATE_SENTENCE_MIN_LENGTH:
                                                     conf.string = candidate
                                                     injectable = True
 

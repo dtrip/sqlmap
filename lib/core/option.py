@@ -485,7 +485,7 @@ def _setRequestFromFile():
     conf.requestFile = safeExpandUser(conf.requestFile)
 
     if not os.path.isfile(conf.requestFile):
-        errMsg = "the specified HTTP request file "
+        errMsg = "specified HTTP request file '%s' " % conf.requestFile
         errMsg += "does not exist"
         raise SqlmapFilePathException(errMsg)
 
@@ -1902,6 +1902,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.dnsMode = False
     kb.dnsTest = None
     kb.docRoot = None
+    kb.droppingRequests = False
     kb.dumpColumns = None
     kb.dumpTable = None
     kb.dumpKeyboardInterrupt = False

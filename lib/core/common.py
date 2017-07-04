@@ -1272,6 +1272,8 @@ def parseTargetDirect():
     if not conf.direct:
         return
 
+    conf.direct = conf.direct.encode(UNICODE_ENCODING)  # some DBMS connectors (e.g. pymssql) don't like Unicode with non-US letters
+
     details = None
     remote = False
 
@@ -1288,8 +1290,8 @@ def parseTargetDirect():
                 if conf.dbmsCred:
                     conf.dbmsUser, conf.dbmsPass = conf.dbmsCred.split(':')
                 else:
-                    conf.dbmsUser = unicode()
-                    conf.dbmsPass = unicode()
+                    conf.dbmsUser = ""
+                    conf.dbmsPass = ""
 
             if not conf.dbmsPass:
                 conf.dbmsPass = None
@@ -2595,18 +2597,19 @@ def runningAsAdmin():
 
     return isAdmin
 
-def logHTTPTraffic(requestLogMsg, responseLogMsg):
+def logHTTPTraffic(requestLogMsg, responseLogMsg, startTime=None, endTime=None):
     """
     Logs HTTP traffic to the output file
     """
 
-    if not conf.trafficFile:
-        return
+    if conf.harFile:
+        conf.httpCollector.collectRequest(requestLogMsg, responseLogMsg, startTime, endTime)
 
-    with kb.locks.log:
-        dataToTrafficFile("%s%s" % (requestLogMsg, os.linesep))
-        dataToTrafficFile("%s%s" % (responseLogMsg, os.linesep))
-        dataToTrafficFile("%s%s%s%s" % (os.linesep, 76 * '#', os.linesep, os.linesep))
+    if not conf.trafficFile:
+        with kb.locks.log:
+            dataToTrafficFile("%s%s" % (requestLogMsg, os.linesep))
+            dataToTrafficFile("%s%s" % (responseLogMsg, os.linesep))
+            dataToTrafficFile("%s%s%s%s" % (os.linesep, 76 * '#', os.linesep, os.linesep))
 
 def getPageTemplate(payload, place):  # Cross-linked function
     raise NotImplementedError
@@ -4393,4 +4396,4 @@ def getSafeExString(ex, encoding=None):
     elif getattr(ex, "msg", None):
         retVal = ex.msg
 
-    return getUnicode(retVal, encoding=encoding)
+    return getUnicode(retVal or "", encoding=encoding).strip()

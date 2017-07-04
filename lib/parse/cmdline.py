@@ -48,7 +48,8 @@ def cmdLineParser(argv=None):
 
     checkSystemEncoding()
 
-    _ = getUnicode(os.path.basename(argv[0]), encoding=sys.getfilesystemencoding() or UNICODE_ENCODING)
+    # Reference: https://stackoverflow.com/a/4012683 (Note: previously used "...sys.getfilesystemencoding() or UNICODE_ENCODING")
+    _ = getUnicode(os.path.basename(argv[0]), encoding=sys.stdin.encoding)
 
     usage = "%s%s [options]" % ("python " if not IS_WIN else "", \
             "\"%s\"" % _ if " " in _ else _)
@@ -617,9 +618,6 @@ def cmdLineParser(argv=None):
         general = OptionGroup(parser, "General", "These options can be used "
                              "to set some general working parameters")
 
-        #general.add_option("-x", dest="xmlFile",
-        #                    help="Dump the data into an XML file")
-
         general.add_option("-s", dest="sessionFile",
                             help="Load session from a stored (.sqlite) file")
 
@@ -656,8 +654,7 @@ def cmdLineParser(argv=None):
 
         general.add_option("--eta", dest="eta",
                             action="store_true",
-                            help="Display for each output the "
-                                 "estimated time of arrival")
+                            help="Display for each output the estimated time of arrival")
 
         general.add_option("--flush-session", dest="flushSession",
                             action="store_true",
@@ -670,6 +667,9 @@ def cmdLineParser(argv=None):
         general.add_option("--fresh-queries", dest="freshQueries",
                             action="store_true",
                             help="Ignore query results stored in session file")
+
+        general.add_option("--har", dest="harFile",
+                           help="Log all HTTP traffic into a HAR file")
 
         general.add_option("--hex", dest="hexConvert",
                             action="store_true",
@@ -848,8 +848,9 @@ def cmdLineParser(argv=None):
         advancedHelp = True
         extraHeaders = []
 
+        # Reference: https://stackoverflow.com/a/4012683 (Note: previously used "...sys.getfilesystemencoding() or UNICODE_ENCODING")
         for arg in argv:
-            _.append(getUnicode(arg, encoding=sys.getfilesystemencoding() or UNICODE_ENCODING))
+            _.append(getUnicode(arg, encoding=sys.stdin.encoding))
 
         argv = _
         checkDeprecatedOptions(argv)

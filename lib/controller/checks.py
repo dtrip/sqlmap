@@ -7,10 +7,12 @@ See the file 'doc/COPYING' for copying permission
 
 import copy
 import httplib
+import os
 import random
 import re
 import socket
 import subprocess
+import tempfile
 import time
 
 from extra.beep.beep import beep
@@ -30,6 +32,7 @@ from lib.core.common import hashDBRetrieve
 from lib.core.common import hashDBWrite
 from lib.core.common import intersect
 from lib.core.common import listToStrValue
+from lib.core.common import openFile
 from lib.core.common import parseFilePaths
 from lib.core.common import popValue
 from lib.core.common import pushValue
@@ -55,6 +58,7 @@ from lib.core.enums import HASHDB_KEYS
 from lib.core.enums import HEURISTIC_TEST
 from lib.core.enums import HTTP_HEADER
 from lib.core.enums import HTTPMETHOD
+from lib.core.enums import MKSTEMP_PREFIX
 from lib.core.enums import NOTE
 from lib.core.enums import NULLCONNECTION
 from lib.core.enums import PAYLOAD
@@ -63,6 +67,7 @@ from lib.core.enums import REDIRECTION
 from lib.core.exception import SqlmapConnectionException
 from lib.core.exception import SqlmapNoneDataException
 from lib.core.exception import SqlmapSilentQuitException
+from lib.core.exception import SqlmapSkipTargetException
 from lib.core.exception import SqlmapUserQuitException
 from lib.core.settings import CANDIDATE_SENTENCE_MIN_LENGTH
 from lib.core.settings import CHECK_INTERNET_ADDRESS
@@ -744,10 +749,17 @@ def checkSqlInjection(place, parameter, value):
             warnMsg = "user aborted during detection phase"
             logger.warn(warnMsg)
 
-            msg = "how do you want to proceed? [(S)kip current test/(e)nd detection phase/(n)ext parameter/(c)hange verbosity/(q)uit]"
-            choice = readInput(msg, default='S', checkBatch=False).upper()
+            if conf.multipleTargets:
+                msg = "how do you want to proceed? [ne(X)t target/(s)kip current test/(e)nd detection phase/(n)ext parameter/(c)hange verbosity/(q)uit]"
+                choice = readInput(msg, default='T', checkBatch=False).upper()
+            else:
+                msg = "how do you want to proceed? [(S)kip current test/(e)nd detection phase/(n)ext parameter/(c)hange verbosity/(q)uit]"
+                choice = readInput(msg, default='S', checkBatch=False).upper()
 
-            if choice == 'C':
+            if choice == 'X':
+                if conf.multipleTargets:
+                    raise SqlmapSkipTargetException
+            elif choice == 'C':
                 choice = None
                 while not ((choice or "").isdigit() and 0 <= int(choice) <= 6):
                     if choice:
@@ -1376,6 +1388,18 @@ def identifyWaf():
             retVal.append(product)
 
     if retVal:
+        if kb.wafSpecificResponse and len(retVal) == 1 and "unknown" in retVal[0].lower():
+            handle, filename = tempfile.mkstemp(prefix=MKSTEMP_PREFIX.SPECIFIC_RESPONSE)
+            os.close(handle)
+            with openFile(filename, "w+b") as f:
+                f.write(kb.wafSpecificResponse)
+
+            message = "WAF/IPS/IDS specific response can be found in '%s'. " % filename
+            message += "If you know the details on used protection please "
+            message += "report it along with specific response "
+            message += "to 'dev@sqlmap.org'"
+            logger.warn(message)
+
         message = "are you sure that you want to "
         message += "continue with further target testing? [y/N] "
         choice = readInput(message, default='N', boolean=True)

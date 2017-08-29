@@ -76,6 +76,16 @@ def setHandler():
         items.insert(0, _)
 
     for dbms, aliases, Handler, Connector in items:
+        if conf.forceDbms:
+            if conf.forceDbms.lower() not in aliases:
+                continue
+            else:
+                kb.dbms = conf.dbms = conf.forceDbms = dbms
+
+        if kb.dbmsFilter:
+            if dbms not in kb.dbmsFilter:
+                continue
+
         handler = Handler()
         conf.dbmsConnector = Connector()
 
@@ -96,7 +106,7 @@ def setHandler():
             else:
                 conf.dbmsConnector.connect()
 
-        if handler.checkDbms():
+        if conf.forceDbms == dbms or handler.checkDbms():
             if kb.resolutionDbms:
                 conf.dbmsHandler = max(_ for _ in items if _[0] == kb.resolutionDbms)[2]()
             else:

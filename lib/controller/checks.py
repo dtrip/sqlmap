@@ -2,7 +2,7 @@
 
 """
 Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+See the file 'LICENSE' for copying permission
 """
 
 import copy
@@ -1382,6 +1382,9 @@ def identifyWaf():
     retVal = []
 
     for function, product in kb.wafFunctions:
+        if retVal and "unknown" in product.lower():
+            continue
+
         try:
             logger.debug("checking for WAF/IPS/IDS product '%s'" % product)
             found = function(_)

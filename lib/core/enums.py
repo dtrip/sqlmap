@@ -2,7 +2,7 @@
 
 """
 Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+See the file 'LICENSE' for copying permission
 """
 
 class PRIORITY:
@@ -121,11 +121,16 @@ class HASH:
     ORACLE_OLD = r'(?i)\A[01-9a-f]{16}\Z'
     MD5_GENERIC = r'(?i)\A[0-9a-f]{32}\Z'
     SHA1_GENERIC = r'(?i)\A[0-9a-f]{40}\Z'
-    SHA224_GENERIC = r'(?i)\A[0-9a-f]{28}\Z'
-    SHA384_GENERIC = r'(?i)\A[0-9a-f]{48}\Z'
-    SHA512_GENERIC = r'(?i)\A[0-9a-f]{64}\Z'
-    CRYPT_GENERIC = r'(?i)\A(?!\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\Z)(?![0-9]+\Z)[./0-9A-Za-z]{13}\Z'
-    WORDPRESS = r'(?i)\A\$P\$[./0-9A-Za-z]{31}\Z'
+    SHA224_GENERIC = r'(?i)\A[0-9a-f]{56}\Z'
+    SHA256_GENERIC = r'(?i)\A[0-9a-f]{64}\Z'
+    SHA384_GENERIC = r'(?i)\A[0-9a-f]{96}\Z'
+    SHA512_GENERIC = r'(?i)\A[0-9a-f]{128}\Z'
+    CRYPT_GENERIC = r'\A(?!\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\Z)(?![0-9]+\Z)[./0-9A-Za-z]{13}\Z'
+    JOOMLA = r'\A[0-9a-f]{32}:\w{32}\Z'
+    WORDPRESS = r'\A\$P\$[./0-9a-zA-Z]{31}\Z'
+    APACHE_MD5_CRYPT = r'\A\$apr1\$.{1,8}\$[./a-zA-Z0-9]+\Z'
+    UNIX_MD5_CRYPT = r'\A\$1\$.{1,8}\$[./a-zA-Z0-9]+\Z'
+    APACHE_SHA1 = r'\A\{SHA\}[a-zA-Z0-9+/]+={0,2}\Z'
 
 # Reference: http://www.zytrax.com/tech/web/mobile_ids.html
 class MOBILES:

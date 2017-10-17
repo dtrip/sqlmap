@@ -2,7 +2,7 @@
 
 """
 Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+See the file 'LICENSE' for copying permission
 """
 
 try:
@@ -35,6 +35,7 @@ import zipfile
 from hashlib import md5
 from hashlib import sha1
 from hashlib import sha224
+from hashlib import sha256
 from hashlib import sha384
 from hashlib import sha512
 from Queue import Queue
@@ -254,6 +255,14 @@ def sha1_generic_passwd(password, uppercase=False):
 
     return retVal.upper() if uppercase else retVal.lower()
 
+def apache_sha1_passwd(password, uppercase=False):
+    """
+    >>> apache_sha1_passwd(password='testpass')
+    '{SHA}IGyAQTualsExLMNGt9JRe4RGPt0='
+    """
+
+    return "{SHA}%s" % sha1(password).digest().encode("base64").strip()
+
 def sha224_generic_passwd(password, uppercase=False):
     """
     >>> sha224_generic_passwd(password='testpass', uppercase=False)
@@ -261,6 +270,16 @@ def sha224_generic_passwd(password, uppercase=False):
     """
 
     retVal = sha224(password).hexdigest()
+
+    return retVal.upper() if uppercase else retVal.lower()
+
+def sha256_generic_passwd(password, uppercase=False):
+    """
+    >>> sha256_generic_passwd(password='testpass', uppercase=False)
+    '13d249f2cb4127b40cfa757866850278793f814ded3c587fe5889e889a7a9f6c'
+    """
+
+    retVal = sha256(password).hexdigest()
 
     return retVal.upper() if uppercase else retVal.lower()
 
@@ -284,7 +303,7 @@ def sha512_generic_passwd(password, uppercase=False):
 
     return retVal.upper() if uppercase else retVal.lower()
 
-def crypt_generic_passwd(password, salt, uppercase=False):
+def crypt_generic_passwd(password, salt, **kwargs):
     """
     Reference(s):
         http://docs.python.org/library/crypt.html
@@ -296,17 +315,97 @@ def crypt_generic_passwd(password, salt, uppercase=False):
     'rl.3StKT.4T8M'
     """
 
-    retVal = crypt(password, salt)
+    return crypt(password, salt)
 
-    return retVal.upper() if uppercase else retVal
+def unix_md5_passwd(password, salt, magic="$1$", **kwargs):
+    """
+    Reference(s):
+        http://www.sabren.net/code/python/crypt/md5crypt.py
 
-def wordpress_passwd(password, salt, count, prefix, uppercase=False):
+    >>> unix_md5_passwd(password='testpass', salt='aD9ZLmkp')
+    '$1$aD9ZLmkp$DRM5a7rRZGyuuOPOjTEk61'
+    """
+
+    def _encode64(value, count):
+        output = ""
+
+        while (count - 1 >= 0):
+            count = count - 1
+            output += ITOA64[value & 0x3f]
+            value = value >> 6
+
+        return output
+
+    if isinstance(password, unicode):
+        password = password.encode(UNICODE_ENCODING)
+
+    salt = salt[:8]
+    ctx = password + magic + salt
+    final = md5(password + salt + password).digest()
+
+    for pl in xrange(len(password),0,-16):
+        if pl > 16:
+            ctx = ctx + final[:16]
+        else:
+            ctx = ctx + final[:pl]
+
+    i = len(password)
+    while i:
+        if i & 1:
+            ctx = ctx + chr(0)  #if ($i & 1) { $ctx->add(pack("C", 0)); }
+        else:
+            ctx = ctx + password[0]
+        i = i >> 1
+
+    final = md5(ctx).digest()
+
+    for i in xrange(1000):
+        ctx1 = ""
+
+        if i & 1:
+            ctx1 = ctx1 + password
+        else:
+            ctx1 = ctx1 + final[:16]
+
+        if i % 3:
+            ctx1 = ctx1 + salt
+
+        if i % 7:
+            ctx1 = ctx1 + password
+
+        if i & 1:
+            ctx1 = ctx1 + final[:16]
+        else:
+            ctx1 = ctx1 + password
+
+        final = md5(ctx1).digest()
+
+    hash_ = _encode64((int(ord(final[0])) << 16) | (int(ord(final[6])) << 8) | (int(ord(final[12]))),4)
+    hash_ = hash_ + _encode64((int(ord(final[1])) << 16) | (int(ord(final[7])) << 8) | (int(ord(final[13]))), 4)
+    hash_ = hash_ + _encode64((int(ord(final[2])) << 16) | (int(ord(final[8])) << 8) | (int(ord(final[14]))), 4)
+    hash_ = hash_ + _encode64((int(ord(final[3])) << 16) | (int(ord(final[9])) << 8) | (int(ord(final[15]))), 4)
+    hash_ = hash_ + _encode64((int(ord(final[4])) << 16) | (int(ord(final[10])) << 8) | (int(ord(final[5]))), 4)
+    hash_ = hash_ + _encode64((int(ord(final[11]))), 2)
+
+    return "%s%s$%s" % (magic, salt, hash_)
+
+def joomla_passwd(password, salt, **kwargs):
+    """
+    Reference: https://stackoverflow.com/a/10428239
+
+    >>> joomla_passwd(password='testpass', salt='6GGlnaquVXI80b3HRmSyE3K1wEFFaBIf')
+    'e3d5794da74e917637332e0d21b76328:6GGlnaquVXI80b3HRmSyE3K1wEFFaBIf'
+    """
+
+    return "%s:%s" % (md5("%s%s" % (password, salt)).hexdigest(), salt)
+
+def wordpress_passwd(password, salt, count, prefix, **kwargs):
     """
     Reference(s):
         http://packetstormsecurity.org/files/74448/phpassbrute.py.txt
         http://scriptserver.mainframe8.com/wordpress_password_hasher.php
 
-    >>> wordpress_passwd(password='testpass', salt='aD9ZLmkp', count=2048, prefix='$P$9aD9ZLmkp', uppercase=False)
+    >>> wordpress_passwd(password='testpass', salt='aD9ZLmkp', count=2048, prefix='$P$9aD9ZLmkp')
     '$P$9aD9ZLmkpsN4A83G8MefaaP888gVKX0'
     """
 
@@ -353,9 +452,7 @@ def wordpress_passwd(password, salt, count, prefix, uppercase=False):
         _.update(password)
         hash_ = _.digest()
 
-    retVal = prefix + _encode64(hash_, 16)
-
-    return retVal.upper() if uppercase else retVal
+    return "%s%s" % (prefix, _encode64(hash_, 16))
 
 __functions__ = {
                     HASH.MYSQL: mysql_passwd,
@@ -369,10 +466,15 @@ __functions__ = {
                     HASH.MD5_GENERIC: md5_generic_passwd,
                     HASH.SHA1_GENERIC: sha1_generic_passwd,
                     HASH.SHA224_GENERIC: sha224_generic_passwd,
+                    HASH.SHA256_GENERIC: sha256_generic_passwd,
                     HASH.SHA384_GENERIC: sha384_generic_passwd,
                     HASH.SHA512_GENERIC: sha512_generic_passwd,
                     HASH.CRYPT_GENERIC: crypt_generic_passwd,
+                    HASH.JOOMLA: joomla_passwd,
                     HASH.WORDPRESS: wordpress_passwd,
+                    HASH.APACHE_MD5_CRYPT: unix_md5_passwd,
+                    HASH.UNIX_MD5_CRYPT: unix_md5_passwd,
+                    HASH.APACHE_SHA1: apache_sha1_passwd,
                 }
 
 def storeHashesToFile(attack_dict):
@@ -717,10 +819,10 @@ def dictionaryAttack(attack_dict):
                 if re.match(hash_regex, hash_):
                     item = None
 
-                    if hash_regex not in (HASH.CRYPT_GENERIC, HASH.WORDPRESS):
+                    if hash_regex not in (HASH.CRYPT_GENERIC, HASH.JOOMLA, HASH.WORDPRESS, HASH.UNIX_MD5_CRYPT, HASH.APACHE_MD5_CRYPT, HASH.APACHE_SHA1):
                         hash_ = hash_.lower()
 
-                    if hash_regex in (HASH.MYSQL, HASH.MYSQL_OLD, HASH.MD5_GENERIC, HASH.SHA1_GENERIC):
+                    if hash_regex in (HASH.MYSQL, HASH.MYSQL_OLD, HASH.MD5_GENERIC, HASH.SHA1_GENERIC, HASH.APACHE_SHA1):
                         item = [(user, hash_), {}]
                     elif hash_regex in (HASH.ORACLE_OLD, HASH.POSTGRES):
                         item = [(user, hash_), {'username': user}]
@@ -730,6 +832,10 @@ def dictionaryAttack(attack_dict):
                         item = [(user, hash_), {'salt': hash_[6:14]}]
                     elif hash_regex in (HASH.CRYPT_GENERIC,):
                         item = [(user, hash_), {'salt': hash_[0:2]}]
+                    elif hash_regex in (HASH.UNIX_MD5_CRYPT, HASH.APACHE_MD5_CRYPT):
+                        item = [(user, hash_), {'salt': hash_.split('$')[2], 'magic': '$%s$' % hash_.split('$')[1]}]
+                    elif hash_regex in (HASH.JOOMLA,):
+                        item = [(user, hash_), {'salt': hash_.split(':')[-1]}]
                     elif hash_regex in (HASH.WORDPRESS,):
                         if ITOA64.index(hash_[3]) < 32:
                             item = [(user, hash_), {'salt': hash_[4:12], 'count': 1 << ITOA64.index(hash_[3]), 'prefix': hash_[:12]}]
@@ -771,9 +877,9 @@ def dictionaryAttack(attack_dict):
                 try:
                     if choice == '2':
                         message = "what's the custom dictionary's location?\n"
-                        _ = readInput(message)
-                        if _:
-                            dictPaths = [readInput(message)]
+                        dictPath = readInput(message)
+                        if dictPath:
+                            dictPaths = [dictPath]
                             logger.info("using custom dictionary")
                     elif choice == '3':
                         message = "what's the list file location?\n"
@@ -817,7 +923,8 @@ def dictionaryAttack(attack_dict):
             if user and not user.startswith(DUMMY_USER_PREFIX):
                 custom_wordlist.append(normalizeUnicode(user))
 
-        if hash_regex in (HASH.MYSQL, HASH.MYSQL_OLD, HASH.MD5_GENERIC, HASH.SHA1_GENERIC):
+        # Algorithms without extra arguments (e.g. salt and/or username)
+        if hash_regex in (HASH.MYSQL, HASH.MYSQL_OLD, HASH.MD5_GENERIC, HASH.SHA1_GENERIC, HASH.SHA224_GENERIC, HASH.SHA256_GENERIC, HASH.SHA384_GENERIC, HASH.SHA512_GENERIC, HASH.APACHE_SHA1):
             for suffix in suffix_list:
                 if not attack_info or processException:
                     break

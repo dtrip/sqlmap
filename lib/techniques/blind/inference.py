@@ -2,7 +2,7 @@
 
 """
 Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+See the file 'LICENSE' for copying permission
 """
 
 import re
@@ -39,7 +39,6 @@ from lib.core.settings import CHAR_INFERENCE_MARK
 from lib.core.settings import INFERENCE_BLANK_BREAK
 from lib.core.settings import INFERENCE_UNKNOWN_CHAR
 from lib.core.settings import INFERENCE_GREATER_CHAR
-from lib.core.settings import INFERENCE_GREATER_EQUALS_CHAR
 from lib.core.settings import INFERENCE_EQUALS_CHAR
 from lib.core.settings import INFERENCE_MARKER
 from lib.core.settings import INFERENCE_NOT_EQUALS_CHAR

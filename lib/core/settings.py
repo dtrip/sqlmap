@@ -2,7 +2,7 @@
 
 """
 Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+See the file 'LICENSE' for copying permission
 """
 
 import os
@@ -19,7 +19,7 @@ from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.1.10.1"
+VERSION = "1.1.10.9"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -69,6 +69,7 @@ URI_QUESTION_MARKER = "__QUESTION_MARK__"
 ASTERISK_MARKER = "__ASTERISK_MARK__"
 REPLACEMENT_MARKER = "__REPLACEMENT_MARK__"
 BOUNDED_INJECTION_MARKER = "__BOUNDED_INJECTION_MARK__"
+SAFE_VARIABLE_MARKER = "__SAFE__"
 
 RANDOM_INTEGER_MARKER = "[RANDINT]"
 RANDOM_STRING_MARKER = "[RANDSTR]"
@@ -106,8 +107,8 @@ GOOGLE_REGEX = r"webcache\.googleusercontent\.com/search\?q=cache:[^:]+:([^+]+)\
 # Regular expression used for extracting results from DuckDuckGo search
 DUCKDUCKGO_REGEX = r'"u":"([^"]+)'
 
-# Regular expression used for extracting results from Disconnect Search
-DISCONNECT_SEARCH_REGEX = r'<p class="url wrapword">([^<]+)</p>'
+# Regular expression used for extracting results from Bing search
+BING_REGEX = r'<h2><a href="([^"]+)" h='
 
 # Dummy user agent for search (if default one returns different results)
 DUMMY_SEARCH_USER_AGENT = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:49.0) Gecko/20100101 Firefox/49.0"

@@ -118,7 +118,7 @@ class HASH:
     MSSQL_OLD = r'(?i)\A0x0100[0-9a-f]{8}[0-9a-f]{80}\Z'
     MSSQL_NEW = r'(?i)\A0x0200[0-9a-f]{8}[0-9a-f]{128}\Z'
     ORACLE = r'(?i)\As:[0-9a-f]{60}\Z'
-    ORACLE_OLD = r'(?i)\A[01-9a-f]{16}\Z'
+    ORACLE_OLD = r'(?i)\A[0-9a-f]{16}\Z'
     MD5_GENERIC = r'(?i)\A[0-9a-f]{32}\Z'
     SHA1_GENERIC = r'(?i)\A[0-9a-f]{40}\Z'
     SHA224_GENERIC = r'(?i)\A[0-9a-f]{56}\Z'
@@ -131,6 +131,8 @@ class HASH:
     APACHE_MD5_CRYPT = r'\A\$apr1\$.{1,8}\$[./a-zA-Z0-9]+\Z'
     UNIX_MD5_CRYPT = r'\A\$1\$.{1,8}\$[./a-zA-Z0-9]+\Z'
     APACHE_SHA1 = r'\A\{SHA\}[a-zA-Z0-9+/]+={0,2}\Z'
+    VBULLETIN = r'\A[0-9a-fA-F]{32}:.{30}\Z'
+    VBULLETIN_OLD = r'\A[0-9a-fA-F]{32}:.{3}\Z'
 
 # Reference: http://www.zytrax.com/tech/web/mobile_ids.html
 class MOBILES:

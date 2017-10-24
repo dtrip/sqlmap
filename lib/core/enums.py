@@ -133,6 +133,11 @@ class HASH:
     APACHE_SHA1 = r'\A\{SHA\}[a-zA-Z0-9+/]+={0,2}\Z'
     VBULLETIN = r'\A[0-9a-fA-F]{32}:.{30}\Z'
     VBULLETIN_OLD = r'\A[0-9a-fA-F]{32}:.{3}\Z'
+    SSHA = r'\A\{SSHA\}[a-zA-Z0-9+/]+={0,2}\Z'
+    SSHA256 = r'\A\{SSHA256\}[a-zA-Z0-9+/]+={0,2}\Z'
+    SSHA512 = r'\A\{SSHA512\}[a-zA-Z0-9+/]+={0,2}\Z'
+    DJANGO_MD5 = r'\Amd5\$[^$]+\$[0-9a-f]{32}\Z'
+    DJANGO_SHA1 = r'\Asha1\$[^$]+\$[0-9a-f]{40}\Z'
 
 # Reference: http://www.zytrax.com/tech/web/mobile_ids.html
 class MOBILES:

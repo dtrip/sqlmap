@@ -70,6 +70,7 @@ from lib.core.exception import SqlmapDataException
 from lib.core.exception import SqlmapUserQuitException
 from lib.core.settings import COMMON_PASSWORD_SUFFIXES
 from lib.core.settings import COMMON_USER_COLUMNS
+from lib.core.settings import DEV_EMAIL_ADDRESS
 from lib.core.settings import DUMMY_USER_PREFIX
 from lib.core.settings import HASH_MOD_ITEM_DISPLAY
 from lib.core.settings import HASH_RECOGNITION_QUIT_THRESHOLD
@@ -538,6 +539,10 @@ __functions__ = {
                     HASH.SSHA: ssha_passwd,
                     HASH.SSHA256: ssha256_passwd,
                     HASH.SSHA512: ssha512_passwd,
+                    HASH.MD5_BASE64: md5_generic_passwd,
+                    HASH.SHA1_BASE64: sha1_generic_passwd,
+                    HASH.SHA256_BASE64: sha256_generic_passwd,
+                    HASH.SHA512_BASE64: sha512_generic_passwd,
                 }
 
 def storeHashesToFile(attack_dict):
@@ -600,8 +605,8 @@ def attackDumpedTable():
         if not count:
             return
 
-        infoMsg = "analyzing table dump for possible password hashes"
-        logger.info(infoMsg)
+        debugMsg = "analyzing table dump for possible password hashes"
+        logger.debug(debugMsg)
 
         found = False
         col_user = ''
@@ -618,24 +623,24 @@ def attackDumpedTable():
                 break
 
             for column in columns:
-                if column == col_user or column == '__infos__':
+                if column == col_user or column == "__infos__":
                     continue
 
-                if len(table[column]['values']) <= i:
+                if len(table[column]["values"]) <= i:
                     continue
 
-                value = table[column]['values'][i]
+                value = table[column]["values"][i]
 
                 if hashRecognition(value):
                     found = True
 
-                    if col_user and i < len(table[col_user]['values']):
-                        if table[col_user]['values'][i] not in attack_dict:
-                            attack_dict[table[col_user]['values'][i]] = []
+                    if col_user and i < len(table[col_user]["values"]):
+                        if table[col_user]["values"][i] not in attack_dict:
+                            attack_dict[table[col_user]["values"][i]] = []
 
-                        attack_dict[table[col_user]['values'][i]].append(value)
+                        attack_dict[table[col_user]["values"][i]].append(value)
                     else:
-                        attack_dict['%s%d' % (DUMMY_USER_PREFIX, i)] = [value]
+                        attack_dict["%s%d" % (DUMMY_USER_PREFIX, i)] = [value]
 
                     col_passwords.add(column)
 
@@ -661,8 +666,8 @@ def attackDumpedTable():
                 if hash_:
                     lut[hash_.lower()] = password
 
-            infoMsg = "postprocessing table dump"
-            logger.info(infoMsg)
+            debugMsg = "post-processing table dump"
+            logger.debug(debugMsg)
 
             for i in xrange(count):
                 for column in columns:
@@ -759,7 +764,7 @@ def _bruteProcessVariantA(attack_info, hash_regex, suffix, retVal, proc_id, proc
 
             except Exception, e:
                 warnMsg = "there was a problem while hashing entry: %s (%s). " % (repr(word), e)
-                warnMsg += "Please report by e-mail to 'dev@sqlmap.org'"
+                warnMsg += "Please report by e-mail to '%s'" % DEV_EMAIL_ADDRESS
                 logger.critical(warnMsg)
 
     except KeyboardInterrupt:
@@ -833,7 +838,7 @@ def _bruteProcessVariantB(user, hash_, kwargs, hash_regex, suffix, retVal, found
 
             except Exception, e:
                 warnMsg = "there was a problem while hashing entry: %s (%s). " % (repr(word), e)
-                warnMsg += "Please report by e-mail to 'dev@sqlmap.org'"
+                warnMsg += "Please report by e-mail to '%s'" % DEV_EMAIL_ADDRESS
                 logger.critical(warnMsg)
 
     except KeyboardInterrupt:
@@ -883,34 +888,36 @@ def dictionaryAttack(attack_dict):
                     try:
                         item = None
 
-                        if hash_regex not in (HASH.CRYPT_GENERIC, HASH.JOOMLA, HASH.WORDPRESS, HASH.UNIX_MD5_CRYPT, HASH.APACHE_MD5_CRYPT, HASH.APACHE_SHA1, HASH.VBULLETIN, HASH.VBULLETIN_OLD, HASH.SSHA, HASH.SSHA256, HASH.SSHA512, HASH.DJANGO_MD5, HASH.DJANGO_SHA1):
+                        if hash_regex not in (HASH.CRYPT_GENERIC, HASH.JOOMLA, HASH.WORDPRESS, HASH.UNIX_MD5_CRYPT, HASH.APACHE_MD5_CRYPT, HASH.APACHE_SHA1, HASH.VBULLETIN, HASH.VBULLETIN_OLD, HASH.SSHA, HASH.SSHA256, HASH.SSHA512, HASH.DJANGO_MD5, HASH.DJANGO_SHA1, HASH.MD5_BASE64, HASH.SHA1_BASE64, HASH.SHA256_BASE64, HASH.SHA512_BASE64):
                             hash_ = hash_.lower()
 
-                        if hash_regex in (HASH.MYSQL, HASH.MYSQL_OLD, HASH.MD5_GENERIC, HASH.SHA1_GENERIC, HASH.APACHE_SHA1):
+                        if hash_regex in (HASH.MD5_BASE64, HASH.SHA1_BASE64, HASH.SHA256_BASE64, HASH.SHA512_BASE64):
+                            item = [(user, hash_.decode("base64").encode("hex")), {}]
+                        elif hash_regex in (HASH.MYSQL, HASH.MYSQL_OLD, HASH.MD5_GENERIC, HASH.SHA1_GENERIC, HASH.APACHE_SHA1):
                             item = [(user, hash_), {}]
                         elif hash_regex in (HASH.SSHA,):
-                            item = [(user, hash_), {'salt': hash_.decode("base64")[20:]}]
+                            item = [(user, hash_), {"salt": hash_.decode("base64")[20:]}]
                         elif hash_regex in (HASH.SSHA256,):
-                            item = [(user, hash_), {'salt': hash_.decode("base64")[32:]}]
+                            item = [(user, hash_), {"salt": hash_.decode("base64")[32:]}]
                         elif hash_regex in (HASH.SSHA512,):
-                            item = [(user, hash_), {'salt': hash_.decode("base64")[64:]}]
+                            item = [(user, hash_), {"salt": hash_.decode("base64")[64:]}]
                         elif hash_regex in (HASH.ORACLE_OLD, HASH.POSTGRES):
                             item = [(user, hash_), {'username': user}]
                         elif hash_regex in (HASH.ORACLE,):
-                            item = [(user, hash_), {'salt': hash_[-20:]}]
+                            item = [(user, hash_), {"salt": hash_[-20:]}]
                         elif hash_regex in (HASH.MSSQL, HASH.MSSQL_OLD, HASH.MSSQL_NEW):
-                            item = [(user, hash_), {'salt': hash_[6:14]}]
+                            item = [(user, hash_), {"salt": hash_[6:14]}]
                         elif hash_regex in (HASH.CRYPT_GENERIC,):
-                            item = [(user, hash_), {'salt': hash_[0:2]}]
+                            item = [(user, hash_), {"salt": hash_[0:2]}]
                         elif hash_regex in (HASH.UNIX_MD5_CRYPT, HASH.APACHE_MD5_CRYPT):
-                            item = [(user, hash_), {'salt': hash_.split('$')[2], 'magic': '$%s$' % hash_.split('$')[1]}]
+                            item = [(user, hash_), {"salt": hash_.split('$')[2], "magic": "$%s$" % hash_.split('$')[1]}]
                         elif hash_regex in (HASH.JOOMLA, HASH.VBULLETIN, HASH.VBULLETIN_OLD):
-                            item = [(user, hash_), {'salt': hash_.split(':')[-1]}]
-                        elif hash_regex in (HASH.DJANGO_MD5, DJANGO_SHA1):
-                            item = [(user, hash_), {'salt': hash_.split('$')[1]}]
+                            item = [(user, hash_), {"salt": hash_.split(':')[-1]}]
+                        elif hash_regex in (HASH.DJANGO_MD5, HASH.DJANGO_SHA1):
+                            item = [(user, hash_), {"salt": hash_.split('$')[1]}]
                         elif hash_regex in (HASH.WORDPRESS,):
                             if ITOA64.index(hash_[3]) < 32:
-                                item = [(user, hash_), {'salt': hash_[4:12], 'count': 1 << ITOA64.index(hash_[3]), 'prefix': hash_[:12]}]
+                                item = [(user, hash_), {"salt": hash_[4:12], "count": 1 << ITOA64.index(hash_[3]), "prefix": hash_[:12]}]
                             else:
                                 warnMsg = "invalid hash '%s'" % hash_
                                 logger.warn(warnMsg)

@@ -1202,16 +1202,20 @@ def parsePasswordHash(password):
 def cleanQuery(query):
     """
     Switch all SQL statement (alike) keywords to upper case
+
+    >>> cleanQuery("select id from users")
+    'SELECT id FROM users'
     """
 
     retVal = query
 
     for sqlStatements in SQL_STATEMENTS.values():
         for sqlStatement in sqlStatements:
-            queryMatch = re.search(r"(?i)\b(%s)\b" % sqlStatement.replace("(", "").replace(")", "").strip(), query)
+            candidate = sqlStatement.replace("(", "").replace(")", "").strip()
+            queryMatch = re.search(r"(?i)\b(%s)\b" % candidate, query)
 
             if queryMatch and "sys_exec" not in query:
-                retVal = retVal.replace(queryMatch.group(1), sqlStatement.upper())
+                retVal = retVal.replace(queryMatch.group(1), candidate.upper())
 
     return retVal
 
@@ -1723,14 +1727,14 @@ def normalizePath(filepath):
     Returns normalized string representation of a given filepath
 
     >>> normalizePath('//var///log/apache.log')
-    '//var/log/apache.log'
+    '/var/log/apache.log'
     """
 
     retVal = filepath
 
     if retVal:
         retVal = retVal.strip("\r\n")
-        retVal = ntpath.normpath(retVal) if isWindowsDriveLetterPath(retVal) else posixpath.normpath(retVal)
+        retVal = ntpath.normpath(retVal) if isWindowsDriveLetterPath(retVal) else re.sub(r"\A/{2,}", "/", posixpath.normpath(retVal))
 
     return retVal
 
@@ -2236,7 +2240,7 @@ def goGoodSamaritan(prevValue, originalCharset):
 def getPartRun(alias=True):
     """
     Goes through call stack and finds constructs matching conf.dbmsHandler.*.
-    Returns it or its alias used in txt/common-outputs.txt
+    Returns it or its alias used in 'txt/common-outputs.txt'
     """
 
     retVal = None
@@ -2494,6 +2498,9 @@ def findLocalPort(ports):
 def findMultipartPostBoundary(post):
     """
     Finds value for a boundary parameter in given multipart POST body
+
+    >>> findMultipartPostBoundary("-----------------------------9051914041544843365972754266\\nContent-Disposition: form-data; name=text\\n\\ndefault")
+    '9051914041544843365972754266'
     """
 
     retVal = None
@@ -2775,13 +2782,17 @@ def findDynamicContent(firstPage, secondPage):
     """
     This function checks if the provided pages have dynamic content. If they
     are dynamic, proper markings will be made
+
+    >>> findDynamicContent("Lorem ipsum dolor sit amet, congue tation referrentur ei sed. Ne nec legimus habemus recusabo, natum reque et per. Facer tritani reprehendunt eos id, modus constituam est te. Usu sumo indoctum ad, pri paulo molestiae complectitur no.", "Lorem ipsum dolor sit amet, congue tation referrentur ei sed. Ne nec legimus habemus recusabo, natum reque et per. <script src='ads.js'></script>Facer tritani reprehendunt eos id, modus constituam est te. Usu sumo indoctum ad, pri paulo molestiae complectitur no.")
+    >>> kb.dynamicMarkings
+    [('m reque et per. ', 'Facer tritani re')]
     """
 
     if not firstPage or not secondPage:
         return
 
     infoMsg = "searching for dynamic content"
-    logger.info(infoMsg)
+    singleTimeLogMessage(infoMsg)
 
     blocks = SequenceMatcher(None, firstPage, secondPage).get_matching_blocks()
     kb.dynamicMarkings = []
@@ -2808,14 +2819,20 @@ def findDynamicContent(firstPage, secondPage):
             if suffix is None and (blocks[i][0] + blocks[i][2] >= len(firstPage)):
                 continue
 
-            prefix = trimAlphaNum(prefix)
-            suffix = trimAlphaNum(suffix)
+            if prefix and suffix:
+                infix = max(re.search(r"(?s)%s(.+)%s" % (re.escape(prefix), re.escape(suffix)), _) for _ in (firstPage, secondPage)).group(1)
+
+                if infix[0].isalnum():
+                    prefix = trimAlphaNum(prefix)
+
+                if infix[-1].isalnum():
+                    suffix = trimAlphaNum(suffix)
 
             kb.dynamicMarkings.append((prefix[-DYNAMICITY_MARK_LENGTH / 2:] if prefix else None, suffix[:DYNAMICITY_MARK_LENGTH / 2] if suffix else None))
 
     if len(kb.dynamicMarkings) > 0:
         infoMsg = "dynamic content marked for removal (%d region%s)" % (len(kb.dynamicMarkings), 's' if len(kb.dynamicMarkings) > 1 else '')
-        logger.info(infoMsg)
+        singleTimeLogMessage(infoMsg)
 
 def removeDynamicContent(page):
     """
@@ -3370,6 +3387,9 @@ def createGithubIssue(errMsg, excMsg):
 def maskSensitiveData(msg):
     """
     Masks sensitive data in the supplied message
+
+    >>> maskSensitiveData('python sqlmap.py -u "http://www.test.com/vuln.php?id=1" --banner')
+    u'python sqlmap.py -u *********************************** --banner'
     """
 
     retVal = getUnicode(msg)
@@ -3410,8 +3430,7 @@ def listToStrValue(value):
 
 def getExceptionFrameLocals():
     """
-    Returns dictionary with local variable content from frame
-    where exception has been raised
+    Returns dictionary with local variable content from frame where exception has been raised
     """
 
     retVal = {}

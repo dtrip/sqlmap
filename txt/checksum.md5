@@ -25,9 +25,9 @@ f96467fc5cd1d87f52dd7966c8ae6e79  extra/shutils/regressiontest.py
 91c9ef44927b270ea53b6739ff5b2e76  lib/controller/controller.py
 d2cdb9e832e18a81e936ca3348144b16  lib/controller/handler.py
 5fb9aaf874daa47ea2b672a22740e56b  lib/controller/__init__.py
-3672210ed0043fe094df8615e4c5c0c0  lib/core/agent.py
+c1ba81136151b327c71fd01376376451  lib/core/agent.py
 d55b4b58019d6dbfddd40ec919f9f172  lib/core/bigarray.py
-13c4a9dbce28ca26cc7fad3a4cb064f9  lib/core/common.py
+abcdd166b8b7c7d84bfa3d70a1778f06  lib/core/common.py
 54326d3a690f8b26fe5a5da1a589b369  lib/core/convert.py
 90b1b08368ac8a859300e6fa6a8c796e  lib/core/data.py
 1c14bdbf47b8dba31f73da9ad731a54a  lib/core/datatype.py
@@ -46,12 +46,12 @@ ec6a778b0e74749b916caead78ba88b7  lib/core/option.py
 760d9df2a27ded29109b390ab202e72d  lib/core/replication.py
 a2466b62e67f8b31736bac4dac590e51  lib/core/revision.py
 02d4762140a72fd44668d3dab5eabda9  lib/core/session.py
-6268552b330145e1311ed84d099af922  lib/core/settings.py
+5cfc263d2081144f63918be068e126e3  lib/core/settings.py
 35bffbad762eb9e03db9e93b1c991103  lib/core/shell.py
 a59ec28371ae067a6fdd8f810edbee3d  lib/core/subprocessng.py
 7c9f2af3c0a8dd89223cfe07b0a0b826  lib/core/target.py
 df8f6475a53d83400c1a3967c0a21bd7  lib/core/testing.py
-20ae9917fa959ea423d8c28c297b37fe  lib/core/threads.py
+632538fe50f6b3179e1a5a85e8b79741  lib/core/threads.py
 a119989ca03f8c8fbdf7d3035084eb31  lib/core/unescaper.py
 e7fb8c09fe7520c32895b859c4edf77a  lib/core/update.py
 c976dd450b663cb4455cd9efbbcf625b  lib/core/wordlist.py
@@ -100,7 +100,7 @@ fcc3a6ac3b5f7aad86686e5f9adc7a43  lib/techniques/union/test.py
 505682f95cb23573dd60bf6d0063a632  lib/techniques/union/use.py
 452cb280aa51a4ddf38d94534a6e8d5f  lib/utils/api.py
 d9d62fa5d7367e7fb23180240c8d03f4  lib/utils/brute.py
-95e4eab120640fd9330d569a29a25be4  lib/utils/crawler.py
+7e0078da1dff59530d64f9b1e2f68607  lib/utils/crawler.py
 a2d2087353fb64a8441c3247ae0ad719  lib/utils/deps.py
 b806de9710a02436e576ac9065816021  lib/utils/getch.py
 fe3a38f820ae05a95f92ab53e22b46d0  lib/utils/har.py
@@ -111,7 +111,7 @@ f20ae1aa6a8d1d5373ace1f7ed3476a7  lib/utils/htmlentities.py
 06cd61b634ca6142281da699a504cc85  lib/utils/pivotdumptable.py
 56c922696bd3d05d7be96e73b0650c4e  lib/utils/progress.py
 a861c303293e2e6665b02a57f67fc050  lib/utils/purge.py
-f6652791bf98a42e3e1532180a0710cf  lib/utils/search.py
+760290393e35e5f53f15ba46e09d59dd  lib/utils/search.py
 b6898e77038842c853932a6662c011be  lib/utils/sqlalchemy.py
 36b95bc7fa2cf4f005a86e516a8cba68  lib/utils/timeout.py
 a3b51d28b0824d4d2333a3dd792497ac  lib/utils/versioncheck.py
@@ -432,7 +432,7 @@ b03fdbf8f427ab614303a03416970927  waf/secureiis.py
 2dee94358969c6b8dab8acb2e9560417  waf/sonicwall.py
 b384581ce833d147690c7c77c9509bdc  waf/sophos.py
 e9127a67621440fba41e1cd176890851  waf/stingray.py
-6c87858fc902d272d5effc9ebb944deb  waf/sucuri.py
+b9ede1695617c883e4230e6018753ba4  waf/sucuri.py
 313245e511fbe1ee6fb5fd344be88240  waf/tencent.py
 64c0e9c4c32adfd3c230705a7f17a63a  waf/teros.py
 9df516cb9793ba7f906dc0597fdd73a0  waf/trafficshield.py

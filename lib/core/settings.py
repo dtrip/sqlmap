@@ -19,7 +19,7 @@ from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.1.11.5"
+VERSION = "1.1.11.19"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -82,7 +82,7 @@ CHAR_INFERENCE_MARK = "%c"
 PRINTABLE_CHAR_REGEX = r"[^\x00-\x1f\x7f-\xff]"
 
 # Regular expression used for extraction of table names (useful for (e.g.) MsAccess)
-SELECT_FROM_TABLE_REGEX = r"\bSELECT .+? FROM (?P<result>([\w.]|`[^`<>]+`)+)"
+SELECT_FROM_TABLE_REGEX = r"\bSELECT\b.+?\bFROM\s+(?P<result>([\w.]|`[^`<>]+`)+)"
 
 # Regular expression used for recognition of textual content-type
 TEXT_CONTENT_TYPE_REGEX = r"(?i)(text|form|message|xml|javascript|ecmascript|json)"
@@ -645,7 +645,7 @@ VALID_TIME_CHARS_RUN_THRESHOLD = 100
 CHECK_ZERO_COLUMNS_THRESHOLD = 10
 
 # Boldify all logger messages containing these "patterns"
-BOLD_PATTERNS = ("' injectable", "provided empty", "leftover chars", "might be injectable", "' is vulnerable", "is not injectable", "does not seem to be", "test failed", "test passed", "live test final result", "test shows that", "the back-end DBMS is", "created Github", "blocked by the target server", "protection is involved", "CAPTCHA", "specific response")
+BOLD_PATTERNS = ("' injectable", "provided empty", "leftover chars", "might be injectable", "' is vulnerable", "is not injectable", "does not seem to be", "test failed", "test passed", "live test final result", "test shows that", "the back-end DBMS is", "created Github", "blocked by the target server", "protection is involved", "CAPTCHA", "specific response", "NULL connection is supported")
 
 # Generic www root directory names
 GENERIC_DOC_ROOT_DIRECTORY_NAMES = ("htdocs", "httpdocs", "public", "wwwroot", "www")

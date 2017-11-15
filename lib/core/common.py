@@ -28,6 +28,7 @@ import sys
 import tempfile
 import threading
 import time
+import types
 import urllib
 import urllib2
 import urlparse
@@ -2057,6 +2058,7 @@ def readXmlFile(xmlFile):
 
     return retVal
 
+@cachedmethod
 def stdev(values):
     """
     Computes standard deviation of a list of numbers.
@@ -2068,19 +2070,10 @@ def stdev(values):
 
     if not values or len(values) < 2:
         return None
-
-    key = (values[0], values[-1], len(values))
-
-    if kb.get("cache") and key in kb.cache.stdev:
-        retVal = kb.cache.stdev[key]
     else:
         avg = average(values)
         _ = reduce(lambda x, y: x + pow((y or 0) - avg, 2), values, 0.0)
-        retVal = sqrt(_ / (len(values) - 1))
-        if kb.get("cache"):
-            kb.cache.stdev[key] = retVal
-
-    return retVal
+        return sqrt(_ / (len(values) - 1))
 
 def average(values):
     """
@@ -2690,6 +2683,7 @@ def enumValueToNameLookup(type_, value_):
 
     return retVal
 
+@cachedmethod
 def extractRegexResult(regex, content, flags=0):
     """
     Returns 'result' group value from a possible match with regex on a given
@@ -3418,7 +3412,7 @@ def listToStrValue(value):
     '1, 2, 3'
     """
 
-    if isinstance(value, (set, tuple)):
+    if isinstance(value, (set, tuple, types.GeneratorType)):
         value = list(value)
 
     if isinstance(value, list):

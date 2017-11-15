@@ -574,7 +574,7 @@ def checkSqlInjection(place, parameter, value):
                                 page, headers, _ = Request.queryPage(reqPayload, place, content=True, raise404=False)
                                 output = extractRegexResult(check, page, re.DOTALL | re.IGNORECASE) \
                                         or extractRegexResult(check, threadData.lastHTTPError[2] if wasLastResponseHTTPError() else None, re.DOTALL | re.IGNORECASE) \
-                                        or extractRegexResult(check, listToStrValue([headers[key] for key in headers.keys() if key.lower() != URI_HTTP_HEADER.lower()] if headers else None), re.DOTALL | re.IGNORECASE) \
+                                        or extractRegexResult(check, listToStrValue((headers[key] for key in headers.keys() if key.lower() != URI_HTTP_HEADER.lower()) if headers else None), re.DOTALL | re.IGNORECASE) \
                                         or extractRegexResult(check, threadData.lastRedirectMsg[1] if threadData.lastRedirectMsg and threadData.lastRedirectMsg[0] == threadData.lastRequestUID else None, re.DOTALL | re.IGNORECASE)
 
                                 if output:
@@ -1454,7 +1454,7 @@ def checkNullConnection():
         if not page and HTTP_HEADER.CONTENT_LENGTH in (headers or {}):
             kb.nullConnection = NULLCONNECTION.HEAD
 
-            infoMsg = "NULL connection is supported with HEAD method (Content-Length)"
+            infoMsg = "NULL connection is supported with HEAD method ('Content-Length')"
             logger.info(infoMsg)
         else:
             page, headers, _ = Request.getPage(auxHeaders={HTTP_HEADER.RANGE: "bytes=-1"})
@@ -1462,11 +1462,10 @@ def checkNullConnection():
             if page and len(page) == 1 and HTTP_HEADER.CONTENT_RANGE in (headers or {}):
                 kb.nullConnection = NULLCONNECTION.RANGE
 
-                infoMsg = "NULL connection is supported with GET method (Range)"
-                infoMsg += "'%s'" % kb.nullConnection
+                infoMsg = "NULL connection is supported with GET method ('Range')"
                 logger.info(infoMsg)
             else:
-                _, headers, _ = Request.getPage(skipRead = True)
+                _, headers, _ = Request.getPage(skipRead=True)
 
                 if HTTP_HEADER.CONTENT_LENGTH in (headers or {}):
                     kb.nullConnection = NULLCONNECTION.SKIP_READ

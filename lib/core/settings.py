@@ -19,7 +19,7 @@ from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.1.11.19"
+VERSION = "1.1.11.24"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -199,8 +199,8 @@ UNKNOWN_DBMS = "Unknown"
 # String used for representation of unknown DBMS version
 UNKNOWN_DBMS_VERSION = "Unknown"
 
-# Dynamicity mark length used in dynamicity removal engine
-DYNAMICITY_MARK_LENGTH = 32
+# Dynamicity boundary length used in dynamicity removal engine
+DYNAMICITY_BOUNDARY_LENGTH = 20
 
 # Dummy user prefix used in dictionary attack
 DUMMY_USER_PREFIX = "__dummy__"
@@ -525,6 +525,9 @@ ROTATING_CHARS = ('\\', '|', '|', '/', '-')
 
 # Approximate chunk length (in bytes) used by BigArray objects (only last chunk and cached one are held in memory)
 BIGARRAY_CHUNK_SIZE = 1024 * 1024
+
+# Compress (zlib) level used for storing BigArray chunks to disk (0-9)
+BIGARRAY_COMPRESS_LEVEL = 9
 
 # Maximum number of socket pre-connects
 SOCKET_PRE_CONNECT_QUEUE_SIZE = 3

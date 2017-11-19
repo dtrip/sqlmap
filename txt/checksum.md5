@@ -26,8 +26,8 @@ f96467fc5cd1d87f52dd7966c8ae6e79  extra/shutils/regressiontest.py
 d2cdb9e832e18a81e936ca3348144b16  lib/controller/handler.py
 5fb9aaf874daa47ea2b672a22740e56b  lib/controller/__init__.py
 fd69e56ce20a5a49ce10a7a745022378  lib/core/agent.py
-d55b4b58019d6dbfddd40ec919f9f172  lib/core/bigarray.py
-16b63aed575a43c1d406df30a9b22afe  lib/core/common.py
+8d9d771f7e67582c56a96a8d0ccbe4fc  lib/core/bigarray.py
+ec43d0f5018a59faa6e4567581361d54  lib/core/common.py
 54326d3a690f8b26fe5a5da1a589b369  lib/core/convert.py
 90b1b08368ac8a859300e6fa6a8c796e  lib/core/data.py
 1c14bdbf47b8dba31f73da9ad731a54a  lib/core/datatype.py
@@ -46,7 +46,7 @@ e1c000db9be27f973569b1a430629037  lib/core/option.py
 760d9df2a27ded29109b390ab202e72d  lib/core/replication.py
 a2466b62e67f8b31736bac4dac590e51  lib/core/revision.py
 02d4762140a72fd44668d3dab5eabda9  lib/core/session.py
-5f6af60945e1b932d173d9dffe082695  lib/core/settings.py
+260554b4e0f00d84cb68da079c04d4b4  lib/core/settings.py
 35bffbad762eb9e03db9e93b1c991103  lib/core/shell.py
 a59ec28371ae067a6fdd8f810edbee3d  lib/core/subprocessng.py
 d5a04d672a18f78deb2839c3745ff83c  lib/core/target.py
@@ -68,7 +68,7 @@ d8d9bcf9e7107a5e2cf2dd10f115ac28  lib/parse/payloads.py
 d2f13a0e2fef5273d419d06e516122e1  lib/request/basicauthhandler.py
 9ef264b5c0f9e7989b8c2ab91d40400d  lib/request/basic.py
 28348595147a731677c8bef470c6f57a  lib/request/comparison.py
-4015dee29a0d2bfc7820e828bfe96b91  lib/request/connect.py
+28aa66ecdd5c03513829cb73a47658e4  lib/request/connect.py
 ad6f76839408d827abfcdc57813f8518  lib/request/direct.py
 4853bd0d523646315607a6a9a4c0b745  lib/request/dns.py
 effa0c3e4efceaf4932855e8e6677bf7  lib/request/httpshandler.py
@@ -206,7 +206,7 @@ c811c9267896033a1d206bdec774782b  plugins/generic/custom.py
 43f19ede05350b42704b55d237f3d715  plugins/generic/databases.py
 d769db0ec3586855a8197229c2a27ffa  plugins/generic/entries.py
 16882f2840da3161ed4dbf4a7ff8fc8b  plugins/generic/enumeration.py
-c1a3f3c21d17d74298be8c3bf4fa4e66  plugins/generic/filesystem.py
+ed82a43b822e265919b6164c628e433c  plugins/generic/filesystem.py
 c4f4c6754e09a2418a08d1002184f260  plugins/generic/fingerprint.py
 5fb9aaf874daa47ea2b672a22740e56b  plugins/generic/__init__.py
 3e9a5909f250dfefd1e51abbf69d3973  plugins/generic/misc.py
@@ -224,7 +224,7 @@ c3cc8b7727161e64ab59f312c33b541a  shell/stager.aspx_
 1f7f125f30e0e800beb21e2ebbab18e1  shell/stager.jsp_
 01e3505e796edf19aad6a996101c81c9  shell/stager.php_
 c737efc0afe782c5dcfec9d27e827515  sqlmapapi.py
-8f34280b975a35f68d5fba0123786871  sqlmap.py
+5055a9d152e379fd7d55cbbf06025834  sqlmap.py
 ba9bb7b0fbfbd408c24bc99b3c8f0fd9  tamper/apostrophemask.py
 aa046ea026a3c72b714e726a2e775cd4  tamper/apostrophenullencode.py
 0418d808878bf7cac4a28350116e64d0  tamper/appendnullbyte.py

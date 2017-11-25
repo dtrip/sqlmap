@@ -1018,16 +1018,16 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
 
             retVal = default
         else:
-            logging._acquireLock()
-
-            if conf.get("beep"):
-                beep()
-
-            dataToStdout("\r%s" % message, forceOutput=True, bold=True)
-            kb.prependFlag = False
-
             try:
-                retVal = raw_input() or default
+                logging._acquireLock()
+
+                if conf.get("beep"):
+                    beep()
+
+                dataToStdout("\r%s" % message, forceOutput=True, bold=True)
+                kb.prependFlag = False
+
+                retVal = raw_input().strip() or default
                 retVal = getUnicode(retVal, encoding=sys.stdin.encoding) if retVal else retVal
             except:
                 try:
@@ -1840,8 +1840,7 @@ def getPageWordSet(page):
 
     # only if the page's charset has been successfully identified
     if isinstance(page, unicode):
-        _ = getFilteredPageContent(page)
-        retVal = set(re.findall(r"\w+", _))
+        retVal = set(_.group(0) for _ in re.finditer(r"\w+", getFilteredPageContent(page)))
 
     return retVal
 
@@ -3562,17 +3561,19 @@ def safeSQLIdentificatorNaming(name, isTable=False):
         _ = isTable and Backend.getIdentifiedDbms() in (DBMS.MSSQL, DBMS.SYBASE)
 
         if _:
-            retVal = re.sub(r"(?i)\A%s\." % DEFAULT_MSSQL_SCHEMA, "", retVal)
+            retVal = re.sub(r"(?i)\A\[?%s\]?\." % DEFAULT_MSSQL_SCHEMA, "", retVal)
 
-        if retVal.upper() in kb.keywords or (retVal or " ")[0].isdigit() or not re.match(r"\A[A-Za-z0-9_@%s\$]+\Z" % ("." if _ else ""), retVal):  # MsSQL is the only DBMS where we automatically prepend schema to table name (dot is normal)
+        if retVal.upper() in kb.keywords or (retVal or " ")[0].isdigit() or not re.match(r"\A[A-Za-z0-9_@%s\$]+\Z" % ('.' if _ else ""), retVal):  # MsSQL is the only DBMS where we automatically prepend schema to table name (dot is normal)
+            retVal = unsafeSQLIdentificatorNaming(retVal)
+
             if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS):
-                retVal = "`%s`" % retVal.strip("`")
+                retVal = "`%s`" % retVal
             elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.SQLITE, DBMS.INFORMIX, DBMS.HSQLDB):
-                retVal = "\"%s\"" % retVal.strip("\"")
+                retVal = "\"%s\"" % retVal
             elif Backend.getIdentifiedDbms() in (DBMS.ORACLE,):
-                retVal = "\"%s\"" % retVal.strip("\"").upper()
+                retVal = "\"%s\"" % retVal.upper()
             elif Backend.getIdentifiedDbms() in (DBMS.MSSQL, DBMS.SYBASE) and ((retVal or " ")[0].isdigit() or not re.match(r"\A\w+\Z", retVal, re.U)):
-                retVal = "[%s]" % retVal.strip("[]")
+                retVal = "[%s]" % retVal
 
         if _ and DEFAULT_MSSQL_SCHEMA not in retVal and '.' not in re.sub(r"\[[^]]+\]", "", retVal):
             retVal = "%s.%s" % (DEFAULT_MSSQL_SCHEMA, retVal)
@@ -3597,9 +3598,7 @@ def unsafeSQLIdentificatorNaming(name):
             retVal = name.replace("[", "").replace("]", "")
 
         if Backend.getIdentifiedDbms() in (DBMS.MSSQL, DBMS.SYBASE):
-            prefix = "%s." % DEFAULT_MSSQL_SCHEMA
-            if retVal.startswith(prefix):
-                retVal = retVal[len(prefix):]
+            retVal = re.sub(r"(?i)\A\[?%s\]?\." % DEFAULT_MSSQL_SCHEMA, "", retVal)
 
     return retVal
 

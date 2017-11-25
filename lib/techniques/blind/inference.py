@@ -461,18 +461,15 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
                     threadData = getCurrentThreadData()
 
                     while kb.threadContinue:
-                        kb.locks.index.acquire()
+                        with kb.locks.index:
+                            if threadData.shared.index[0] - firstChar >= length:
+                                return
 
-                        if threadData.shared.index[0] - firstChar >= length:
-                            kb.locks.index.release()
-                            return
-
-                        threadData.shared.index[0] += 1
-                        currentCharIndex = threadData.shared.index[0]
-                        kb.locks.index.release()
+                            threadData.shared.index[0] += 1
+                            currentCharIndex = threadData.shared.index[0]
 
                         if kb.threadContinue:
-                            charStart = time.time()
+                            start = time.time()
                             val = getChar(currentCharIndex, asciiTbl, not(charsetType is None and conf.charset))
                             if val is None:
                                 val = INFERENCE_UNKNOWN_CHAR
@@ -485,7 +482,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
 
                         if kb.threadContinue:
                             if showEta:
-                                progress.progress(time.time() - charStart, threadData.shared.index[0])
+                                progress.progress(calculateDeltaSeconds(start), threadData.shared.index[0])
                             elif conf.verbose >= 1:
                                 startCharIndex = 0
                                 endCharIndex = 0
@@ -553,7 +550,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
 
             while True:
                 index += 1
-                charStart = time.time()
+                start = time.time()
 
                 # Common prediction feature (a.k.a. "good samaritan")
                 # NOTE: to be used only when multi-threading is not set for
@@ -578,7 +575,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
                         # Did we have luck?
                         if result:
                             if showEta:
-                                progress.progress(time.time() - charStart, len(commonValue))
+                                progress.progress(calculateDeltaSeconds(start), len(commonValue))
                             elif conf.verbose in (1, 2) or conf.api:
                                 dataToStdout(filterControlChars(commonValue[index - 1:]))
 

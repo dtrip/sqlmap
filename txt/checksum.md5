@@ -46,7 +46,7 @@ e1c000db9be27f973569b1a430629037  lib/core/option.py
 760d9df2a27ded29109b390ab202e72d  lib/core/replication.py
 a2466b62e67f8b31736bac4dac590e51  lib/core/revision.py
 02d4762140a72fd44668d3dab5eabda9  lib/core/session.py
-e89b14c4721391f547a76476221beaa8  lib/core/settings.py
+d61f9cea6f98ad14a6ffda2319a67a6d  lib/core/settings.py
 35bffbad762eb9e03db9e93b1c991103  lib/core/shell.py
 a59ec28371ae067a6fdd8f810edbee3d  lib/core/subprocessng.py
 d5a04d672a18f78deb2839c3745ff83c  lib/core/target.py
@@ -392,7 +392,7 @@ ca3ab78d6ed53b7f2c07ed2530d47efd  udf/postgresql/windows/32/8.4/lib_postgresqlud
 58faaa04de90a44c306e862bbbe0ed83  waf/aws.py
 2347b494b91dc50d93d1437e1302f9f1  waf/baidu.py
 72fd38a1fa212fb154f74d0c978d489a  waf/barracuda.py
-02aa8b095f7fabd439a3afda0430ca84  waf/bigip.py
+5c55654a7611e767dd2be797716e2d75  waf/bigip.py
 5430f2a681071e894fa3c152eebf68e4  waf/binarysec.py
 2ce52bac62825acd4456817af6f10b14  waf/blockdos.py
 fe60962fc1d80e557b1d602fbe4934dc  waf/ciscoacexml.py
@@ -429,7 +429,7 @@ e353eb40d21be9e5ac6ea98f5c71a2f3  waf/radware.py
 de671bbe9acee86d5e3a66fd4126b4e3  waf/safedog.py
 b03fdbf8f427ab614303a03416970927  waf/secureiis.py
 877ea097e56abf01868945a00c2afdea  waf/senginx.py
-2c24d9e5c80ad51cb74f1c4b124d8974  waf/sitelock.py
+90f3c0c895d5d564b6614e25549b6355  waf/sitelock.py
 664f73359b87bfb684fb49df1e0b1fa4  waf/sonicwall.py
 b384581ce833d147690c7c77c9509bdc  waf/sophos.py
 e9127a67621440fba41e1cd176890851  waf/stingray.py
@@ -441,11 +441,13 @@ a4fca90afde376962f09ac10c965b6e7  waf/urlscan.py
 2952dadc49a810bde918ae70ca9bb042  waf/uspses.py
 e0e9afe5330645bcf63103cf7df6ef56  waf/varnish.py
 c6b044f4f29680e0767b36c893b9346b  waf/wallarm.py
+fe451f569a88c198adda6d22b39c9a4b  waf/watchguard.py
 dc78bd60735f4c2b2cfc05dc8b148a56  waf/webappsecure.py
 755709c2c28da8dc612ce0d277d8ba02  waf/webknight.py
 07ca74cd2e76310caacb709c5304999b  waf/wordfence.py
 d347378166b781e39569eaaa036268d5  waf/yundun.py
 c32f8c216fab0a0672f734a48da8d6ff  waf/yunsuo.py
+fd87445df19ad9e58b5ffff464bd7413  waf/zenedge.py
 e87d59af23b7b18cd56c9883e5f02d5c  xml/banner/generic.xml
 d8925c034263bf1b83e7d8e1c78eec57  xml/banner/mssql.xml
 b8b56f4aa34bf65365808919b97119a7  xml/banner/mysql.xml

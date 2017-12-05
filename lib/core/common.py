@@ -635,7 +635,7 @@ def paramToDict(place, parameters=None):
                                             elif isinstance(value, (bool, int, float, basestring)):
                                                 original = current[key]
                                                 if isinstance(value, bool):
-                                                    current[key] = "%s%s" % (str(value).lower(), BOUNDED_INJECTION_MARKER)
+                                                    current[key] = "%s%s" % (getUnicode(value).lower(), BOUNDED_INJECTION_MARKER)
                                                 else:
                                                     current[key] = "%s%s" % (value, BOUNDED_INJECTION_MARKER)
                                                 candidates["%s (%s)" % (parameter, key)] = re.sub(r"\b(%s\s*=\s*)%s" % (re.escape(parameter), re.escape(testableParameters[parameter])), r"\g<1>%s" % json.dumps(deserialized), parameters)
@@ -1676,32 +1676,32 @@ def getCharset(charsetType=None):
 
     # Binary
     elif charsetType == CHARSET_TYPE.BINARY:
-        asciiTbl.extend([0, 1])
+        asciiTbl.extend((0, 1))
         asciiTbl.extend(xrange(47, 50))
 
     # Digits
     elif charsetType == CHARSET_TYPE.DIGITS:
-        asciiTbl.extend([0, 9])
+        asciiTbl.extend((0, 9))
         asciiTbl.extend(xrange(47, 58))
 
     # Hexadecimal
     elif charsetType == CHARSET_TYPE.HEXADECIMAL:
-        asciiTbl.extend([0, 1])
+        asciiTbl.extend((0, 1))
         asciiTbl.extend(xrange(47, 58))
         asciiTbl.extend(xrange(64, 71))
-        asciiTbl.extend([87, 88])  # X
+        asciiTbl.extend((87, 88))  # X
         asciiTbl.extend(xrange(96, 103))
-        asciiTbl.extend([119, 120])  # x
+        asciiTbl.extend((119, 120))  # x
 
     # Characters
     elif charsetType == CHARSET_TYPE.ALPHA:
-        asciiTbl.extend([0, 1])
+        asciiTbl.extend((0, 1))
         asciiTbl.extend(xrange(64, 91))
         asciiTbl.extend(xrange(96, 123))
 
     # Characters and digits
     elif charsetType == CHARSET_TYPE.ALPHANUM:
-        asciiTbl.extend([0, 1])
+        asciiTbl.extend((0, 1))
         asciiTbl.extend(xrange(47, 58))
         asciiTbl.extend(xrange(64, 91))
         asciiTbl.extend(xrange(96, 123))
@@ -3455,7 +3455,7 @@ def removeReflectiveValues(content, payload, suppressWarning=False):
     retVal = content
 
     try:
-        if all([content, payload]) and isinstance(content, unicode) and kb.reflectiveMechanism and not kb.heuristicMode:
+        if all((content, payload)) and isinstance(content, unicode) and kb.reflectiveMechanism and not kb.heuristicMode:
             def _(value):
                 while 2 * REFLECTED_REPLACEMENT_REGEX in value:
                     value = value.replace(2 * REFLECTED_REPLACEMENT_REGEX, REFLECTED_REPLACEMENT_REGEX)
@@ -3880,6 +3880,8 @@ def isAdminFromPrivileges(privileges):
     Inspects privileges to see if those are coming from an admin user
     """
 
+    privileges = privileges or []
+
     # In PostgreSQL the usesuper privilege means that the
     # user is DBA
     retVal = (Backend.isDbms(DBMS.PGSQL) and "super" in privileges)
@@ -3930,18 +3932,20 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
     except (UnicodeError, ValueError):
         pass
     except ParseError:
-        if "<html" in (content or ""):
+        if re.search(r"(?i)<!DOCTYPE html|<html", content or ""):
             warnMsg = "badly formed HTML at the given URL ('%s'). Going to filter it" % url
             logger.warning(warnMsg)
             filtered = _("".join(re.findall(FORM_SEARCH_REGEX, content)), url)
-            try:
-                forms = ParseResponse(filtered, backwards_compat=False)
-            except ParseError:
-                errMsg = "no success"
-                if raise_:
-                    raise SqlmapGenericException(errMsg)
-                else:
-                    logger.debug(errMsg)
+
+            if filtered and filtered != content:
+                try:
+                    forms = ParseResponse(filtered, backwards_compat=False)
+                except ParseError:
+                    errMsg = "no success"
+                    if raise_:
+                        raise SqlmapGenericException(errMsg)
+                    else:
+                        logger.debug(errMsg)
 
     if forms:
         for form in forms:
@@ -4337,7 +4341,7 @@ def getRequestHeader(request, name):
 
     if request and name:
         _ = name.upper()
-        retVal = max([value if _ == key.upper() else None for key, value in request.header_items()])
+        retVal = max(value if _ == key.upper() else None for key, value in request.header_items())
 
     return retVal
 

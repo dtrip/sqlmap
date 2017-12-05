@@ -19,7 +19,7 @@ from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.1.11.39"
+VERSION = "1.1.12.6"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -91,7 +91,7 @@ TEXT_CONTENT_TYPE_REGEX = r"(?i)(text|form|message|xml|javascript|ecmascript|jso
 PERMISSION_DENIED_REGEX = r"(command|permission|access)\s*(was|is)?\s*denied"
 
 # Regular expression used for recognition of generic maximum connection messages
-MAX_CONNECTIONS_REGEX = r"max.+connections"
+MAX_CONNECTIONS_REGEX = r"\bmax.+?\bconnection"
 
 # Maximum consecutive connection errors before asking the user if he wants to continue
 MAX_CONSECUTIVE_CONNECTION_ERRORS = 15
@@ -305,6 +305,9 @@ BLANK = "<blank>"
 
 # String representation for current database
 CURRENT_DB = "CD"
+
+# Name of SQLite file used for storing session data
+SESSION_SQLITE_FILE = "session.sqlite"
 
 # Regular expressions used for finding file paths in error messages
 FILE_PATH_REGEXES = (r"<b>(?P<result>[^<>]+?)</b> on line \d+", r"(?P<result>[^<>'\"]+?)['\"]? on line \d+", r"(?:[>(\[\s])(?P<result>[A-Za-z]:[\\/][\w. \\/-]*)", r"(?:[>(\[\s])(?P<result>/\w[/\w.~-]+)", r"href=['\"]file://(?P<result>/[^'\"]+)")

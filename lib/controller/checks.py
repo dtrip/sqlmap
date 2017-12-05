@@ -43,6 +43,7 @@ from lib.core.common import readInput
 from lib.core.common import showStaticWords
 from lib.core.common import singleTimeLogMessage
 from lib.core.common import singleTimeWarnMessage
+from lib.core.common import unArrayizeValue
 from lib.core.common import urlencode
 from lib.core.common import wasLastResponseDBMSError
 from lib.core.common import wasLastResponseHTTPError
@@ -282,9 +283,9 @@ def checkSqlInjection(place, parameter, value):
                 # Skip DBMS-specific test if it does not match the
                 # previously identified DBMS (via DBMS-specific error message)
                 if kb.reduceTests and not intersect(payloadDbms, kb.reduceTests, True):
-                    debugMsg = "skipping test '%s' because the parsed " % title
-                    debugMsg += "error message(s) showed that the back-end DBMS "
-                    debugMsg += "could be %s" % Format.getErrorParsedDBMSes()
+                    debugMsg = "skipping test '%s' because the heuristic " % title
+                    debugMsg += "tests showed that the back-end DBMS "
+                    debugMsg += "could be '%s'" % unArrayizeValue(kb.reduceTests)
                     logger.debug(debugMsg)
                     continue
 
@@ -1053,13 +1054,13 @@ def heuristicCheckSqlInjection(place, parameter):
 
     if value.lower() in (page or "").lower():
         infoMsg = "heuristic (XSS) test shows that %s parameter " % paramType
-        infoMsg += "'%s' might be vulnerable to cross-site scripting attacks" % parameter
+        infoMsg += "'%s' might be vulnerable to cross-site scripting (XSS) attacks" % parameter
         logger.info(infoMsg)
 
     for match in re.finditer(FI_ERROR_REGEX, page or ""):
         if randStr1.lower() in match.group(0).lower():
             infoMsg = "heuristic (FI) test shows that %s parameter " % paramType
-            infoMsg += "'%s' might be vulnerable to file inclusion attacks" % parameter
+            infoMsg += "'%s' might be vulnerable to file inclusion (FI) attacks" % parameter
             logger.info(infoMsg)
             break
 

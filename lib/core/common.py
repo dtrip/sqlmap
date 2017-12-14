@@ -9,6 +9,7 @@ import codecs
 import contextlib
 import cookielib
 import copy
+import distutils
 import getpass
 import hashlib
 import httplib
@@ -1013,7 +1014,7 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
 
             dataToStdout("\r%s%s\n" % (message, options), forceOutput=True, bold=True)
 
-            debugMsg = "used the default behaviour, running in batch mode"
+            debugMsg = "used the default behavior, running in batch mode"
             logger.debug(debugMsg)
 
             retVal = default
@@ -1892,7 +1893,7 @@ def isWindowsDriveLetterPath(filepath):
 
 def posixToNtSlashes(filepath):
     """
-    Replaces all occurances of Posix slashes (/) in provided
+    Replaces all occurrences of Posix slashes (/) in provided
     filepath with NT ones (\)
 
     >>> posixToNtSlashes('C:/Windows')
@@ -1903,7 +1904,7 @@ def posixToNtSlashes(filepath):
 
 def ntToPosixSlashes(filepath):
     """
-    Replaces all occurances of NT slashes (\) in provided
+    Replaces all occurrences of NT slashes (\) in provided
     filepath with Posix ones (/)
 
     >>> ntToPosixSlashes('C:\\Windows')
@@ -2908,7 +2909,7 @@ def isDBMSVersionAtLeast(version):
             elif value.startswith(">"):
                 value = float(value.replace("<", "")) - 0.01
 
-        retVal = getUnicode(value) >= getUnicode(version)
+        retVal = distutils.version.LooseVersion(getUnicode(value)) >= distutils.version.LooseVersion(getUnicode(version))
 
     return retVal
 
@@ -3763,7 +3764,7 @@ def filterPairValues(values):
 
 def randomizeParameterValue(value):
     """
-    Randomize a parameter value based on occurances of alphanumeric characters
+    Randomize a parameter value based on occurrences of alphanumeric characters
 
     >>> random.seed(0)
     >>> randomizeParameterValue('foobar')
@@ -3808,7 +3809,7 @@ def randomizeParameterValue(value):
 @cachedmethod
 def asciifyUrl(url, forceQuote=False):
     """
-    Attempts to make a unicode URL usuable with ``urllib/urllib2``.
+    Attempts to make a unicode URL usable with ``urllib/urllib2``.
 
     More specifically, it attempts to convert the unicode object ``url``,
     which is meant to represent a IRI, to an unicode object that,
@@ -3873,7 +3874,7 @@ def asciifyUrl(url, forceQuote=False):
     if port:
         netloc += ':' + str(port)
 
-    return urlparse.urlunsplit([parts.scheme, netloc, path, query, parts.fragment])
+    return urlparse.urlunsplit([parts.scheme, netloc, path, query, parts.fragment]) or url
 
 def isAdminFromPrivileges(privileges):
     """

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -1048,7 +1048,7 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
     if boolean:
         retVal = retVal.strip().upper() == 'Y'
 
-    return retVal
+    return retVal or ""
 
 def randomRange(start=0, stop=1000, seed=None):
     """
@@ -2899,7 +2899,7 @@ def isDBMSVersionAtLeast(version):
 
         value = filterStringValue(value, '[0-9.><=]')
 
-        if isinstance(value, basestring):
+        if value and isinstance(value, basestring):
             if value.startswith(">="):
                 value = float(value.replace(">=", ""))
             elif value.startswith(">"):
@@ -2909,7 +2909,7 @@ def isDBMSVersionAtLeast(version):
             elif value.startswith(">"):
                 value = float(value.replace("<", "")) - 0.01
 
-        retVal = distutils.version.LooseVersion(getUnicode(value)) >= distutils.version.LooseVersion(getUnicode(version))
+            retVal = distutils.version.LooseVersion(getUnicode(value)) >= distutils.version.LooseVersion(getUnicode(version))
 
     return retVal
 
@@ -3849,7 +3849,7 @@ def asciifyUrl(url, forceQuote=False):
         # Triggers on non-ascii characters - another option would be:
         #     urllib.quote(s.replace('%', '')) != s.replace('%', '')
         # which would trigger on all %-characters, e.g. "&".
-        if s.encode("ascii", "replace") != s or forceQuote:
+        if getUnicode(s).encode("ascii", "replace") != s or forceQuote:
             return urllib.quote(s.encode(UNICODE_ENCODING), safe=safe)
         return s
 

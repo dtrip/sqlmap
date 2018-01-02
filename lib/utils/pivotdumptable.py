@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -27,6 +27,7 @@ from lib.core.enums import EXPECTED
 from lib.core.exception import SqlmapConnectionException
 from lib.core.exception import SqlmapNoneDataException
 from lib.core.settings import MAX_INT
+from lib.core.settings import NULL
 from lib.core.unescaper import unescaper
 from lib.request import inject
 
@@ -145,9 +146,10 @@ def pivotDumpTable(table, colList, count=None, blind=True):
                         except ValueError:
                             pass
 
-                    if isNoneValue(value):
+                    if isNoneValue(value) or value == NULL:
                         breakRetrieval = True
                         break
+
                     pivotValue = safechardecode(value)
 
                 if conf.limitStart or conf.limitStop:

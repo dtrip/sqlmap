@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2017 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -95,6 +95,9 @@ def exceptionHandledFunction(threadFunction, silent=False):
         if not silent:
             logger.error("thread %s: %s" % (threading.currentThread().getName(), ex.message))
 
+            if conf.verbose > 1:
+                traceback.print_exc()
+
 def setDaemon(thread):
     # Reference: http://stackoverflow.com/questions/190010/daemon-threads-explanation
     if PYVERSION >= "2.6":
@@ -184,6 +187,9 @@ def runThreads(numThreads, threadFunction, cleanupFunction=None, forwardExceptio
         print
         kb.threadException = True
         logger.error("thread %s: %s" % (threading.currentThread().getName(), ex.message))
+
+        if conf.verbose > 1:
+            traceback.print_exc()
 
     except:
         from lib.core.common import unhandledExceptionMessage

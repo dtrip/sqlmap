@@ -19,6 +19,7 @@ import locale
 import logging
 import ntpath
 import os
+import platform
 import posixpath
 import random
 import re
@@ -3289,7 +3290,7 @@ def unhandledExceptionMessage():
     errMsg += "and get back to you\n"
     errMsg += "sqlmap version: %s\n" % VERSION_STRING[VERSION_STRING.find('/') + 1:]
     errMsg += "Python version: %s\n" % PYVERSION
-    errMsg += "Operating system: %s\n" % PLATFORM
+    errMsg += "Operating system: %s\n" % platform.platform()
     errMsg += "Command line: %s\n" % re.sub(r".+?\bsqlmap\.py\b", "sqlmap.py", getUnicode(" ".join(sys.argv), encoding=sys.stdin.encoding))
     errMsg += "Technique: %s\n" % (enumValueToNameLookup(PAYLOAD.TECHNIQUE, kb.technique) if kb.get("technique") else ("DIRECT" if conf.get("direct") else None))
     errMsg += "Back-end DBMS:"
@@ -3562,7 +3563,7 @@ def safeSQLIdentificatorNaming(name, isTable=False):
         _ = isTable and Backend.getIdentifiedDbms() in (DBMS.MSSQL, DBMS.SYBASE)
 
         if _:
-            retVal = re.sub(r"(?i)\A\[?%s\]?\." % DEFAULT_MSSQL_SCHEMA, "", retVal)
+            retVal = re.sub(r"(?i)\A\[?%s\]?\." % DEFAULT_MSSQL_SCHEMA, "%s." % DEFAULT_MSSQL_SCHEMA, retVal)
 
         if retVal.upper() in kb.keywords or (retVal or " ")[0].isdigit() or not re.match(r"\A[A-Za-z0-9_@%s\$]+\Z" % ('.' if _ else ""), retVal):  # MsSQL is the only DBMS where we automatically prepend schema to table name (dot is normal)
             retVal = unsafeSQLIdentificatorNaming(retVal)
@@ -3573,8 +3574,12 @@ def safeSQLIdentificatorNaming(name, isTable=False):
                 retVal = "\"%s\"" % retVal
             elif Backend.getIdentifiedDbms() in (DBMS.ORACLE,):
                 retVal = "\"%s\"" % retVal.upper()
-            elif Backend.getIdentifiedDbms() in (DBMS.MSSQL, DBMS.SYBASE) and ((retVal or " ")[0].isdigit() or not re.match(r"\A\w+\Z", retVal, re.U)):
-                retVal = "[%s]" % retVal
+            elif Backend.getIdentifiedDbms() in (DBMS.MSSQL, DBMS.SYBASE):
+                parts = retVal.split('.', 1)
+                for i in xrange(len(parts)):
+                    if ((parts[i] or " ")[0].isdigit() or not re.match(r"\A\w+\Z", parts[i], re.U)):
+                        parts[i] = "[%s]" % parts[i]
+                retVal = '.'.join(parts)
 
         if _ and DEFAULT_MSSQL_SCHEMA not in retVal and '.' not in re.sub(r"\[[^]]+\]", "", retVal):
             retVal = "%s.%s" % (DEFAULT_MSSQL_SCHEMA, retVal)

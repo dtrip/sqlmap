@@ -54,7 +54,13 @@ class SQLAlchemy(GenericConnector):
                 if self.dialect:
                     conf.direct = conf.direct.replace(conf.dbms, self.dialect, 1)
 
-                engine = _sqlalchemy.create_engine(conf.direct, connect_args={"check_same_thread": False} if self.dialect == "sqlite" else {})
+                if self.dialect == "sqlite":
+                    engine = _sqlalchemy.create_engine(conf.direct, connect_args={"check_same_thread": False})
+                elif self.dialect == "oracle":
+                    engine = _sqlalchemy.create_engine(conf.direct, connect_args={"allow_twophase": False})
+                else:
+                    engine = _sqlalchemy.create_engine(conf.direct, connect_args={})
+
                 self.connector = engine.connect()
             except (TypeError, ValueError):
                 if "_get_server_version_info" in traceback.format_exc():

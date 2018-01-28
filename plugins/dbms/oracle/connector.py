@@ -12,6 +12,7 @@ except:
 
 import logging
 import os
+import re
 
 from lib.core.convert import utf8encode
 from lib.core.data import conf
@@ -42,7 +43,13 @@ class Connector(GenericConnector):
         try:
             self.connector = cx_Oracle.connect(dsn=self.__dsn, user=self.user, password=self.password, mode=cx_Oracle.SYSDBA)
             logger.info("successfully connected as SYSDBA")
-        except (cx_Oracle.OperationalError, cx_Oracle.DatabaseError, cx_Oracle.InterfaceError):
+        except (cx_Oracle.OperationalError, cx_Oracle.DatabaseError, cx_Oracle.InterfaceError), ex:
+            if "Oracle Client library" in str(ex):
+                msg = re.sub(r"DPI-\d+:\s+", "", str(ex))
+                msg = re.sub(r': ("[^"]+")', r" (\g<1>)", msg)
+                msg = re.sub(r". See (http[^ ]+)", r'. See "\g<1>"', msg)
+                raise SqlmapConnectionException(msg)
+
             try:
                 self.connector = cx_Oracle.connect(dsn=self.__dsn, user=self.user, password=self.password)
             except (cx_Oracle.OperationalError, cx_Oracle.DatabaseError, cx_Oracle.InterfaceError), msg:

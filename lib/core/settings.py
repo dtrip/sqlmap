@@ -19,7 +19,7 @@ from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.2.1.25"
+VERSION = "1.2.2.9"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -305,6 +305,10 @@ BASIC_HELP_ITEMS = (
     "wizard",
 )
 
+# Tags used for value replacements inside shell scripts
+SHELL_WRITABLE_DIR_TAG = "%WRITABLE_DIR%"
+SHELL_RUNCMD_EXE_TAG = "%RUNCMD_EXE%"
+
 # String representation for NULL value
 NULL = "NULL"
 
@@ -429,6 +433,9 @@ HASH_MOD_ITEM_DISPLAY = 11
 
 # Maximum integer value
 MAX_INT = sys.maxint
+
+# Replacement for unsafe characters in dump table filenames
+UNSAFE_DUMP_FILEPATH_REPLACEMENT = '_'
 
 # Options that need to be restored in multiple targets run mode
 RESTORE_MERGED_OPTIONS = ("col", "db", "dnsDomain", "privEsc", "tbl", "regexp", "string", "textOnly", "threads", "timeSec", "tmpPath", "uChar", "user")

@@ -5,10 +5,10 @@ Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
-import locale
 import os
 import re
 import subprocess
+import sys
 import time
 
 from lib.core.common import dataToStdout
@@ -20,6 +20,7 @@ from lib.core.data import paths
 from lib.core.revision import getRevisionNumber
 from lib.core.settings import GIT_REPOSITORY
 from lib.core.settings import IS_WIN
+from lib.core.settings import UNICODE_ENCODING
 
 def update():
     if not conf.updateAll:
@@ -42,7 +43,7 @@ def update():
         dataToStdout("\r[%s] [INFO] update in progress " % time.strftime("%X"))
 
         try:
-            process = subprocess.Popen("git checkout . && git pull %s HEAD" % GIT_REPOSITORY, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=paths.SQLMAP_ROOT_PATH.encode(locale.getpreferredencoding()))  # Reference: http://blog.stastnarodina.com/honza-en/spot/python-unicodeencodeerror/
+            process = subprocess.Popen("git checkout . && git pull %s HEAD" % GIT_REPOSITORY, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=paths.SQLMAP_ROOT_PATH.encode(sys.getfilesystemencoding() or UNICODE_ENCODING))
             pollProcess(process, True)
             stdout, stderr = process.communicate()
             success = not process.returncode

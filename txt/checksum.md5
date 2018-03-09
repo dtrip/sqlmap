@@ -25,7 +25,7 @@ a4605691d340fd05d4bfe7dde922da92  lib/controller/checks.py
 9fbd66da9b5cf58bbb8474ccf9252bb7  lib/controller/controller.py
 a7b0c8e5a18a3abe8803999dcfc4664f  lib/controller/handler.py
 1e5532ede194ac9c083891c2f02bca93  lib/controller/__init__.py
-e3a3f5218b2e52dd0afafdfc9fed2002  lib/core/agent.py
+052c368ae6ca09362a19376c8483fa85  lib/core/agent.py
 86a4703d5474badd8462146510b2c460  lib/core/bigarray.py
 863d9c00a7684db29005705d6dcc36b9  lib/core/common.py
 2a40d5b5997265daa890545d4a4a59b9  lib/core/convert.py
@@ -34,7 +34,7 @@ e3a3f5218b2e52dd0afafdfc9fed2002  lib/core/agent.py
 12e80071013606f01822c3823fb51054  lib/core/decorators.py
 9458679feb9184f3fb1611daf1ebef63  lib/core/defaults.py
 a8bea09096a42a9a7feeb9d4d118ae66  lib/core/dicts.py
-0d742fbf72bca25a3e82640616c30c9a  lib/core/dump.py
+9ea8a043030796e6faef7f7e957729d5  lib/core/dump.py
 c8551f7696a76450e6d139409e4f06cd  lib/core/enums.py
 cada93357a7321655927fc9625b3bfec  lib/core/exception.py
 1e5532ede194ac9c083891c2f02bca93  lib/core/__init__.py
@@ -46,10 +46,10 @@ ffa5f01f39b17c8d73423acca6cfe86a  lib/core/readlineng.py
 0c3eef46bdbf87e29a3f95f90240d192  lib/core/replication.py
 a7db43859b61569b601b97f187dd31c5  lib/core/revision.py
 fcb74fcc9577523524659ec49e2e964b  lib/core/session.py
-2826b47bfd9c3157039f7de0dba235ab  lib/core/settings.py
+3e4a8bea5a0f5b2f4e1fa0c0c5baf9ee  lib/core/settings.py
 d0adc28a38e43a787df4471f7f027413  lib/core/shell.py
 63491be462c515a1a3880c27c2acc4a2  lib/core/subprocessng.py
-505aaa61e1bba3c3d4567c3e667699e3  lib/core/target.py
+3cc852f927833895361973fbcfd156d2  lib/core/target.py
 72d499ca8d792e90a1ebfb2ad2341a51  lib/core/testing.py
 de9922a29c71a235cb95a916ff925db2  lib/core/threads.py
 c40758411bb0bd68764d78e0bb72bd0f  lib/core/unescaper.py
@@ -68,7 +68,7 @@ fb2e2f05dde98caeac6ccf3e67192177  lib/parse/configfile.py
 4e60fe7c94bbfa631087ed3426df8ef0  lib/request/basicauthhandler.py
 eb39d5cbd69a2238e2f4ea2fde183cdb  lib/request/basic.py
 c0cabedead14b8a23353b606672cff42  lib/request/comparison.py
-cbe4c7513501e8edbed9d5d3af9bdc1d  lib/request/connect.py
+f6a31eaa50907b724c25ead5a6fe7161  lib/request/connect.py
 dd4598675027fae99f2e2475b05986da  lib/request/direct.py
 2044fce3f4ffa268fcfaaf63241b1e64  lib/request/dns.py
 a1436e4e4f9b636cb8332f00b686bfd5  lib/request/httpshandler.py
@@ -97,7 +97,7 @@ b84d45fc7349caa714f9769b13d70cab  lib/techniques/blind/inference.py
 1e5532ede194ac9c083891c2f02bca93  lib/techniques/__init__.py
 1e5532ede194ac9c083891c2f02bca93  lib/techniques/union/__init__.py
 e58ab8029ffb2cc37e42d68747c4da39  lib/techniques/union/test.py
-6c3c4c7d43ad75e61a73184323a81eac  lib/techniques/union/use.py
+ac67ebbabd06bf9853befc65ad49679e  lib/techniques/union/use.py
 e4146464cf968d4015a52cb8c10e3da5  lib/utils/api.py
 37dfb641358669f62c2acedff241348b  lib/utils/brute.py
 a34c4fd2e7d78c5dfdd9eeccb079fb1c  lib/utils/crawler.py
@@ -364,8 +364,8 @@ a44e7cf30f2189b2fbdb635b310cdc0c  thirdparty/wininetpton/win_inet_pton.py
 593473084228b63a12318d812e50f1e2  thirdparty/xdot/xdot.py
 08c706478fad0acba049d0e32cbb6411  udf/mysql/linux/32/lib_mysqludf_sys.so_
 1501fa7150239b18acc0f4a9db2ebc0d  udf/mysql/linux/64/lib_mysqludf_sys.so_
-7824059e8fc87c4a565e774676e2f1eb  udf/mysql/windows/32/lib_mysqludf_sys.dll_
-7fed5b8e99e36ce255c64527ec61a995  udf/mysql/windows/64/lib_mysqludf_sys.dll_
+70d83edb90c4a20bd95eb62f71c99bd0  udf/mysql/windows/32/lib_mysqludf_sys.dll_
+15aaa93872ca87366065568375ad8eb1  udf/mysql/windows/64/lib_mysqludf_sys.dll_
 0ee1310d4e2a4cc5a7295df01a3a78bf  udf/postgresql/linux/32/8.2/lib_postgresqludf_sys.so_
 c7d9e1fcac5f047edf17d79a825fb64b  udf/postgresql/linux/32/8.3/lib_postgresqludf_sys.so_
 ec41a080f4570c3866b9a7219f7623c4  udf/postgresql/linux/32/8.4/lib_postgresqludf_sys.so_

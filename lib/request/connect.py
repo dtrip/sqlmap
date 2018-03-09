@@ -861,7 +861,9 @@ class Connect(object):
                             skip = True
 
                     if not skip:
-                        payload = urlencode(payload, '%', False, place != PLACE.URI)  # spaceplus is handled down below
+                        spaceplus = kb.postSpaceToPlus and place in (PLACE.POST, PLACE.CUSTOM_POST)
+                        value = urlencode(value, spaceplus=spaceplus)
+                        payload = urlencode(payload, safe='%', spaceplus=spaceplus)
                         value = agent.replacePayload(value, payload)
                         postUrlEncode = False
 
@@ -931,9 +933,9 @@ class Connect(object):
 
         if value and place == PLACE.CUSTOM_HEADER:
             if value.split(',')[0].capitalize() == PLACE.COOKIE:
-                cookie = value.split(',', 1)[1]
+                cookie = value.split(',', 1)[-1]
             else:
-                auxHeaders[value.split(',')[0]] = value.split(',', 1)[1]
+                auxHeaders[value.split(',')[0]] = value.split(',', 1)[-1]
 
         if conf.csrfToken:
             def _adjustParameter(paramString, parameter, newValue):
@@ -1038,7 +1040,7 @@ class Connect(object):
                             name = safeVariableNaming(name)
                         elif name in keywords:
                             name = "%s%s" % (name, EVALCODE_KEYWORD_SUFFIX)
-                        value = urldecode(value, convall=True, plusspace=(item==post and kb.postSpaceToPlus))
+                        value = urldecode(value, convall=True, spaceplus=(item==post and kb.postSpaceToPlus))
                         variables[name] = value
 
             if cookie:

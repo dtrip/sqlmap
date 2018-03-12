@@ -21,7 +21,7 @@ c88d66597f4aab719bde4542b0a1a6e0  extra/shutils/regressiontest.py
 1e5532ede194ac9c083891c2f02bca93  extra/sqlharvest/__init__.py
 b3e60ea4e18a65c48515d04aab28ff68  extra/sqlharvest/sqlharvest.py
 0f581182871148b0456a691ae85b04c0  lib/controller/action.py
-a4605691d340fd05d4bfe7dde922da92  lib/controller/checks.py
+e8533a8a406fe58cc610337639ed4bb1  lib/controller/checks.py
 9fbd66da9b5cf58bbb8474ccf9252bb7  lib/controller/controller.py
 a7b0c8e5a18a3abe8803999dcfc4664f  lib/controller/handler.py
 1e5532ede194ac9c083891c2f02bca93  lib/controller/__init__.py
@@ -46,7 +46,7 @@ ffa5f01f39b17c8d73423acca6cfe86a  lib/core/readlineng.py
 0c3eef46bdbf87e29a3f95f90240d192  lib/core/replication.py
 a7db43859b61569b601b97f187dd31c5  lib/core/revision.py
 fcb74fcc9577523524659ec49e2e964b  lib/core/session.py
-3e4a8bea5a0f5b2f4e1fa0c0c5baf9ee  lib/core/settings.py
+401efa6aae28b56f34420323ac4c2296  lib/core/settings.py
 d0adc28a38e43a787df4471f7f027413  lib/core/shell.py
 63491be462c515a1a3880c27c2acc4a2  lib/core/subprocessng.py
 3cc852f927833895361973fbcfd156d2  lib/core/target.py
@@ -68,7 +68,7 @@ fb2e2f05dde98caeac6ccf3e67192177  lib/parse/configfile.py
 4e60fe7c94bbfa631087ed3426df8ef0  lib/request/basicauthhandler.py
 eb39d5cbd69a2238e2f4ea2fde183cdb  lib/request/basic.py
 c0cabedead14b8a23353b606672cff42  lib/request/comparison.py
-f6a31eaa50907b724c25ead5a6fe7161  lib/request/connect.py
+9b31df4b00b1709948e7f0568d69d7de  lib/request/connect.py
 dd4598675027fae99f2e2475b05986da  lib/request/direct.py
 2044fce3f4ffa268fcfaaf63241b1e64  lib/request/dns.py
 a1436e4e4f9b636cb8332f00b686bfd5  lib/request/httpshandler.py
@@ -96,7 +96,7 @@ b84d45fc7349caa714f9769b13d70cab  lib/techniques/blind/inference.py
 627ddc86a5a969e5509c7531c5c27a6c  lib/techniques/error/use.py
 1e5532ede194ac9c083891c2f02bca93  lib/techniques/__init__.py
 1e5532ede194ac9c083891c2f02bca93  lib/techniques/union/__init__.py
-e58ab8029ffb2cc37e42d68747c4da39  lib/techniques/union/test.py
+da5a117fb64723e6c815b0e33d50f66a  lib/techniques/union/test.py
 ac67ebbabd06bf9853befc65ad49679e  lib/techniques/union/use.py
 e4146464cf968d4015a52cb8c10e3da5  lib/utils/api.py
 37dfb641358669f62c2acedff241348b  lib/utils/brute.py
@@ -140,7 +140,7 @@ c56f2dabe88fd761a1a9a51e4d104088  plugins/dbms/firebird/syntax.py
 61225f674e64bc6eafea140c4cf93deb  plugins/dbms/hsqldb/connector.py
 95919592e5bb83df00b99bb9e8a70977  plugins/dbms/hsqldb/enumeration.py
 616595e74ecb644271cbbd31815d92e0  plugins/dbms/hsqldb/filesystem.py
-b207e728934f768732852c1928c38483  plugins/dbms/hsqldb/fingerprint.py
+b7d693a6f5f39fee0a65f2d7b0830c5e  plugins/dbms/hsqldb/fingerprint.py
 fd369161778d6b48d7f1f7fc14dcdb5c  plugins/dbms/hsqldb/__init__.py
 4673ebfdce9859718c19e8a7765da8d3  plugins/dbms/hsqldb/syntax.py
 7c0535736215ca612756cf589adb249b  plugins/dbms/hsqldb/takeover.py
@@ -333,7 +333,7 @@ bcae4c645a737d3f0e7c96a66528ca4a  thirdparty/chardet/universaldetector.py
 ed4d76c08741d34ac79f6488663345f7  thirdparty/colorama/initialise.py
 c0707ca77ccb4a2c0f12b4085057193c  thirdparty/colorama/__init__.py
 ad3d022d4591aee80f7391248d722413  thirdparty/colorama/win32.py
-c690e140157d0caac5824c73688231b3  thirdparty/colorama/winterm.py
+cdd682cbf77137ef4253b77a95ed9bd8  thirdparty/colorama/winterm.py
 be7eac2e6cfb45c5e297ec5eee66e747  thirdparty/fcrypt/fcrypt.py
 e00542d22ffa8d8ac894c210f38454be  thirdparty/fcrypt/__init__.py
 2f94ddd6ada38e4091e819568e7c4b7c  thirdparty/gprof2dot/gprof2dot.py

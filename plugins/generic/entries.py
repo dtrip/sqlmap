@@ -105,6 +105,9 @@ class Entries:
             tblList[tblList.index(tbl)] = safeSQLIdentificatorNaming(tbl, True)
 
         for tbl in tblList:
+            if kb.dumpKeyboardInterrupt:
+                break
+
             if conf.exclude and tbl in conf.exclude.split(','):
                 infoMsg = "skipping table '%s'" % unsafeSQLIdentificatorNaming(tbl)
                 singleTimeLogMessage(infoMsg)
@@ -470,7 +473,7 @@ class Entries:
 
         if kb.data.cachedTables:
             if isinstance(kb.data.cachedTables, list):
-                kb.data.cachedTables = { None: kb.data.cachedTables }
+                kb.data.cachedTables = {None: kb.data.cachedTables}
 
             for db, tables in kb.data.cachedTables.items():
                 conf.db = db

@@ -19,7 +19,7 @@ from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.2.3.25"
+VERSION = "1.2.3.32"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -29,6 +29,7 @@ DEV_EMAIL_ADDRESS = "dev@sqlmap.org"
 ISSUES_PAGE = "https://github.com/sqlmapproject/sqlmap/issues/new"
 GIT_REPOSITORY = "https://github.com/dtrip/sqlmap.git"
 GIT_PAGE = "https://github.com/dtrip/sqlmap"
+ZIPBALL_PAGE = "https://github.com/dtrip/sqlmap/zipball/master"
 
 # colorful banner
 BANNER = """\033[01;33m
@@ -88,7 +89,7 @@ SELECT_FROM_TABLE_REGEX = r"\bSELECT\b.+?\bFROM\s+(?P<result>([\w.]|`[^`<>]+`)+)
 TEXT_CONTENT_TYPE_REGEX = r"(?i)(text|form|message|xml|javascript|ecmascript|json)"
 
 # Regular expression used for recognition of generic permission messages
-PERMISSION_DENIED_REGEX = r"(command|permission|access)\s*(was|is)?\s*denied"
+PERMISSION_DENIED_REGEX = r"(?P<result>(command|permission|access)\s*(was|is)?\s*denied)"
 
 # Regular expression used in recognition of generic protection mechanisms
 GENERIC_PROTECTION_REGEX = r"(?i)\b(rejected|blocked|protection|incident|denied|detected|dangerous|firewall)\b"
@@ -327,7 +328,7 @@ FILE_PATH_REGEXES = (r"<b>(?P<result>[^<>]+?)</b> on line \d+", r"in (?P<result>
 # Regular expressions used for parsing error messages (--parse-errors)
 ERROR_PARSING_REGEXES = (
     r"<b>[^<]*(fatal|error|warning|exception)[^<]*</b>:?\s*(?P<result>.+?)<br\s*/?\s*>",
-    r"(?m)^(fatal|error|warning|exception):?\s*(?P<result>[^\n]+?)$",
+    r"(?m)^\s*(fatal|error|warning|exception):?\s*(?P<result>[^\n]+?)$",
     r"(?P<result>[^\n>]*SQL Syntax[^\n<]+)",
     r"<li>Error Type:<br>(?P<result>.+?)</li>",
     r"CDbCommand (?P<result>[^<>\n]*SQL[^<>\n]+)",

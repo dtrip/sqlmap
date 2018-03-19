@@ -21,7 +21,7 @@ c88d66597f4aab719bde4542b0a1a6e0  extra/shutils/regressiontest.py
 1e5532ede194ac9c083891c2f02bca93  extra/sqlharvest/__init__.py
 b3e60ea4e18a65c48515d04aab28ff68  extra/sqlharvest/sqlharvest.py
 0f581182871148b0456a691ae85b04c0  lib/controller/action.py
-62a348c0ed32c7e67cd456680791cad5  lib/controller/checks.py
+e15cd43d7bd71d04990494d13897c490  lib/controller/checks.py
 33689bb1b064d4eebc216934795a595f  lib/controller/controller.py
 c7443613a0a2505b1faec931cee2a6ef  lib/controller/handler.py
 1e5532ede194ac9c083891c2f02bca93  lib/controller/__init__.py
@@ -46,11 +46,11 @@ ffa5f01f39b17c8d73423acca6cfe86a  lib/core/readlineng.py
 0c3eef46bdbf87e29a3f95f90240d192  lib/core/replication.py
 a7db43859b61569b601b97f187dd31c5  lib/core/revision.py
 fcb74fcc9577523524659ec49e2e964b  lib/core/session.py
-17745353e1c638259aca7f77cf2d34b8  lib/core/settings.py
+ad8c61259bd3a95c25c4b02d48bd3502  lib/core/settings.py
 0dfc2ed40adf72e302291f6ecd4406f6  lib/core/shell.py
 a7edc9250d13af36ac0108f259859c19  lib/core/subprocessng.py
 12f8c42ed742581644f6476a7d80dcf8  lib/core/target.py
-72d499ca8d792e90a1ebfb2ad2341a51  lib/core/testing.py
+a76f81b3e9e620b3e1d4bdea9160eef8  lib/core/testing.py
 de9922a29c71a235cb95a916ff925db2  lib/core/threads.py
 c40758411bb0bd68764d78e0bb72bd0f  lib/core/unescaper.py
 af2d1810b6a7ebc61689a53c253ddbaa  lib/core/update.py
@@ -68,7 +68,7 @@ ec4e56bbb1349176b2a22e0b99ba6a55  lib/parse/payloads.py
 30eed3a92a04ed2c29770e1b10d39dc0  lib/request/basicauthhandler.py
 53c38db67dd4b14fbceee71e4748f874  lib/request/basic.py
 c0cabedead14b8a23353b606672cff42  lib/request/comparison.py
-156376d6a08eb4bc0df31ee79f08820e  lib/request/connect.py
+b51c3f8b5cc65c6d7c81471577afd87d  lib/request/connect.py
 dd4598675027fae99f2e2475b05986da  lib/request/direct.py
 2044fce3f4ffa268fcfaaf63241b1e64  lib/request/dns.py
 eee965d781546d05f36cfd14af050913  lib/request/httpshandler.py

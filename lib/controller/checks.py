@@ -514,6 +514,10 @@ def checkSqlInjection(place, parameter, value):
                                             kb.matchRatio = _
                                             logger.debug("adjusting match ratio for current parameter to %.3f" % kb.matchRatio)
 
+                                    # Reducing false-positive "appears" messages in heavily dynamic environment
+                                    if kb.heavyDynamic and not Request.queryPage(reqPayload, place, raise404=False):
+                                        continue
+
                                     injectable = True
 
                                 elif threadData.lastComparisonRatio > UPPER_RATIO_BOUND and not any((conf.string, conf.notString, conf.regexp, conf.code, kb.nullConnection)):
@@ -1168,6 +1172,8 @@ def checkDynamicContent(firstPage, secondPage):
             warnMsg += "sqlmap is going to retry the request(s)"
             singleTimeLogMessage(warnMsg, logging.CRITICAL)
 
+            kb.heavyDynamic = True
+
             secondPage, _, _ = Request.queryPage(content=True)
             findDynamicContent(firstPage, secondPage)
 
@@ -1538,6 +1544,16 @@ def checkConnection(suppressOutput=False):
                 logger.warn(warnMsg)
         else:
             kb.errorIsNone = True
+
+
+        threadData = getCurrentThreadData()
+
+        if kb.redirectChoice == REDIRECTION.YES and threadData.lastRedirectURL and threadData.lastRedirectURL[0] == threadData.lastRequestUID:
+            if conf.hostname in (threadData.lastRedirectURL[1] or "") and threadData.lastRedirectURL[1].startswith("https://"):
+                conf.url = re.sub(r"https?://", "https://", conf.url)
+                match = re.search(r":(\d+)", threadData.lastRedirectURL[1])
+                port = match.group(1) if match else 443
+                conf.url = re.sub(r":\d+/", ":%s/" % port, conf.url)
 
     except SqlmapConnectionException, ex:
         if conf.ipv6:

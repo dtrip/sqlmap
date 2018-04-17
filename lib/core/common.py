@@ -1015,8 +1015,11 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
             elif answer is None and retVal:
                 retVal = "%s,%s" % (retVal, getUnicode(item, UNICODE_ENCODING))
 
+    if message and getattr(LOGGER_HANDLER, "is_tty", False):
+        message = "\r%s" % message
+
     if retVal:
-        dataToStdout("\r%s%s\n" % (message, retVal), forceOutput=not kb.wizardMode, bold=True)
+        dataToStdout("%s%s\n" % (message, retVal), forceOutput=not kb.wizardMode, bold=True)
 
         debugMsg = "used the given answer"
         logger.debug(debugMsg)
@@ -1030,7 +1033,7 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
             else:
                 options = unicode()
 
-            dataToStdout("\r%s%s\n" % (message, options), forceOutput=not kb.wizardMode, bold=True)
+            dataToStdout("%s%s\n" % (message, options), forceOutput=not kb.wizardMode, bold=True)
 
             debugMsg = "used the default behavior, running in batch mode"
             logger.debug(debugMsg)
@@ -1043,7 +1046,7 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
                 if conf.get("beep"):
                     beep()
 
-                dataToStdout("\r%s" % message, forceOutput=not kb.wizardMode, bold=True)
+                dataToStdout("%s" % message, forceOutput=not kb.wizardMode, bold=True)
                 kb.prependFlag = False
 
                 retVal = raw_input().strip() or default
@@ -1492,6 +1495,23 @@ def parseTargetUrl():
 
     if conf.url != originalUrl:
         kb.originalUrls[conf.url] = originalUrl
+
+def escapeJsonValue(value):
+    """
+    Escapes JSON value (used in payloads)
+
+    # Reference: https://stackoverflow.com/a/16652683
+    """
+
+    retVal = ""
+
+    for char in value:
+        if char < ' ' or char == '"':
+            retVal += json.dumps(char)[1:-1]
+        else:
+            retVal += char
+
+    return retVal
 
 def expandAsteriskForColumns(expression):
     """
@@ -3280,14 +3300,17 @@ def checkIntegrity():
     logger.debug("running code integrity check")
 
     retVal = True
-    for checksum, _ in (re.split(r'\s+', _) for _ in getFileItems(paths.CHECKSUM_MD5)):
-        path = os.path.normpath(os.path.join(paths.SQLMAP_ROOT_PATH, _))
-        if not os.path.isfile(path):
-            logger.error("missing file detected '%s'" % path)
-            retVal = False
-        elif md5File(path) != checksum:
-            logger.error("wrong checksum of file '%s' detected" % path)
-            retVal = False
+
+    if os.path.isfile(paths.CHECKSUM_MD5):
+        for checksum, _ in (re.split(r'\s+', _) for _ in getFileItems(paths.CHECKSUM_MD5)):
+            path = os.path.normpath(os.path.join(paths.SQLMAP_ROOT_PATH, _))
+            if not os.path.isfile(path):
+                logger.error("missing file detected '%s'" % path)
+                retVal = False
+            elif md5File(path) != checksum:
+                logger.error("wrong checksum of file '%s' detected" % path)
+                retVal = False
+
     return retVal
 
 def unhandledExceptionMessage():

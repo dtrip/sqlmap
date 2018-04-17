@@ -454,11 +454,13 @@ def checkSqlInjection(place, parameter, value):
                         boundPayload = agent.prefixQuery(fstPayload, prefix, where, clause)
                         boundPayload = agent.suffixQuery(boundPayload, comment, suffix, where)
                         reqPayload = agent.payload(place, parameter, newValue=boundPayload, where=where)
+
                         if reqPayload:
-                            if reqPayload in seenPayload:
+                            stripPayload = re.sub(r"(\A|\b|_)([A-Za-z]{4}((?<!LIKE))|\d+)(_|\b|\Z)", r"\g<1>.\g<4>", reqPayload)
+                            if stripPayload in seenPayload:
                                 continue
                             else:
-                                seenPayload.add(reqPayload)
+                                seenPayload.add(stripPayload)
                     else:
                         reqPayload = None
 
@@ -1359,7 +1361,7 @@ def checkWaf():
     conf.timeout = IDS_WAF_CHECK_TIMEOUT
 
     try:
-        retVal = Request.queryPage(place=place, value=value, getRatioValue=True, noteResponseTime=False, silent=True)[1] < IDS_WAF_CHECK_RATIO
+        retVal = Request.queryPage(place=place, value=value, getRatioValue=True, noteResponseTime=False, silent=True, disableTampering=True)[1] < IDS_WAF_CHECK_RATIO
     except SqlmapConnectionException:
         retVal = True
     finally:

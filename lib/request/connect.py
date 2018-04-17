@@ -34,6 +34,7 @@ from lib.core.common import calculateDeltaSeconds
 from lib.core.common import checkSameHost
 from lib.core.common import clearConsoleLine
 from lib.core.common import dataToStdout
+from lib.core.common import escapeJsonValue
 from lib.core.common import evaluateCode
 from lib.core.common import extractRegexResult
 from lib.core.common import findMultipartPostBoundary
@@ -770,7 +771,7 @@ class Connect(object):
 
     @staticmethod
     @stackedmethod
-    def queryPage(value=None, place=None, content=False, getRatioValue=False, silent=False, method=None, timeBasedCompare=False, noteResponseTime=True, auxHeaders=None, response=False, raise404=None, removeReflection=True):
+    def queryPage(value=None, place=None, content=False, getRatioValue=False, silent=False, method=None, timeBasedCompare=False, noteResponseTime=True, auxHeaders=None, response=False, raise404=None, removeReflection=True, disableTampering=False):
         """
         This method calls a function to get the target URL page content
         and returns its page ratio (0 <= ratio <= 1) or a boolean value
@@ -817,7 +818,7 @@ class Connect(object):
                 conf.httpHeaders.append((HTTP_HEADER.CONTENT_TYPE, contentType))
 
         if payload:
-            if kb.tamperFunctions:
+            if not disableTampering and kb.tamperFunctions:
                 for function in kb.tamperFunctions:
                     try:
                         payload = function(payload=payload, headers=auxHeaders)
@@ -841,16 +842,10 @@ class Connect(object):
                     # with their HTML encoded counterparts
                     payload = payload.replace('>', "&gt;").replace('<', "&lt;")
                 elif kb.postHint == POST_HINT.JSON:
-                    if payload.startswith('"') and payload.endswith('"'):
-                        payload = json.dumps(payload[1:-1])
-                    else:
-                        payload = json.dumps(payload)[1:-1]
+                    payload = escapeJsonValue(payload)
                 elif kb.postHint == POST_HINT.JSON_LIKE:
                     payload = payload.replace("'", REPLACEMENT_MARKER).replace('"', "'").replace(REPLACEMENT_MARKER, '"')
-                    if payload.startswith('"') and payload.endswith('"'):
-                        payload = json.dumps(payload[1:-1])
-                    else:
-                        payload = json.dumps(payload)[1:-1]
+                    payload = escapeJsonValue(payload)
                     payload = payload.replace("'", REPLACEMENT_MARKER).replace('"', "'").replace(REPLACEMENT_MARKER, '"')
                 value = agent.replacePayload(value, payload)
             else:

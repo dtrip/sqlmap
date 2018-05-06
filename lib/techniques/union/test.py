@@ -116,10 +116,10 @@ def _findUnionCharCount(comment, place, parameter, value, prefix, suffix, where=
             items.append((count, ratio))
 
         if not isNullValue(kb.uChar):
-            for regex in (kb.uChar, r'>\s*%s\s*<' % kb.uChar):
-                contains = tuple((count, re.search(regex, _ or "", re.IGNORECASE) is not None) for count, _ in pages.items())
-                if len(filter(lambda _: _[1], contains)) == 1:
-                    retVal = filter(lambda _: _[1], contains)[0][0]
+            for regex in (kb.uChar.strip("'"), r'>\s*%s\s*<' % kb.uChar.strip("'")):
+                contains = [count for count, content in pages.items() if re.search(regex, content or "", re.IGNORECASE) is not None]
+                if len(contains) == 1:
+                    retVal = contains[0]
                     break
 
         if not retVal:

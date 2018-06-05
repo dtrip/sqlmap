@@ -7,18 +7,16 @@ See the file 'LICENSE' for copying permission
 
 import re
 
+from lib.core.enums import HTTP_HEADER
 from lib.core.settings import WAF_ATTACK_VECTORS
 
-__product__ = "Anquanbao Web Application Firewall (Anquanbao)"
+__product__ = "Cloudbric Web Application Firewall (Cloudbric)"
 
 def detect(get_page):
     retval = False
 
     for vector in WAF_ATTACK_VECTORS:
         page, headers, code = get_page(get=vector)
-        retval = re.search(r"MISS", headers.get("X-Powered-By-Anquanbao", ""), re.I) is not None
-        retval |= code == 405 and any(_ in (page or "") for _ in ("/aqb_cc/error/", "hidden_intercept_time"))
-        if retval:
-            break
+        retval = code >= 400 and all(_ in (page or "") for _ in ("Cloudbric", "Malicious Code Detected"))
 
     return retval

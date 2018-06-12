@@ -159,6 +159,8 @@ class Task(object):
             self.process = Popen(["python", "sqlmap.py", "--api", "-c", configFile], shell=False, close_fds=not IS_WIN)
         elif os.path.exists(os.path.join(os.getcwd(), "sqlmap.py")):
             self.process = Popen(["python", "sqlmap.py", "--api", "-c", configFile], shell=False, cwd=os.getcwd(), close_fds=not IS_WIN)
+        elif os.path.exists(os.path.join(os.path.abspath(os.path.dirname(sys.argv[0])), "sqlmap.py")):
+            self.process = Popen(["python", "sqlmap.py", "--api", "-c", configFile], shell=False, cwd=os.path.join(os.path.abspath(os.path.dirname(sys.argv[0]))), close_fds=not IS_WIN)
         else:
             self.process = Popen(["sqlmap", "--api", "-c", configFile], shell=False, close_fds=not IS_WIN)
 
@@ -496,9 +498,7 @@ def scan_stop(taskid):
     Stop a scan
     """
 
-    if (taskid not in DataStore.tasks or
-            DataStore.tasks[taskid].engine_process() is None or
-            DataStore.tasks[taskid].engine_has_terminated()):
+    if (taskid not in DataStore.tasks or DataStore.tasks[taskid].engine_process() is None or DataStore.tasks[taskid].engine_has_terminated()):
         logger.warning("[%s] Invalid task ID provided to scan_stop()" % taskid)
         return jsonize({"success": False, "message": "Invalid task ID"})
 
@@ -513,9 +513,7 @@ def scan_kill(taskid):
     Kill a scan
     """
 
-    if (taskid not in DataStore.tasks or
-            DataStore.tasks[taskid].engine_process() is None or
-            DataStore.tasks[taskid].engine_has_terminated()):
+    if (taskid not in DataStore.tasks or DataStore.tasks[taskid].engine_process() is None or DataStore.tasks[taskid].engine_has_terminated()):
         logger.warning("[%s] Invalid task ID provided to scan_kill()" % taskid)
         return jsonize({"success": False, "message": "Invalid task ID"})
 

@@ -1317,7 +1317,7 @@ def parseTargetDirect():
     remote = False
 
     for dbms in SUPPORTED_DBMS:
-        details = re.search("^(?P<dbms>%s)://(?P<credentials>(?P<user>.+?)\:(?P<pass>.*)\@)?(?P<remote>(?P<hostname>[\w.-]+?)\:(?P<port>[\d]+)\/)?(?P<db>[\w\d\ \:\.\_\-\/\\\\]+?)$" % dbms, conf.direct, re.I)
+        details = re.search(r"^(?P<dbms>%s)://(?P<credentials>(?P<user>.+?)\:(?P<pass>.*)\@)?(?P<remote>(?P<hostname>[\w.-]+?)\:(?P<port>[\d]+)\/)?(?P<db>[\w\d\ \:\.\_\-\/\\]+?)$" % dbms, conf.direct, re.I)
 
         if details:
             conf.dbms = details.group("dbms")
@@ -1440,7 +1440,7 @@ def parseTargetUrl():
         errMsg += "in the hostname part"
         raise SqlmapGenericException(errMsg)
 
-    hostnamePort = urlSplit.netloc.split(":") if not re.search(r"\[.+\]", urlSplit.netloc) else filter(None, (re.search("\[.+\]", urlSplit.netloc).group(0), re.search(r"\](:(?P<port>\d+))?", urlSplit.netloc).group("port")))
+    hostnamePort = urlSplit.netloc.split(":") if not re.search(r"\[.+\]", urlSplit.netloc) else filter(None, (re.search(r"\[.+\]", urlSplit.netloc).group(0), re.search(r"\](:(?P<port>\d+))?", urlSplit.netloc).group("port")))
 
     conf.scheme = (urlSplit.scheme.strip().lower() or "http") if not conf.forceSSL else "https"
     conf.path = urlSplit.path.strip()
@@ -1866,8 +1866,7 @@ def getFilteredPageContent(page, onlyText=True, split=" "):
     # only if the page's charset has been successfully identified
     if isinstance(page, unicode):
         retVal = re.sub(r"(?si)<script.+?</script>|<!--.+?-->|<style.+?</style>%s" % (r"|<[^>]+>|\t|\n|\r" if onlyText else ""), split, page)
-        while retVal.find(2 * split) != -1:
-            retVal = retVal.replace(2 * split, split)
+        retVal = re.sub(r"%s{2,}" % split, split, retVal)
         retVal = htmlunescape(retVal.strip().strip(split))
 
     return retVal
@@ -3356,7 +3355,7 @@ def createGithubIssue(errMsg, excMsg):
 
     _ = re.sub(r"'[^']+'", "''", excMsg)
     _ = re.sub(r"\s+line \d+", "", _)
-    _ = re.sub(r'File ".+?/(\w+\.py)', "\g<1>", _)
+    _ = re.sub(r'File ".+?/(\w+\.py)', r"\g<1>", _)
     _ = re.sub(r".+\Z", "", _)
     key = hashlib.md5(_).hexdigest()[:8]
 
@@ -3523,6 +3522,7 @@ def removeReflectiveValues(content, payload, suppressWarning=False):
                         regex = r"%s\b" % regex
 
                     _retVal = [retVal]
+
                     def _thread(regex):
                         try:
                             _retVal[0] = re.sub(r"(?i)%s" % regex, REFLECTED_VALUE_MARKER, _retVal[0])
@@ -3958,6 +3958,7 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
         def __init__(self, content, url):
             StringIO.__init__(self, unicodeencode(content, kb.pageEncoding) if isinstance(content, unicode) else content)
             self._url = url
+
         def geturl(self):
             return self._url
 
@@ -4083,7 +4084,7 @@ def getHostHeader(url):
         retVal = urlparse.urlparse(url).netloc
 
         if re.search(r"http(s)?://\[.+\]", url, re.I):
-            retVal = extractRegexResult("http(s)?://\[(?P<result>.+)\]", url)
+            retVal = extractRegexResult(r"http(s)?://\[(?P<result>.+)\]", url)
         elif any(retVal.endswith(':%d' % _) for _ in (80, 443)):
             retVal = retVal.split(':')[0]
 
@@ -4340,7 +4341,7 @@ def resetCookieJar(cookieJar):
 
         except cookielib.LoadError, msg:
             errMsg = "there was a problem loading "
-            errMsg += "cookies file ('%s')" % re.sub(r"(cookies) file '[^']+'", "\g<1>", str(msg))
+            errMsg += "cookies file ('%s')" % re.sub(r"(cookies) file '[^']+'", r"\g<1>", str(msg))
             raise SqlmapGenericException(errMsg)
 
 def decloakToTemp(filename):
@@ -4386,7 +4387,7 @@ def getRequestHeader(request, name):
 
     retVal = None
 
-    if request and name:
+    if request and request.headers and name:
         _ = name.upper()
         retVal = max(value if _ == key.upper() else None for key, value in request.header_items())
 

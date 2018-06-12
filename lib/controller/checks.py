@@ -433,7 +433,7 @@ def checkSqlInjection(place, parameter, value):
 
                         if conf.invalidLogical:
                             _ = int(kb.data.randomInt[:2])
-                            origValue = "%s AND %s=%s" % (value, _, _ + 1)
+                            origValue = "%s AND %s LIKE %s" % (value, _, _ + 1)
                         elif conf.invalidBignum:
                             origValue = kb.data.randomInt[:6]
                         elif conf.invalidString:
@@ -558,14 +558,14 @@ def checkSqlInjection(place, parameter, value):
                                         logger.info(infoMsg)
                                     else:
                                         trueSet = set(extractTextTagContent(trueRawResponse))
-                                        trueSet = trueSet.union(__ for _ in trueSet for __ in _.split())
+                                        trueSet |= set(__ for _ in trueSet for __ in _.split())
 
                                         falseSet = set(extractTextTagContent(falseRawResponse))
-                                        falseSet = falseSet.union(__ for _ in falseSet for __ in _.split())
+                                        falseSet |= set(__ for _ in falseSet for __ in _.split())
 
                                         if threadData.lastErrorPage and threadData.lastErrorPage[1]:
                                             errorSet = set(extractTextTagContent(threadData.lastErrorPage[1]))
-                                            errorSet = errorSet.union(__ for _ in errorSet for __ in _.split())
+                                            errorSet |= set(__ for _ in errorSet for __ in _.split())
                                         else:
                                             errorSet = set()
 

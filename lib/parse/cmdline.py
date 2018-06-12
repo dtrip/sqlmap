@@ -253,13 +253,13 @@ def cmdLineParser(argv=None):
                              help="Regexp to exclude parameters from testing (e.g. \"ses\")")
 
         injection.add_option("--dbms", dest="dbms",
-                             help="Force back-end DBMS to this value")
+                             help="Force back-end DBMS to provided value")
 
         injection.add_option("--dbms-cred", dest="dbmsCred",
                              help="DBMS authentication credentials (user:password)")
 
         injection.add_option("--os", dest="os",
-                             help="Force back-end DBMS operating system to this value")
+                             help="Force back-end DBMS operating system to provided value")
 
         injection.add_option("--invalid-bignum", dest="invalidBignum", action="store_true",
                              help="Use big numbers for invalidating values")
@@ -400,7 +400,7 @@ def cmdLineParser(argv=None):
                                help="Search column(s), table(s) and/or database name(s)")
 
         enumeration.add_option("--comments", dest="getComments", action="store_true",
-                               help="Retrieve DBMS comments")
+                               help="Check for DBMS comments during enumeration")
 
         enumeration.add_option("-D", dest="db",
                                help="DBMS database to enumerate")
@@ -581,7 +581,7 @@ def cmdLineParser(argv=None):
                            help="Log all HTTP traffic into a HAR file")
 
         general.add_option("--hex", dest="hexConvert", action="store_true",
-                           help="Use DBMS hex function(s) for data retrieval")
+                           help="Use hex conversion during data retrieval")
 
         general.add_option("--output-dir", dest="outputDir", action="store",
                            help="Custom output directory path")

@@ -33,9 +33,10 @@ from lib.core.data import paths
 from lib.core.data import logger
 from lib.core.datatype import AttribDict
 from lib.core.defaults import _defaults
+from lib.core.dicts import PART_RUN_CONTENT_TYPES
+from lib.core.enums import AUTOCOMPLETE_TYPE
 from lib.core.enums import CONTENT_STATUS
 from lib.core.enums import MKSTEMP_PREFIX
-from lib.core.enums import PART_RUN_CONTENT_TYPES
 from lib.core.exception import SqlmapConnectionException
 from lib.core.log import LOGGER_HANDLER
 from lib.core.optiondict import optDict
@@ -43,6 +44,7 @@ from lib.core.settings import RESTAPI_DEFAULT_ADAPTER
 from lib.core.settings import IS_WIN
 from lib.core.settings import RESTAPI_DEFAULT_ADDRESS
 from lib.core.settings import RESTAPI_DEFAULT_PORT
+from lib.core.shell import autoCompletion
 from lib.core.subprocessng import Popen
 from lib.parse.cmdline import cmdLineParser
 from thirdparty.bottle.bottle import error as return_error
@@ -687,7 +689,7 @@ def server(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, adapter=REST
     except ImportError:
         if adapter.lower() not in server_names:
             errMsg = "Adapter '%s' is unknown. " % adapter
-            errMsg += "(Note: available adapters '%s')" % ', '.join(sorted(server_names.keys()))
+            errMsg += "List of supported adapters: %s" % ', '.join(sorted(server_names.keys()))
         else:
             errMsg = "Server support for adapter '%s' is not installed on this system " % adapter
             errMsg += "(Note: you can try to install it with 'sudo apt-get install python-%s' or 'sudo pip install %s')" % (adapter, adapter)
@@ -740,6 +742,9 @@ def client(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, username=Non
             errMsg += "(%s)" % ex
             logger.critical(errMsg)
             return
+
+    commands = ("help", "new", "use", "data", "log", "status", "option", "stop", "kill", "list", "flush", "exit", "bye", "quit")
+    autoCompletion(AUTOCOMPLETE_TYPE.API, commands=commands)
 
     taskid = None
     logger.info("Type 'help' or '?' for list of available commands")

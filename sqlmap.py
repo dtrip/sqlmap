@@ -57,6 +57,7 @@ try:
     from lib.core.exception import SqlmapUserQuitException
     from lib.core.option import initOptions
     from lib.core.option import init
+    from lib.core.patch import dirtyPatches
     from lib.core.settings import GIT_PAGE
     from lib.core.settings import IS_WIN
     from lib.core.settings import LEGAL_DISCLAIMER
@@ -114,6 +115,7 @@ def main():
     """
 
     try:
+        dirtyPatches()
         checkEnvironment()
         setPaths(modulePath())
         banner()
@@ -141,10 +143,7 @@ def main():
 
         if not conf.updateAll:
             # Postponed imports (faster start)
-            if conf.profile:
-                from lib.core.profiling import profile
-                profile()
-            elif conf.smokeTest:
+            if conf.smokeTest:
                 from lib.core.testing import smokeTest
                 smokeTest()
             elif conf.liveTest:
@@ -152,15 +151,20 @@ def main():
                 liveTest()
             else:
                 from lib.controller.controller import start
-                try:
-                    start()
-                except thread.error as ex:
-                    if "can't start new thread" in getSafeExString(ex):
-                        errMsg = "unable to start new threads. Please check OS (u)limits"
-                        logger.critical(errMsg)
-                        raise SystemExit
-                    else:
-                        raise
+                if conf.profile:
+                    from lib.core.profiling import profile
+                    globals()["start"] = start
+                    profile()
+                else:
+                    try:
+                        start()
+                    except thread.error as ex:
+                        if "can't start new thread" in getSafeExString(ex):
+                            errMsg = "unable to start new threads. Please check OS (u)limits"
+                            logger.critical(errMsg)
+                            raise SystemExit
+                        else:
+                            raise
 
     except SqlmapUserQuitException:
         errMsg = "user quit"

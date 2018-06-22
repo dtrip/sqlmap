@@ -109,7 +109,8 @@ optDict = {
         "uChar": "string",
         "uFrom": "string",
         "dnsDomain": "string",
-        "secondOrder": "string",
+        "secondUrl": "string",
+        "secondReq": "string",
     },
 
     "Fingerprint": {
@@ -228,7 +229,7 @@ optDict = {
         "identifyWaf": "boolean",
         "mobile": "boolean",
         "offline": "boolean",
-        "purgeOutput": "boolean",
+        "purge": "boolean",
         "skipWaf": "boolean",
         "smart": "boolean",
         "tmpDir": "string",

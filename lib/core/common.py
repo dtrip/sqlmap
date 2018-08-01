@@ -868,11 +868,11 @@ def boldifyMessage(message):
     retVal = message
 
     if any(_ in message for _ in BOLD_PATTERNS):
-        retVal = setColor(message, True)
+        retVal = setColor(message, bold=True)
 
     return retVal
 
-def setColor(message, bold=False):
+def setColor(message, color=None, bold=False):
     retVal = message
     level = extractRegexResult(r"\[(?P<result>%s)\]" % '|'.join(_[0] for _ in getPublicTypeMembers(LOGGING_LEVELS)), message) or kb.get("stickyLevel")
 
@@ -880,8 +880,8 @@ def setColor(message, bold=False):
         level = unicodeencode(level)
 
     if message and getattr(LOGGER_HANDLER, "is_tty", False):  # colorizing handler
-        if bold:
-            retVal = colored(message, color=None, on_color=None, attrs=("bold",))
+        if bold or color:
+            retVal = colored(message, color=color, on_color=None, attrs=("bold",) if bold else None)
         elif level:
             level = getattr(logging, level, None) if isinstance(level, basestring) else level
             retVal = LOGGER_HANDLER.colorize(message, level)
@@ -925,7 +925,7 @@ def dataToStdout(data, forceOutput=False, bold=False, content_type=None, status=
                 if conf.get("api"):
                     sys.stdout.write(message, status, content_type)
                 else:
-                    sys.stdout.write(setColor(message, bold))
+                    sys.stdout.write(setColor(message, bold=bold))
 
                 sys.stdout.flush()
             except IOError:
@@ -1297,7 +1297,7 @@ def setPaths(rootPath):
     paths.PGSQL_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "postgresql.xml")
 
     for path in paths.values():
-        if any(path.endswith(_) for _ in (".txt", ".xml", ".zip")):
+        if any(path.endswith(_) for _ in (".md5", ".txt", ".xml", ".zip")):
             checkFile(path)
 
 def weAreFrozen():
@@ -1427,7 +1427,7 @@ def parseTargetUrl():
         errMsg += "on this platform"
         raise SqlmapGenericException(errMsg)
 
-    if not re.search(r"^http[s]*://", conf.url, re.I) and not re.search(r"^ws[s]*://", conf.url, re.I):
+    if not re.search(r"^https?://", conf.url, re.I) and not re.search(r"^wss?://", conf.url, re.I):
         if re.search(r":443\b", conf.url):
             conf.url = "https://%s" % conf.url
         else:
@@ -1528,14 +1528,14 @@ def expandAsteriskForColumns(expression):
     the SQL query string (expression)
     """
 
-    asterisk = re.search(r"(?i)\ASELECT(\s+TOP\s+[\d]+)?\s+\*\s+FROM\s+`?([^`\s()]+)", expression)
+    match = re.search(r"(?i)\ASELECT(\s+TOP\s+[\d]+)?\s+\*\s+FROM\s+`?([^`\s()]+)", expression)
 
-    if asterisk:
+    if match:
         infoMsg = "you did not provide the fields in your query. "
         infoMsg += "sqlmap will retrieve the column names itself"
         logger.info(infoMsg)
 
-        _ = asterisk.group(2).replace("..", '.').replace(".dbo.", '.')
+        _ = match.group(2).replace("..", '.').replace(".dbo.", '.')
         db, conf.tbl = _.split('.', 1) if '.' in _ else (None, _)
 
         if db is None:
@@ -3454,7 +3454,7 @@ def maskSensitiveData(msg):
             retVal = retVal.replace(value, '*' * len(value))
 
     # Just in case (for problematic parameters regarding user encoding)
-    for match in re.finditer(r"(?i)[ -]-(u|url|data|cookie)( |=)(.*?)( -?-[a-z]|\Z)", retVal):
+    for match in re.finditer(r"(?i)[ -]-(u|url|data|cookie)( |=)(.*?)(?= -?-[a-z]|\Z)", retVal):
         retVal = retVal.replace(match.group(3), '*' * len(match.group(3)))
 
     if getpass.getuser():
@@ -4284,9 +4284,11 @@ def extractExpectedValue(value, expected):
                 value = value.strip().lower()
                 if value in ("true", "false"):
                     value = value == "true"
+                elif value in ('t', 'f'):
+                    value = value == 't'
                 elif value in ("1", "-1"):
                     value = True
-                elif value == "0":
+                elif value == '0':
                     value = False
                 else:
                     value = None
@@ -4700,3 +4702,13 @@ def safeVariableNaming(value):
 
 def unsafeVariableNaming(value):
     return re.sub(r"%s([0-9a-f]{2})" % SAFE_VARIABLE_MARKER, lambda match: match.group(1).decode("hex"), value)
+
+def firstNotNone(*args):
+    retVal = None
+
+    for _ in args:
+        if _ is not None:
+            retVal = _
+            break
+
+    return retVal

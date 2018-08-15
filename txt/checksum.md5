@@ -22,13 +22,13 @@ e4805169a081b834ca51a60a150c7247  extra/shutils/newlines.py
 1e5532ede194ac9c083891c2f02bca93  extra/sqlharvest/__init__.py
 b3e60ea4e18a65c48515d04aab28ff68  extra/sqlharvest/sqlharvest.py
 0f581182871148b0456a691ae85b04c0  lib/controller/action.py
-94872ce72dc2628cdedf2eb82cba716e  lib/controller/checks.py
+bc3800ec099df253968b3a7fc1ffce44  lib/controller/checks.py
 c414cecdb0472c92cf50ed5b01e4438c  lib/controller/controller.py
 c7443613a0a2505b1faec931cee2a6ef  lib/controller/handler.py
 1e5532ede194ac9c083891c2f02bca93  lib/controller/__init__.py
 0adf547455a76dc71e6a599e52da1ed9  lib/core/agent.py
 fd8f239e259afaf5f24bcf34a0ad187f  lib/core/bigarray.py
-ee1b800e860263b877a2b292a3e4becd  lib/core/common.py
+655326aed648209c5477464825cebea8  lib/core/common.py
 0d082da16c388b3445e656e0760fb582  lib/core/convert.py
 9f87391b6a3395f7f50830b391264f27  lib/core/data.py
 72016ea5c994a711a262fd64572a0fcd  lib/core/datatype.py
@@ -48,10 +48,10 @@ c8c386d644d57c659d74542f5f57f632  lib/core/patch.py
 0c3eef46bdbf87e29a3f95f90240d192  lib/core/replication.py
 a7db43859b61569b601b97f187dd31c5  lib/core/revision.py
 fcb74fcc9577523524659ec49e2e964b  lib/core/session.py
-b0c61c78049b4e342aeafd2fc85430fe  lib/core/settings.py
+588c1f076627097ed858094309961af9  lib/core/settings.py
 dd68a9d02fccb4fa1428b20e15b0db5d  lib/core/shell.py
 a7edc9250d13af36ac0108f259859c19  lib/core/subprocessng.py
-12bed9603b6fba3e5ffda11d584bc449  lib/core/target.py
+5b7ff6f49ff3af62f8c12f74b6d49dd2  lib/core/target.py
 72d499ca8d792e90a1ebfb2ad2341a51  lib/core/testing.py
 e896992e4db26605ab1e73615b1f9434  lib/core/threads.py
 c40758411bb0bd68764d78e0bb72bd0f  lib/core/unescaper.py
@@ -70,7 +70,7 @@ f2af274126ce0a789027d35d367f2b9e  lib/parse/payloads.py
 30eed3a92a04ed2c29770e1b10d39dc0  lib/request/basicauthhandler.py
 2b81435f5a7519298c15c724e3194a0d  lib/request/basic.py
 c0cabedead14b8a23353b606672cff42  lib/request/comparison.py
-039f0f7cf997856fa2f6e8d5d69f7ae9  lib/request/connect.py
+e284905d23658b85e94a5dd37bfb80b2  lib/request/connect.py
 dd4598675027fae99f2e2475b05986da  lib/request/direct.py
 2044fce3f4ffa268fcfaaf63241b1e64  lib/request/dns.py
 98535d0efca5551e712fcc4b34a3f772  lib/request/httpshandler.py
@@ -89,7 +89,7 @@ fb9e34d558293b5d6b9727f440712886  lib/takeover/registry.py
 48575dde7bb867b7937769f569a98309  lib/takeover/udf.py
 f6f835e4190a55e42d13c1e7ca3f728f  lib/takeover/web.py
 debc36a3ff80ba915aeeee69b21a8ddc  lib/takeover/xp_cmdshell.py
-0e9d37cbeabd1bbbfe2c53f01bbb6a6e  lib/techniques/blind/inference.py
+db208ab47de010836c6bf044e2357861  lib/techniques/blind/inference.py
 1e5532ede194ac9c083891c2f02bca93  lib/techniques/blind/__init__.py
 1e5532ede194ac9c083891c2f02bca93  lib/techniques/dns/__init__.py
 799faf9008527d2e9da9d923e50f685a  lib/techniques/dns/test.py
@@ -107,7 +107,7 @@ de9620f03231d8329ee8434884b6bacd  lib/utils/deps.py
 f7af65aa47329d021e2b2cc8521b42a4  lib/utils/getch.py
 7af29f61302c8693cd6436d4b69e22d3  lib/utils/har.py
 062e4e8fc43ac54305a75ddd0d482f81  lib/utils/hashdb.py
-4d5b2262ad495301706a4cf4c565abec  lib/utils/hash.py
+05dbc49838ca0454ce401ad616acf8c5  lib/utils/hash.py
 011d2dbf589e0faa0deca61a651239cc  lib/utils/htmlentities.py
 1e5532ede194ac9c083891c2f02bca93  lib/utils/__init__.py
 010d8327239d33af4ce9f25683cfc012  lib/utils/pivotdumptable.py
@@ -285,7 +285,7 @@ f2b9eac52d346315f5705f71beeda791  tamper/varnish.py
 0e40966a51d1eb5d42a2159d2015a8a4  tamper/versionedkeywords.py
 0fba004bf1be6edbefbda89f23f4e518  tamper/versionedmorekeywords.py
 de532c4e3160039335010c499129d54f  tamper/xforwardedfor.py
-b25b47ddeeb62e5857fd5ad17fd454b5  thirdparty/ansistrm/ansistrm.py
+3f6a3d322a4629d5bbd93f43ff8e59cc  thirdparty/ansistrm/ansistrm.py
 d41d8cd98f00b204e9800998ecf8427e  thirdparty/ansistrm/__init__.py
 8e775c25bc9e84891ad6fcb4f0005c23  thirdparty/beautifulsoup/beautifulsoup.py
 cb2e1fe7c404dff41a2ae9132828f532  thirdparty/beautifulsoup/__init__.py
@@ -402,11 +402,12 @@ ef722d062564def381b1f96f5faadee3  waf/baidu.py
 41e399dbfe7b904d5aacfb37d85e1fbf  waf/blockdos.py
 2f3bbf43be94d4e9ffe9f80e8483d62f  waf/ciscoacexml.py
 ba84f296cb52f5e78a0670b98d7763fa  waf/cloudbric.py
-21b8203fdaaaac3cb7c84fa4dc0627f6  waf/cloudflare.py
+feda0f2a5172325f39e8e3e38c45f73d  waf/cloudflare.py
 b16b1c15532103346d5e2f5b8bd1ed36  waf/cloudfront.py
 ac96f34c254951d301973617064eb1b5  waf/comodo.py
 56d58c982c2cf775e0f8dc6767f336fd  waf/datapower.py
 1538b661e35843074f4599be93b3fae9  waf/denyall.py
+0182d23b34cf903537f77f4ec4b144bf  waf/distil.py
 aade02eb8f6a4a214a53db0fd0f2aae6  waf/dosarrest.py
 357cbc0a17a44e4f64062b799c718e0b  waf/dotdefender.py
 7ec3f2a90914b501100685aa66aadf02  waf/edgecast.py
@@ -414,7 +415,7 @@ aade02eb8f6a4a214a53db0fd0f2aae6  waf/dosarrest.py
 a2ce6cde682f78e1fd561dc40611877e  waf/fortiweb.py
 eb56ac34775cc3c5f721ec967d04b283  waf/generic.py
 1c70655551b8296ceeb19292a342e620  waf/hyperguard.py
-525483047474e6f15d9898b525bdafd3  waf/incapsula.py
+2a52c09e4ce1f2a5976ce53b415ef496  waf/incapsula.py
 1e5532ede194ac9c083891c2f02bca93  waf/__init__.py
 30ae98958fb35061d9a4145cc74c0489  waf/isaserver.py
 5a5c9452b9779bf39c208ebe26c98fdb  waf/jiasule.py
@@ -430,6 +431,7 @@ ad7fe23004f8e0d02534c7baa877add3  waf/paloalto.py
 856e34d47fedfe96039a6a7807f9605a  waf/profense.py
 166eb53544536e3e86223d513b8b688d  waf/proventia.py
 78a40eca7ddd14c4eaf911de7748b487  waf/radware.py
+67864bf5e5a38cb27b5daf3581282f9e  waf/reblaze.py
 f5d53758d2008195609557112ce8e895  waf/requestvalidationmode.py
 acb82b21f4032ceb510a58142add02ab  waf/safe3.py
 67cdf508e7b1f69ddf622a87e0e5e4e8  waf/safedog.py
@@ -439,7 +441,7 @@ d1b67820442199181815ec3fce27e582  waf/secureiis.py
 b088cf83c1a681d143e7eaea43f52b80  waf/sonicwall.py
 4c412bc70007e6108d109e2911f2cefe  waf/sophos.py
 0e244e097a648158948dc8bb2351c781  waf/stingray.py
-d5a5cef222f0e27f47bec3c4228e255e  waf/sucuri.py
+9da254a2dfe22539c90bc1db0643489e  waf/sucuri.py
 46224e3fa4b819da227c50fd45155823  waf/tencent.py
 dffa9cebad777308714aaf83b71635b4  waf/teros.py
 b37210459a13de40bf07722c4d032c33  waf/trafficshield.py
@@ -465,7 +467,7 @@ d48c971769c6131e35bd52d2315a8d58  xml/banner/servlet-engine.xml
 d989813ee377252bca2103cea524c06b  xml/banner/sharepoint.xml
 350605448f049cd982554123a75f11e1  xml/banner/x-aspnet-version.xml
 817078783e1edaa492773d3b34d8eef0  xml/banner/x-powered-by.xml
-201b8bb7888f500294a9831bb47ce7a7  xml/boundaries.xml
+6debc049a8049b890ca109a731c60782  xml/boundaries.xml
 0d0d4bd0e06c99dd8eb4f92acc25caf3  xml/errors.xml
 a279656ea3fcb85c727249b02f828383  xml/livetests.xml
 3318571fac8df058f19ea85780606643  xml/payloads/boolean_blind.xml

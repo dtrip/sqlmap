@@ -7,15 +7,13 @@ See the file 'LICENSE' for copying permission
 
 from lib.core.settings import WAF_ATTACK_VECTORS
 
-__product__ = "Distil Web Application Firewall Security (Distil Networks)"
+__product__ = "CrawlProtect (Jean-Denis Brun)"
 
 def detect(get_page):
     retval = False
 
     for vector in WAF_ATTACK_VECTORS:
-        _, headers, _ = get_page(get=vector)
-        retval = headers.get("x-distil-cs") is not None
-        if retval:
-            break
+        page, _, code = get_page(get=vector)
+        retval = code >= 400 and "This site is protected by CrawlProtect" in (page or "")
 
     return retval

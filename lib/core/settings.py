@@ -19,7 +19,7 @@ from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.2.8.34"
+VERSION = "1.2.9.26"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -51,10 +51,10 @@ BANNER = """\033[01;33m
 DIFF_TOLERANCE = 0.05
 CONSTANT_RATIO = 0.9
 
-# Ratio used in heuristic check for WAF/IPS/IDS protected targets
+# Ratio used in heuristic check for WAF/IPS protected targets
 IDS_WAF_CHECK_RATIO = 0.5
 
-# Timeout used in heuristic check for WAF/IPS/IDS protected targets
+# Timeout used in heuristic check for WAF/IPS protected targets
 IDS_WAF_CHECK_TIMEOUT = 10
 
 # Lower and upper values for match ratio in case of stable page
@@ -102,6 +102,9 @@ MAX_CONSECUTIVE_CONNECTION_ERRORS = 15
 
 # Timeout before the pre-connection candidate is being disposed (because of high probability that the web server will reset it)
 PRECONNECT_CANDIDATE_TIMEOUT = 10
+
+# Servers known to cause issue with pre-connection mechanism (because of lack of multi-threaded support)
+PRECONNECT_INCOMPATIBLE_SERVERS = ("SimpleHTTP",)
 
 # Maximum sleep time in "Murphy" (testing) mode
 MAX_MURPHY_SLEEP_TIME = 3
@@ -327,6 +330,7 @@ FILE_PATH_REGEXES = (r"<b>(?P<result>[^<>]+?)</b> on line \d+", r"in (?P<result>
 
 # Regular expressions used for parsing error messages (--parse-errors)
 ERROR_PARSING_REGEXES = (
+    r"\[Microsoft\]\[ODBC SQL Server Driver\]\[SQL Server\](?P<result>[^<]+)",
     r"<b>[^<]*(fatal|error|warning|exception)[^<]*</b>:?\s*(?P<result>.+?)<br\s*/?\s*>",
     r"(?m)^\s*(fatal|error|warning|exception):?\s*(?P<result>[^\n]+?)$",
     r"(?P<result>[^\n>]*SQL Syntax[^\n<]+)",
@@ -432,6 +436,9 @@ DEFAULT_MSSQL_SCHEMA = "dbo"
 # Display hash attack info every mod number of items
 HASH_MOD_ITEM_DISPLAY = 11
 
+# Display marker for (cracked) empty password
+HASH_EMPTY_PASSWORD_MARKER = "<empty>"
+
 # Maximum integer value
 MAX_INT = sys.maxint
 
@@ -530,7 +537,7 @@ CHECK_INTERNET_ADDRESS = "https://ipinfo.io/"
 # Value to look for in response to CHECK_INTERNET_ADDRESS
 CHECK_INTERNET_VALUE = "IP Address Details"
 
-# Vectors used for provoking specific WAF/IPS/IDS behavior(s)
+# Vectors used for provoking specific WAF/IPS behavior(s)
 WAF_ATTACK_VECTORS = (
     "",  # NIL
     "search=<script>alert(1)</script>",
@@ -792,9 +799,9 @@ tr:nth-child(even) {
     background-color: #D3DFEE
 }
 td{
-    font-size:10px;
+    font-size:12px;
 }
 th{
-    font-size:10px;
+    font-size:12px;
 }
 </style>"""

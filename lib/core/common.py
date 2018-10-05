@@ -165,7 +165,6 @@ from lib.core.settings import URI_QUESTION_MARKER
 from lib.core.settings import URLENCODE_CHAR_LIMIT
 from lib.core.settings import URLENCODE_FAILSAFE_CHARS
 from lib.core.settings import USER_AGENT_ALIASES
-from lib.core.settings import VERSION
 from lib.core.settings import VERSION_STRING
 from lib.core.settings import WEBSCARAB_SPLITTER
 from lib.core.threads import getCurrentThreadData
@@ -900,7 +899,7 @@ def clearColors(message):
 
     retVal = message
 
-    if message:
+    if isinstance(message, str):
         retVal = re.sub(r"\x1b\[[\d;]+m", "", message)
 
     return retVal
@@ -924,7 +923,7 @@ def dataToStdout(data, forceOutput=False, bold=False, content_type=None, status=
 
             try:
                 if conf.get("api"):
-                    sys.stdout.write(message, status, content_type)
+                    sys.stdout.write(clearColors(message), status, content_type)
                 else:
                     sys.stdout.write(setColor(message, bold=bold))
 
@@ -1199,7 +1198,7 @@ def banner():
     This function prints sqlmap banner with its version
     """
 
-    if not any(_ in sys.argv for _ in ("--version", "--api")):
+    if not any(_ in sys.argv for _ in ("--version", "--api")) and not conf.get("disableBanner"):
         _ = BANNER
 
         if not getattr(LOGGER_HANDLER, "is_tty", False) or "--disable-coloring" in sys.argv:
@@ -3371,7 +3370,7 @@ def getLatestRevision():
     """
     Retrieves latest revision from the offical repository
 
-    >>> getLatestRevision() == VERSION
+    >>> from lib.core.settings import VERSION; getLatestRevision() == VERSION
     True
     """
 
@@ -4728,6 +4727,8 @@ def getSafeExString(ex, encoding=None):
         retVal = ex.message
     elif getattr(ex, "msg", None):
         retVal = ex.msg
+    elif isinstance(ex, (list, tuple)) and len(ex) > 1 and isinstance(ex[1], basestring):
+        retVal = ex[1]
 
     return getUnicode(retVal or "", encoding=encoding).strip()
 

@@ -438,7 +438,7 @@ class Databases:
                 raise SqlmapNoneDataException(errMsg)
 
         elif conf.db is not None:
-            if Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2, DBMS.HSQLDB):
+            if Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2, DBMS.HSQLDB, DBMS.H2):
                 conf.db = conf.db.upper()
 
             if ',' in conf.db:
@@ -465,7 +465,7 @@ class Databases:
         colList = filter(None, colList)
 
         if conf.tbl:
-            if Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2, DBMS.HSQLDB):
+            if Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2, DBMS.HSQLDB, DBMS.H2):
                 conf.tbl = conf.tbl.upper()
 
             tblList = conf.tbl.split(',')
@@ -569,7 +569,7 @@ class Databases:
                     condQueryStr = "%%s%s" % colCondParam
                     condQuery = " AND (%s)" % " OR ".join(condQueryStr % (condition, unsafeSQLIdentificatorNaming(col)) for col in sorted(colList))
 
-                if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB):
+                if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB, DBMS.H2):
                     query = rootQuery.inband.query % (unsafeSQLIdentificatorNaming(tbl), unsafeSQLIdentificatorNaming(conf.db))
                     query += condQuery
                 elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2):
@@ -697,7 +697,7 @@ class Databases:
                     condQueryStr = "%%s%s" % colCondParam
                     condQuery = " AND (%s)" % " OR ".join(condQueryStr % (condition, unsafeSQLIdentificatorNaming(col)) for col in sorted(colList))
 
-                if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB):
+                if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB, DBMS.H2):
                     query = rootQuery.blind.count % (unsafeSQLIdentificatorNaming(tbl), unsafeSQLIdentificatorNaming(conf.db))
                     query += condQuery
 
@@ -761,6 +761,10 @@ class Databases:
                         query = rootQuery.blind.query % (unsafeSQLIdentificatorNaming(tbl), unsafeSQLIdentificatorNaming(conf.db))
                         query += condQuery
                         field = None
+                    elif Backend.isDbms(DBMS.H2):
+                        query = rootQuery.blind.query % (unsafeSQLIdentificatorNaming(tbl), unsafeSQLIdentificatorNaming(conf.db))
+                        query = query.replace(" ORDER BY ", "%s ORDER BY " % condQuery)
+                        field = None
                     elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2):
                         query = rootQuery.blind.query % (unsafeSQLIdentificatorNaming(tbl.upper()), unsafeSQLIdentificatorNaming(conf.db.upper()))
                         query += condQuery
@@ -800,7 +804,7 @@ class Databases:
                                 singleTimeWarnMessage(warnMsg)
 
                         if not onlyColNames:
-                            if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL):
+                            if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB, DBMS.H2):
                                 query = rootQuery.blind.query2 % (unsafeSQLIdentificatorNaming(tbl), column, unsafeSQLIdentificatorNaming(conf.db))
                             elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2):
                                 query = rootQuery.blind.query2 % (unsafeSQLIdentificatorNaming(tbl.upper()), column, unsafeSQLIdentificatorNaming(conf.db.upper()))

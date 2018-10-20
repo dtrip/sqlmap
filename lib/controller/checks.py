@@ -89,6 +89,7 @@ from lib.core.settings import IDS_WAF_CHECK_TIMEOUT
 from lib.core.settings import MAX_DIFFLIB_SEQUENCE_LENGTH
 from lib.core.settings import NON_SQLI_CHECK_PREFIX_SUFFIX_LENGTH
 from lib.core.settings import PRECONNECT_INCOMPATIBLE_SERVERS
+from lib.core.settings import SINGLE_QUOTE_MARKER
 from lib.core.settings import SLEEP_TIME_MARKER
 from lib.core.settings import SUHOSIN_MAX_VALUE_LENGTH
 from lib.core.settings import SUPPORTED_DBMS
@@ -859,8 +860,8 @@ def heuristicCheckDbms(injection):
         if conf.noEscape and dbms not in FROM_DUMMY_TABLE:
             continue
 
-        if checkBooleanExpression("(SELECT '%s'%s)='%s'" % (randStr1, FROM_DUMMY_TABLE.get(dbms, ""), randStr1)):
-            if not checkBooleanExpression("(SELECT '%s'%s)='%s'" % (randStr1, FROM_DUMMY_TABLE.get(dbms, ""), randStr2)):
+        if checkBooleanExpression("(SELECT '%s'%s)=%s%s%s" % (randStr1, FROM_DUMMY_TABLE.get(dbms, ""), SINGLE_QUOTE_MARKER, randStr1, SINGLE_QUOTE_MARKER)):
+            if not checkBooleanExpression("(SELECT '%s'%s)=%s%s%s" % (randStr1, FROM_DUMMY_TABLE.get(dbms, ""), SINGLE_QUOTE_MARKER, randStr2, SINGLE_QUOTE_MARKER)):
                 retVal = dbms
                 break
 
@@ -1116,14 +1117,6 @@ def checkDynParam(place, parameter, value):
     try:
         payload = agent.payload(place, parameter, value, getUnicode(randInt))
         dynResult = Request.queryPage(payload, place, raise404=False)
-
-        if not dynResult:
-            infoMsg = "confirming that %s parameter '%s' is dynamic" % (paramType, parameter)
-            logger.info(infoMsg)
-
-            randInt = randomInt()
-            payload = agent.payload(place, parameter, value, getUnicode(randInt))
-            dynResult = Request.queryPage(payload, place, raise404=False)
     except SqlmapConnectionException:
         pass
 

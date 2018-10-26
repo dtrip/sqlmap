@@ -37,7 +37,7 @@ ce7fb7270b104f05d1e2be088b69c976  lib/core/common.py
 fbb55cc6100318ff922957b6577dc58f  lib/core/defaults.py
 ac7c070b2726d39fbac1916b1a5f92b2  lib/core/dicts.py
 760de985e09f5d11aacd3a8f2d8e9ff2  lib/core/dump.py
-ee7da34f4947739778a07d6c9c05ab54  lib/core/enums.py
+0cf974cf4ff3b96e1a349a12e39f4693  lib/core/enums.py
 cada93357a7321655927fc9625b3bfec  lib/core/exception.py
 1e5532ede194ac9c083891c2f02bca93  lib/core/__init__.py
 458a194764805cd8312c14ecd4be4d1e  lib/core/log.py
@@ -49,7 +49,7 @@ c8c386d644d57c659d74542f5f57f632  lib/core/patch.py
 0c3eef46bdbf87e29a3f95f90240d192  lib/core/replication.py
 a7db43859b61569b601b97f187dd31c5  lib/core/revision.py
 fcb74fcc9577523524659ec49e2e964b  lib/core/session.py
-72fce2cc366c9008550703643f8a6cc7  lib/core/settings.py
+0114b3012ea0ce300cf6ea339e8d54ef  lib/core/settings.py
 dd68a9d02fccb4fa1428b20e15b0db5d  lib/core/shell.py
 a7edc9250d13af36ac0108f259859c19  lib/core/subprocessng.py
 47ad325975ab21fc9f11d90b46d0d143  lib/core/target.py
@@ -71,7 +71,7 @@ f6b5957bf2103c3999891e4f45180bce  lib/parse/payloads.py
 30eed3a92a04ed2c29770e1b10d39dc0  lib/request/basicauthhandler.py
 2b81435f5a7519298c15c724e3194a0d  lib/request/basic.py
 859b6ad583e0ffba154f17ee179b5b89  lib/request/comparison.py
-35db2a1779b9c71dfa183ac1f8995a5b  lib/request/connect.py
+0363fb0b3e58467ff5c915d1d85dfd3e  lib/request/connect.py
 dd4598675027fae99f2e2475b05986da  lib/request/direct.py
 2044fce3f4ffa268fcfaaf63241b1e64  lib/request/dns.py
 98535d0efca5551e712fcc4b34a3f772  lib/request/httpshandler.py
@@ -234,7 +234,7 @@ ec2ba8c757ac96425dcd2b97970edd3a  shell/stagers/stager.asp_
 0c48ddb1feb7e38a951ef05a0d48e032  shell/stagers/stager.jsp_
 2f9e459a4cf6a58680978cdce5ff7971  shell/stagers/stager.php_
 cd90da0474d7b1a67d7b40d208493375  sqlmapapi.py
-d94547672ec6dbc4c2adffbf62bd36d4  sqlmap.py
+b84c70803012a374385ecc3e41a7e0dc  sqlmap.py
 523dab9e1093eb59264c6beb366b255a  tamper/0x2char.py
 3a1697585ae4e7bf315e9dda97d6f321  tamper/apostrophemask.py
 d7a119a74be9b385ee3884fb5e6af041  tamper/apostrophenullencode.py
@@ -261,6 +261,7 @@ ef0639557a79e57b06296c4bc223ebef  tamper/htmlencode.py
 1e5532ede194ac9c083891c2f02bca93  tamper/__init__.py
 2dc49bcd6c55f4e2322b07fa92685356  tamper/least.py
 40d1ea0796fd91cb3cdd602e36daed15  tamper/lowercase.py
+a54b361da0ac6988d0b97bc79463615d  tamper/luanginx.py
 1c4d622d1c2c77fc3db1f8b3849467ee  tamper/modsecurityversioned.py
 f177a624c2cd3431c433769c6eb995e7  tamper/modsecurityzeroversioned.py
 91b63afdb96b1d51c12a14cbd425d310  tamper/multiplespaces.py
@@ -476,7 +477,7 @@ d989813ee377252bca2103cea524c06b  xml/banner/sharepoint.xml
 350605448f049cd982554123a75f11e1  xml/banner/x-aspnet-version.xml
 ccb5e02a692f75d11b7fd00f1db48bf5  xml/banner/x-powered-by.xml
 385570003bf7d84f2502191eae8268c6  xml/boundaries.xml
-6cffc395cd0280f5c1a84542da6642e5  xml/errors.xml
+a676d93d413b07d36495201d88671253  xml/errors.xml
 a279656ea3fcb85c727249b02f828383  xml/livetests.xml
 11547289b99eaced5b55185a3230529a  xml/payloads/boolean_blind.xml
 0656ba4132cd02477be90e65a7ddf6ce  xml/payloads/error_based.xml

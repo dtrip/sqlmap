@@ -3481,6 +3481,9 @@ def maskSensitiveData(msg):
     for match in re.finditer(r"(?i)[ -]-(u|url|data|cookie)( |=)(.*?)(?= -?-[a-z]|\Z)", retVal):
         retVal = retVal.replace(match.group(3), '*' * len(match.group(3)))
 
+    # Fail-safe substitution
+    retVal = re.sub(r"(?i)\bhttps?://[^ ]+", lambda match: '*' * len(match.group(0)), retVal)
+
     if getpass.getuser():
         retVal = re.sub(r"(?i)\b%s\b" % re.escape(getpass.getuser()), '*' * len(getpass.getuser()), retVal)
 
@@ -3542,7 +3545,7 @@ def removeReflectiveValues(content, payload, suppressWarning=False):
                 return value
 
             payload = getUnicode(urldecode(payload.replace(PAYLOAD_DELIMITER, ""), convall=True))
-            regex = _(filterStringValue(payload, r"[A-Za-z0-9]", REFLECTED_REPLACEMENT_REGEX.encode("string-escape")))
+            regex = _(filterStringValue(payload, r"[A-Za-z0-9]", REFLECTED_REPLACEMENT_REGEX.encode("string_escape")))
 
             if regex != payload:
                 if all(part.lower() in content.lower() for part in filter(None, regex.split(REFLECTED_REPLACEMENT_REGEX))[1:]):  # fast optimization check

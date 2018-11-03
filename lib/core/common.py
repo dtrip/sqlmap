@@ -645,7 +645,7 @@ def paramToDict(place, parameters=None):
                                                     current[key] = "%s%s" % (getUnicode(value).lower(), BOUNDED_INJECTION_MARKER)
                                                 else:
                                                     current[key] = "%s%s" % (value, BOUNDED_INJECTION_MARKER)
-                                                candidates["%s (%s)" % (parameter, key)] = re.sub(r"\b(%s\s*=\s*)%s" % (re.escape(parameter), re.escape(testableParameters[parameter])), r"\g<1>%s" % json.dumps(deserialized), parameters)
+                                                candidates["%s (%s)" % (parameter, key)] = re.sub(r"\b(%s\s*=\s*)%s" % (re.escape(parameter), re.escape(testableParameters[parameter])), r"\g<1>%s" % json.dumps(deserialized, separators=(',', ':') if ", " not in testableParameters[parameter] else None), parameters)
                                                 current[key] = original
 
                                 deserialized = json.loads(testableParameters[parameter])
@@ -1407,8 +1407,10 @@ def parseTargetDirect():
                     __import__("pyodbc")
                 elif dbmsName == DBMS.FIREBIRD:
                     __import__("kinterbasdb")
+            except (SqlmapSyntaxException, SqlmapMissingDependence):
+                raise
             except:
-                if _sqlalchemy and data[3] in _sqlalchemy.dialects.__all__:
+                if _sqlalchemy and data[3] and any(_ in _sqlalchemy.dialects.__all__ for _ in (data[3], data[3].split('+')[0])):
                     pass
                 else:
                     errMsg = "sqlmap requires '%s' third-party library " % data[1]

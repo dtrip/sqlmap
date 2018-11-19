@@ -49,7 +49,7 @@ c8c386d644d57c659d74542f5f57f632  lib/core/patch.py
 0c3eef46bdbf87e29a3f95f90240d192  lib/core/replication.py
 a7db43859b61569b601b97f187dd31c5  lib/core/revision.py
 fcb74fcc9577523524659ec49e2e964b  lib/core/session.py
-2ec7d2bc8a0e0c387488c41c0cd44f51  lib/core/settings.py
+a30083ca6c21379bc31b931dca5b3464  lib/core/settings.py
 a971ce157d04de96ba6e710d3d38a9a8  lib/core/shell.py
 a7edc9250d13af36ac0108f259859c19  lib/core/subprocessng.py
 721198b5be72c8015a02acb116532a1f  lib/core/target.py
@@ -101,7 +101,7 @@ db208ab47de010836c6bf044e2357861  lib/techniques/blind/inference.py
 1e5532ede194ac9c083891c2f02bca93  lib/techniques/union/__init__.py
 f7813cdee00df8f98d6f811475e520a1  lib/techniques/union/test.py
 7361338240ecd9d01d1d10ec76bce069  lib/techniques/union/use.py
-77ff35587af9e3dfde63b8327e230f9a  lib/utils/api.py
+038ec99105c59acc2b1c6cb90e9e4043  lib/utils/api.py
 37dfb641358669f62c2acedff241348b  lib/utils/brute.py
 31b1e7eb489eac837db6a2bc1dcb7da7  lib/utils/crawler.py
 f9867bbfcd6d31916ca73e72e95fd881  lib/utils/deps.py
@@ -223,7 +223,7 @@ f7874230e5661910d5fd21544c7d1022  plugins/generic/misc.py
 30b421f06dc98998ddc1923a9048b7fc  plugins/generic/search.py
 a70cc0ada4b0cc9e7df23cb6d48a4a0c  plugins/generic/syntax.py
 a37c21cc3fa5c0c220d33d450bf503ed  plugins/generic/takeover.py
-e762c77ff79e4c138145501f6fbb10cb  plugins/generic/users.py
+1265241e309da72bb82c3863a4c1b4bd  plugins/generic/users.py
 1e5532ede194ac9c083891c2f02bca93  plugins/__init__.py
 5dc693e22f5d020c5c568d7325bd4226  shell/backdoors/backdoor.asp_
 158bfa168128393dde8d6ed11fe9a1b8  shell/backdoors/backdoor.aspx_
@@ -270,7 +270,7 @@ a3a3cef042b864c4226b63f89548f939  tamper/overlongutf8.py
 89f8753a0ef65d2bb860c8864e9e935a  tamper/percentage.py
 a47aafcbc1de2deb85160e29de46f748  tamper/plus2concat.py
 759b86cf3bb1d7871dc6489538253f94  tamper/plus2fnconcat.py
-078494e1217400b485ef653108d32699  tamper/randomcase.py
+b9db4cc9fc4e0a586198340d1268fdaf  tamper/randomcase.py
 28626e4b8c673228dcfe4f1627a9e08b  tamper/randomcomments.py
 cac8a56f8cc6c14524ee392daa5ae2fd  tamper/space2comment.py
 4e6da2aca962b6110652e5f83dce5cd7  tamper/space2dash.py

@@ -89,6 +89,7 @@ from lib.core.settings import BOUNDARY_BACKSLASH_MARKER
 from lib.core.settings import DEFAULT_CONTENT_TYPE
 from lib.core.settings import DEFAULT_COOKIE_DELIMITER
 from lib.core.settings import DEFAULT_GET_POST_DELIMITER
+from lib.core.settings import DEFAULT_USER_AGENT
 from lib.core.settings import EVALCODE_KEYWORD_SUFFIX
 from lib.core.settings import HTTP_ACCEPT_HEADER_VALUE
 from lib.core.settings import HTTP_ACCEPT_ENCODING_HEADER_VALUE
@@ -361,14 +362,21 @@ class Connect(object):
             if kb.proxyAuthHeader:
                 headers[HTTP_HEADER.PROXY_AUTHORIZATION] = kb.proxyAuthHeader
 
-            if not getHeader(headers, HTTP_HEADER.ACCEPT):
-                headers[HTTP_HEADER.ACCEPT] = HTTP_ACCEPT_HEADER_VALUE
+            if not conf.requestFile or not target:
+                if not getHeader(headers, HTTP_HEADER.HOST):
+                    headers[HTTP_HEADER.HOST] = getHostHeader(url)
 
-            if not getHeader(headers, HTTP_HEADER.HOST) or not target:
-                headers[HTTP_HEADER.HOST] = getHostHeader(url)
+                if not getHeader(headers, HTTP_HEADER.ACCEPT):
+                    headers[HTTP_HEADER.ACCEPT] = HTTP_ACCEPT_HEADER_VALUE
 
-            if not getHeader(headers, HTTP_HEADER.ACCEPT_ENCODING):
-                headers[HTTP_HEADER.ACCEPT_ENCODING] = HTTP_ACCEPT_ENCODING_HEADER_VALUE if kb.pageCompress else "identity"
+                if not getHeader(headers, HTTP_HEADER.ACCEPT_ENCODING):
+                    headers[HTTP_HEADER.ACCEPT_ENCODING] = HTTP_ACCEPT_ENCODING_HEADER_VALUE if kb.pageCompress else "identity"
+
+            elif conf.requestFile and getHeader(headers, HTTP_HEADER.USER_AGENT) == DEFAULT_USER_AGENT:
+                for header in headers:
+                    if header.upper() == HTTP_HEADER.USER_AGENT.upper():
+                        del headers[header]
+                        break
 
             if post is not None and not multipart and not getHeader(headers, HTTP_HEADER.CONTENT_TYPE):
                 headers[HTTP_HEADER.CONTENT_TYPE] = POST_HINT_CONTENT_TYPES.get(kb.postHint, DEFAULT_CONTENT_TYPE)
@@ -384,10 +392,6 @@ class Connect(object):
 
             if conf.keepAlive:
                 headers[HTTP_HEADER.CONNECTION] = "keep-alive"
-
-            # Reset header values to original in case of provided request file
-            if target and conf.requestFile:
-                headers = forgeHeaders({HTTP_HEADER.COOKIE: cookie})
 
             if auxHeaders:
                 headers = forgeHeaders(auxHeaders, headers)
@@ -866,10 +870,10 @@ class Connect(object):
                 value = agent.replacePayload(value, payload)
             else:
                 # GET, POST, URI and Cookie payload needs to be thoroughly URL encoded
-                if (place in (PLACE.GET, PLACE.URI, PLACE.COOKIE) or place == PLACE.CUSTOM_HEADER and value.split(',')[0] == HTTP_HEADER.COOKIE) and not conf.skipUrlEncode or place in (PLACE.POST, PLACE.CUSTOM_POST) and postUrlEncode:
+                if (place in (PLACE.GET, PLACE.URI, PLACE.COOKIE) or place == PLACE.CUSTOM_HEADER and value.split(',')[0].upper() == HTTP_HEADER.COOKIE.upper()) and not conf.skipUrlEncode or place in (PLACE.POST, PLACE.CUSTOM_POST) and postUrlEncode:
                     skip = False
 
-                    if place == PLACE.COOKIE or place == PLACE.CUSTOM_HEADER and value.split(',')[0] == HTTP_HEADER.COOKIE:
+                    if place == PLACE.COOKIE or place == PLACE.CUSTOM_HEADER and value.split(',')[0].upper() == HTTP_HEADER.COOKIE.upper():
                         if kb.cookieEncodeChoice is None:
                             msg = "do you want to URL encode cookie values (implementation specific)? %s" % ("[Y/n]" if not conf.url.endswith(".aspx") else "[y/N]")  # Reference: https://support.microsoft.com/en-us/kb/313282
                             kb.cookieEncodeChoice = readInput(msg, default='Y' if not conf.url.endswith(".aspx") else 'N', boolean=True)

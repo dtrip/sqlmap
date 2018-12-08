@@ -70,6 +70,7 @@ from lib.core.enums import PAYLOAD
 from lib.core.enums import PLACE
 from lib.core.enums import REDIRECTION
 from lib.core.exception import SqlmapConnectionException
+from lib.core.exception import SqlmapDataException
 from lib.core.exception import SqlmapNoneDataException
 from lib.core.exception import SqlmapSilentQuitException
 from lib.core.exception import SqlmapSkipTargetException
@@ -1534,6 +1535,10 @@ def checkConnection(suppressOutput=False):
                 errMsg = "problem occurred while "
                 errMsg += "resolving a host name '%s' ('%s')" % (conf.hostname, getSafeExString(ex))
                 raise SqlmapConnectionException(errMsg)
+            except UnicodeError, ex:
+                errMsg = "problem occurred while "
+                errMsg += "handling a host name '%s' ('%s')" % (conf.hostname, getSafeExString(ex))
+                raise SqlmapDataException(errMsg)
 
     if not suppressOutput and not conf.dummy and not conf.offline:
         infoMsg = "testing connection to the target URL"

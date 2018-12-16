@@ -600,7 +600,7 @@ def paramToDict(place, parameters=None):
 
             if condition:
                 testableParameters[parameter] = "=".join(parts[1:])
-                if not conf.multipleTargets and not (conf.csrfToken and parameter == conf.csrfToken):
+                if not conf.multipleTargets and not (conf.csrfToken and re.search(conf.csrfToken, parameter, re.I)):
                     _ = urldecode(testableParameters[parameter], convall=True)
                     if (_.endswith("'") and _.count("'") == 1 or re.search(r'\A9{3,}', _) or re.search(r'\A-\d+\Z', _) or re.search(DUMMY_USER_INJECTION, _)) and not parameter.upper().startswith(GOOGLE_ANALYTICS_COOKIE_PREFIX):
                         warnMsg = "it appears that you have provided tainted parameter values "
@@ -996,11 +996,6 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
 
     retVal = None
     kb.stickyLevel = None
-
-    if kb.lastInputMessage == message:
-        checkBatch = False
-    else:
-        kb.lastInputMessage = message
 
     message = getUnicode(message)
 
@@ -3514,9 +3509,9 @@ def listToStrValue(value):
 
     return retVal
 
-def intersect(valueA, valueB, lowerCase=False):
+def intersect(containerA, containerB, lowerCase=False):
     """
-    Returns intersection of the array-ized values
+    Returns intersection of the container-ized values
 
     >>> intersect([1, 2, 3], set([1,3]))
     [1, 3]
@@ -3524,15 +3519,15 @@ def intersect(valueA, valueB, lowerCase=False):
 
     retVal = []
 
-    if valueA and valueB:
-        valueA = arrayizeValue(valueA)
-        valueB = arrayizeValue(valueB)
+    if containerA and containerB:
+        containerA = arrayizeValue(containerA)
+        containerB = arrayizeValue(containerB)
 
         if lowerCase:
-            valueA = [val.lower() if isinstance(val, basestring) else val for val in valueA]
-            valueB = [val.lower() if isinstance(val, basestring) else val for val in valueB]
+            containerA = [val.lower() if isinstance(val, basestring) else val for val in containerA]
+            containerB = [val.lower() if isinstance(val, basestring) else val for val in containerB]
 
-        retVal = [val for val in valueA if val in valueB]
+        retVal = [val for val in containerA if val in containerB]
 
     return retVal
 
@@ -4121,7 +4116,12 @@ def checkSameHost(*urls):
     elif len(urls) == 1:
         return True
     else:
-        return all(re.sub(r"(?i)\Awww\.", "", urlparse.urlparse(url or "").netloc.split(':')[0]) == re.sub(r"(?i)\Awww\.", "", urlparse.urlparse(urls[0] or "").netloc.split(':')[0]) for url in urls[1:])
+        def _(value):
+            if value and not re.search(r"\A\w+://", value):
+                value = "http://%s" % value
+            return value
+
+        return all(re.sub(r"(?i)\Awww\.", "", urlparse.urlparse(_(url) or "").netloc.split(':')[0]) == re.sub(r"(?i)\Awww\.", "", urlparse.urlparse(_(urls[0]) or "").netloc.split(':')[0]) for url in urls[1:])
 
 def getHostHeader(url):
     """

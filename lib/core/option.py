@@ -1511,6 +1511,8 @@ def _cleanupOptions():
 
     if conf.url:
         conf.url = conf.url.strip()
+        if not re.search(r"\A\w+://", conf.url):
+            conf.url = "http://%s" % conf.url
 
     if conf.fileRead:
         conf.fileRead = ntToPosixSlashes(normalizePath(conf.fileRead))
@@ -1559,6 +1561,23 @@ def _cleanupOptions():
             re.compile(conf.testFilter)
         except re.error:
             conf.testFilter = re.escape(conf.testFilter)
+
+    if conf.csrfToken:
+        original = conf.csrfToken
+        try:
+            re.compile(conf.csrfToken)
+
+            if re.escape(conf.csrfToken) != conf.csrfToken:
+                message = "provided value for option '--csrf-token' is a regular expression? [Y/n] "
+                if not readInput(message, default='Y', boolean=True):
+                    conf.csrfToken = re.escape(conf.csrfToken)
+        except re.error:
+            conf.csrfToken = re.escape(conf.csrfToken)
+        finally:
+            class _(unicode):
+                pass
+            conf.csrfToken = _(conf.csrfToken)
+            conf.csrfToken._original = original
 
     if conf.testSkip:
         conf.testSkip = conf.testSkip.strip('*+')
@@ -1792,7 +1811,6 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.injection = InjectionDict()
     kb.injections = []
     kb.laggingChecked = False
-    kb.lastInputMessage = None
     kb.lastParserStatus = None
 
     kb.locks = AttribDict()

@@ -3659,11 +3659,15 @@ def safeSQLIdentificatorNaming(name, isTable=False):
             elif Backend.getIdentifiedDbms() in (DBMS.ORACLE,):
                 retVal = "\"%s\"" % retVal.upper()
             elif Backend.getIdentifiedDbms() in (DBMS.MSSQL, DBMS.SYBASE):
-                parts = retVal.split('.', 1)
-                for i in xrange(len(parts)):
-                    if ((parts[i] or " ")[0].isdigit() or not re.match(r"\A\w+\Z", parts[i], re.U)):
-                        parts[i] = "[%s]" % parts[i]
-                retVal = '.'.join(parts)
+                if isTable:
+                    parts = retVal.split('.', 1)
+                    for i in xrange(len(parts)):
+                        if parts[i] and (re.search(r"\A\d|[^\w]", parts[i], re.U) or parts[i].upper() in kb.keywords):
+                            parts[i] = "[%s]" % parts[i]
+                    retVal = '.'.join(parts)
+                else:
+                    if re.search(r"\A\d|[^\w]", retVal, re.U) or retVal.upper() in kb.keywords:
+                        retVal = "[%s]" % retVal
 
         if _ and DEFAULT_MSSQL_SCHEMA not in retVal and '.' not in re.sub(r"\[[^]]+\]", "", retVal):
             retVal = "%s.%s" % (DEFAULT_MSSQL_SCHEMA, retVal)
@@ -4343,19 +4347,23 @@ def hashDBWrite(key, value, serialize=False):
     Helper function for writing session data to HashDB
     """
 
-    _ = '|'.join((str(_) if not isinstance(_, basestring) else _) for _ in (conf.hostname, conf.path.strip('/') if conf.path is not None else conf.port, key, HASHDB_MILESTONE_VALUE))
-    conf.hashDB.write(_, value, serialize)
+    if conf.hashDB:
+        _ = '|'.join((str(_) if not isinstance(_, basestring) else _) for _ in (conf.hostname, conf.path.strip('/') if conf.path is not None else conf.port, key, HASHDB_MILESTONE_VALUE))
+        conf.hashDB.write(_, value, serialize)
 
 def hashDBRetrieve(key, unserialize=False, checkConf=False):
     """
     Helper function for restoring session data from HashDB
     """
 
-    _ = '|'.join((str(_) if not isinstance(_, basestring) else _) for _ in (conf.hostname, conf.path.strip('/') if conf.path is not None else conf.port, key, HASHDB_MILESTONE_VALUE))
-    retVal = conf.hashDB.retrieve(_, unserialize) if kb.resumeValues and not (checkConf and any((conf.flushSession, conf.freshQueries))) else None
+    retVal = None
 
-    if not kb.inferenceMode and not kb.fileReadMode and isinstance(retVal, basestring) and any(_ in retVal for _ in (PARTIAL_VALUE_MARKER, PARTIAL_HEX_VALUE_MARKER)):
-        retVal = None
+    if conf.hashDB:
+        _ = '|'.join((str(_) if not isinstance(_, basestring) else _) for _ in (conf.hostname, conf.path.strip('/') if conf.path is not None else conf.port, key, HASHDB_MILESTONE_VALUE))
+        retVal = conf.hashDB.retrieve(_, unserialize) if kb.resumeValues and not (checkConf and any((conf.flushSession, conf.freshQueries))) else None
+
+        if not kb.inferenceMode and not kb.fileReadMode and isinstance(retVal, basestring) and any(_ in retVal for _ in (PARTIAL_VALUE_MARKER, PARTIAL_HEX_VALUE_MARKER)):
+            retVal = None
 
     return retVal
 

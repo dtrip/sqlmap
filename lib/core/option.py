@@ -893,6 +893,12 @@ def _setSocketPreConnect():
                         family, type, proto, address = key
                         s = socket.socket(family, type, proto)
                         s._connect(address)
+                        try:
+                            if type == socket.SOCK_STREAM:
+                                # Reference: https://www.techrepublic.com/article/tcp-ip-options-for-high-performance-data-transmission/
+                                s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                        except:
+                            pass
                         with kb.locks.socket:
                             socket._ready[key].append((s._sock, time.time()))
             except KeyboardInterrupt:
@@ -2429,6 +2435,10 @@ def _basicOptionValidation():
 
     if conf.uChar and not re.match(UNION_CHAR_REGEX, conf.uChar):
         errMsg = "value for option '--union-char' must be an alpha-numeric value (e.g. 1)"
+        raise SqlmapSyntaxException(errMsg)
+
+    if conf.hashFile and any((conf.direct, conf.url, conf.logFile, conf.bulkFile, conf.googleDork, conf.configFile, conf.requestFile, conf.updateAll, conf.smokeTest, conf.liveTest, conf.wizard, conf.dependencies, conf.purge, conf.sitemapUrl, conf.listTampers)):
+        errMsg = "option '--crack' should be used as a standalone"
         raise SqlmapSyntaxException(errMsg)
 
     if isinstance(conf.uCols, basestring):

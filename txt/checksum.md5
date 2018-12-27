@@ -49,7 +49,7 @@ c8c386d644d57c659d74542f5f57f632  lib/core/patch.py
 0c3eef46bdbf87e29a3f95f90240d192  lib/core/replication.py
 a7db43859b61569b601b97f187dd31c5  lib/core/revision.py
 fcb74fcc9577523524659ec49e2e964b  lib/core/session.py
-3afa2b42741332ce14a8c98befcfdff7  lib/core/settings.py
+03f706e4caefe69887515d9e7cb56748  lib/core/settings.py
 a971ce157d04de96ba6e710d3d38a9a8  lib/core/shell.py
 a7edc9250d13af36ac0108f259859c19  lib/core/subprocessng.py
 1581be48127a3a7a9fd703359b6e7567  lib/core/target.py
@@ -69,9 +69,9 @@ fb2e2f05dde98caeac6ccf3e67192177  lib/parse/configfile.py
 f6b5957bf2103c3999891e4f45180bce  lib/parse/payloads.py
 492654567e72b6a14584651fcd9f16e6  lib/parse/sitemap.py
 30eed3a92a04ed2c29770e1b10d39dc0  lib/request/basicauthhandler.py
-2b81435f5a7519298c15c724e3194a0d  lib/request/basic.py
+67c035eda3066b44c592b2f602e44b3e  lib/request/basic.py
 859b6ad583e0ffba154f17ee179b5b89  lib/request/comparison.py
-7ec820ec27161208a8411d81ec48161a  lib/request/connect.py
+bd5e2ad9dd0505bdaae180b323a8fa34  lib/request/connect.py
 dd4598675027fae99f2e2475b05986da  lib/request/direct.py
 2044fce3f4ffa268fcfaaf63241b1e64  lib/request/dns.py
 98535d0efca5551e712fcc4b34a3f772  lib/request/httpshandler.py
@@ -115,7 +115,7 @@ eb2aa3fa9ebdf4cb6ac3e005f7df1e9b  lib/utils/hash.py
 683c3bd05b6164f56a57ed495c162684  lib/utils/progress.py
 0ec5cec9d93d5ffd1eaeda6e942ecadf  lib/utils/purge.py
 2c5a655c8e94cbe2664ee497752ac1f2  lib/utils/search.py
-571884f530796534f03c49cf3f380a4c  lib/utils/sqlalchemy.py
+cede46255b3c8f8d0b425b1c72cac75a  lib/utils/sqlalchemy.py
 dcc25183c6bd85b172c87cfcbc305ab6  lib/utils/timeout.py
 4703ceeb32131a9a7a6561575644123b  lib/utils/versioncheck.py
 e9e73cd6bd814dd7823a9da913cea61c  lib/utils/xrange.py

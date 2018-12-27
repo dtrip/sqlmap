@@ -174,9 +174,11 @@ class Connect(object):
                     warnMsg += "(e.g. 'https://help.ubuntu.com/community/Tor')"
             else:
                 warnMsg = "if the problem persists please check that the provided "
-                warnMsg += "target URL is valid. In case that it is, you can try to rerun "
-                warnMsg += "with the switch '--random-agent' turned on "
-                warnMsg += "and/or proxy switches ('--ignore-proxy', '--proxy',...)"
+                warnMsg += "target URL is reachable. In case that it is, "
+                warnMsg += "you can try to rerun with "
+                if not conf.randomAgent:
+                    warnMsg += "switch '--random-agent' and/or "
+                warnMsg += "proxy switches ('--ignore-proxy', '--proxy',...)"
             singleTimeWarnMessage(warnMsg)
 
         elif conf.threads > 1:
@@ -963,11 +965,11 @@ class Connect(object):
                 retVal = paramString
                 match = re.search(r"%s=[^&]*" % re.escape(parameter), paramString, re.I)
                 if match:
-                    retVal = re.sub(re.escape(match.group(0)), ("%s=%s" % (parameter, newValue)).replace('\\', r'\\'), paramString, flags=re.I)
+                    retVal = re.sub("(?i)%s" % re.escape(match.group(0)), ("%s=%s" % (parameter, newValue)).replace('\\', r'\\'), paramString)
                 else:
                     match = re.search(r"(%s[\"']:[\"'])([^\"']+)" % re.escape(parameter), paramString, re.I)
                     if match:
-                        retVal = re.sub(re.escape(match.group(0)), "%s%s" % (match.group(1), newValue), paramString, flags=re.I)
+                        retVal = re.sub("(?i)%s" % re.escape(match.group(0)), "%s%s" % (match.group(1), newValue), paramString)
                 return retVal
 
             token = AttribDict()

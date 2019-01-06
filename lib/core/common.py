@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -2121,6 +2121,16 @@ def readXmlFile(xmlFile):
 
     return retVal
 
+def average(values):
+    """
+    Computes the arithmetic mean of a list of numbers.
+
+    >>> average([0.9, 0.9, 0.9, 1.0, 0.8, 0.9])
+    0.9
+    """
+
+    return (sum(values) / len(values)) if values else None
+
 @cachedmethod
 def stdev(values):
     """
@@ -2135,18 +2145,8 @@ def stdev(values):
         return None
     else:
         avg = average(values)
-        _ = reduce(lambda x, y: x + pow((y or 0) - avg, 2), values, 0.0)
+        _ = 1.0 * sum(pow((_ or 0) - avg, 2) for _ in values)
         return sqrt(_ / (len(values) - 1))
-
-def average(values):
-    """
-    Computes the arithmetic mean of a list of numbers.
-
-    >>> average([0.9, 0.9, 0.9, 1.0, 0.8, 0.9])
-    0.9
-    """
-
-    return (sum(values) / len(values)) if values else None
 
 def calculateDeltaSeconds(start):
     """
@@ -4598,9 +4598,8 @@ def parseRequestFile(reqFile, checkParams=True):
             reqResList = re.finditer(BURP_REQUEST_REGEX, content, re.I | re.S)
 
         for match in reqResList:
-            request = match if isinstance(match, basestring) else match.group(0)
+            request = match if isinstance(match, basestring) else match.group(1)
             request = re.sub(r"\A[^\w]+", "", request)
-
             schemePort = re.search(r"(http[\w]*)\:\/\/.*?\:([\d]+).+?={10,}", request, re.I | re.S)
 
             if schemePort:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -99,7 +99,7 @@ def main():
 
     WAF_FUNCTIONS = sorted(WAF_FUNCTIONS, key=lambda _: "generic" in _[1].lower())
 
-    print colorize("[i] %d WAF scripts loaded" % len(WAF_FUNCTIONS))
+    print colorize("[i] checking '%s'..." % sys.argv[1])
 
     found = False
     for function, product in WAF_FUNCTIONS:
@@ -114,6 +114,8 @@ def main():
         print colorize("[o] nothing found")
 
     print
+
+    exit(int(not found))
 
 if __name__ == "__main__":
     main()

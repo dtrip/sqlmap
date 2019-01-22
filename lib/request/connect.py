@@ -44,6 +44,7 @@ from lib.core.common import getHostHeader
 from lib.core.common import getRequestHeader
 from lib.core.common import getSafeExString
 from lib.core.common import getUnicode
+from lib.core.common import isMultiThreadMode
 from lib.core.common import logHTTPTraffic
 from lib.core.common import pushValue
 from lib.core.common import popValue
@@ -270,6 +271,7 @@ class Connect(object):
         crawling = kwargs.get("crawling", False)
         checking = kwargs.get("checking", False)
         skipRead = kwargs.get("skipRead", False)
+        finalCode = kwargs.get("finalCode", False)
 
         if multipart:
             post = multipart
@@ -496,7 +498,7 @@ class Connect(object):
                 if hasattr(conn, "redurl"):
                     page = (threadData.lastRedirectMsg[1] if kb.redirectChoice == REDIRECTION.NO else Connect._connReadProxy(conn)) if not skipRead else None
                     skipLogTraffic = kb.redirectChoice == REDIRECTION.NO
-                    code = conn.redcode
+                    code = conn.redcode if not finalCode else code
                 else:
                     page = Connect._connReadProxy(conn) if not skipRead else None
 
@@ -555,11 +557,11 @@ class Connect(object):
                     if hasattr(conn.fp, '_sock'):
                         conn.fp._sock.close()
                     conn.close()
-                except Exception, ex:
+                except Exception as ex:
                     warnMsg = "problem occurred during connection closing ('%s')" % getSafeExString(ex)
                     logger.warn(warnMsg)
 
-        except SqlmapConnectionException, ex:
+        except SqlmapConnectionException as ex:
             if conf.proxyList and not kb.threadException:
                 warnMsg = "unable to connect to the target URL ('%s')" % ex
                 logger.critical(warnMsg)
@@ -568,7 +570,7 @@ class Connect(object):
             else:
                 raise
 
-        except urllib2.HTTPError, ex:
+        except urllib2.HTTPError as ex:
             page = None
             responseHeaders = None
 
@@ -730,7 +732,7 @@ class Connect(object):
                 else:
                     logger.debug(warnMsg)
                 return Connect._retryProxy(**kwargs)
-            elif kb.testMode or kb.multiThreadMode:
+            elif kb.testMode or isMultiThreadMode():
                 logger.critical(warnMsg)
                 return None, None, None
             else:
@@ -816,7 +818,7 @@ class Connect(object):
 
         if conf.httpHeaders:
             headers = OrderedDict(conf.httpHeaders)
-            contentType = max(headers[_] if _.upper() == HTTP_HEADER.CONTENT_TYPE.upper() else None for _ in headers.keys())
+            contentType = max(headers[_] if _.upper() == HTTP_HEADER.CONTENT_TYPE.upper() else None for _ in headers)
 
             if (kb.postHint or conf.skipUrlEncode) and postUrlEncode:
                 postUrlEncode = False
@@ -833,7 +835,7 @@ class Connect(object):
 
                     try:
                         payload = function(payload=payload, headers=auxHeaders, delimiter=delimiter, hints=hints)
-                    except Exception, ex:
+                    except Exception as ex:
                         errMsg = "error occurred while running tamper "
                         errMsg += "function '%s' ('%s')" % (function.func_name, getSafeExString(ex))
                         raise SqlmapGenericException(errMsg)
@@ -1096,7 +1098,7 @@ class Connect(object):
             while True:
                 try:
                     compiler.parse(unicodeencode(conf.evalCode.replace(';', '\n')))
-                except SyntaxError, ex:
+                except SyntaxError as ex:
                     if ex.text:
                         original = replacement = ex.text.strip()
                         if '=' in original:
@@ -1124,7 +1126,7 @@ class Connect(object):
             originals.update(variables)
             evaluateCode(conf.evalCode, variables)
 
-            for variable in variables.keys():
+            for variable in list(variables.keys()):
                 if variable.endswith(EVALCODE_KEYWORD_SUFFIX):
                     value = variables[variable]
                     del variables[variable]

@@ -7,18 +7,16 @@ See the file 'LICENSE' for copying permission
 
 import re
 
-from lib.core.enums import HTTP_HEADER
 from lib.core.settings import WAF_ATTACK_VECTORS
 
-__product__ = "BinarySEC Web Application Firewall (BinarySEC)"
+__product__ = "SecureSphere Web Application Firewall (Imperva)"
 
 def detect(get_page):
     retval = False
 
     for vector in WAF_ATTACK_VECTORS:
-        _, headers, _ = get_page(get=vector)
-        retval = any(headers.get(_) for _ in ("x-binarysec-via", "x-binarysec-nocache"))
-        retval |= re.search(r"BinarySec", headers.get(HTTP_HEADER.SERVER, ""), re.I) is not None
+        page, _, _ = get_page(get=vector)
+        retval = re.search(r"<H2>Error</H2>.+?#FEEE7A.+?<STRONG>Error</STRONG>|Contact support for additional information.<br/>The incident ID is: (\\d{19}|N/A)", page or "", re.I) is not None
         if retval:
             break
 

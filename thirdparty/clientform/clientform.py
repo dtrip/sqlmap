@@ -1100,7 +1100,7 @@ def _ParseFileEx(file, base_uri,
         data = file.read(CHUNK)
         try:
             fp.feed(data)
-        except ParseError, e:
+        except ParseError as e:
             e.base_uri = base_uri
             raise
         if len(data) != CHUNK: break
@@ -1141,7 +1141,7 @@ def _ParseFileEx(file, base_uri,
     for form in forms:
         try:
             form.fixup()
-        except AttributeError, ex:
+        except AttributeError as ex:
             if not any(_ in str(ex) for _ in ("is disabled", "is readonly")):
                 raise
     return forms
@@ -2902,7 +2902,7 @@ class HTMLForm:
         control = self.find_control(name)
         try:
             control.value = value
-        except AttributeError, e:
+        except AttributeError as e:
             raise ValueError(str(e))
 
     def get_value(self,

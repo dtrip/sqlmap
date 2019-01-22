@@ -20,6 +20,7 @@ from lib.core.common import dataToStdout
 from lib.core.common import getSafeExString
 from lib.core.common import getUnicode
 from lib.core.common import isListLike
+from lib.core.common import isMultiThreadMode
 from lib.core.common import normalizeUnicode
 from lib.core.common import openFile
 from lib.core.common import prioritySortColumns
@@ -74,16 +75,17 @@ class Dump(object):
         if console:
             dataToStdout(text)
 
-        if kb.get("multiThreadMode"):
+        multiThreadMode = isMultiThreadMode()
+        if multiThreadMode:
             self._lock.acquire()
 
         try:
             self._outputFP.write(text)
-        except IOError, ex:
+        except IOError as ex:
             errMsg = "error occurred while writing to log file ('%s')" % getSafeExString(ex)
             raise SqlmapGenericException(errMsg)
 
-        if kb.get("multiThreadMode"):
+        if multiThreadMode:
             self._lock.release()
 
         kb.dataOutputFlag = True
@@ -99,7 +101,7 @@ class Dump(object):
         self._outputFile = os.path.join(conf.outputPath, "log")
         try:
             self._outputFP = openFile(self._outputFile, "ab" if not conf.flushSession else "wb")
-        except IOError, ex:
+        except IOError as ex:
             errMsg = "error occurred while opening log file ('%s')" % getSafeExString(ex)
             raise SqlmapGenericException(errMsg)
 
@@ -426,10 +428,10 @@ class Dump(object):
                     if not os.path.isdir(dumpDbPath):
                         try:
                             os.makedirs(dumpDbPath)
-                        except Exception, ex:
+                        except Exception as ex:
                             try:
                                 tempDir = tempfile.mkdtemp(prefix="sqlmapdb")
-                            except IOError, _:
+                            except IOError as _:
                                 errMsg = "unable to write to the temporary directory ('%s'). " % _
                                 errMsg += "Please make sure that your disk is not full and "
                                 errMsg += "that you have sufficient write permissions to "
@@ -624,8 +626,8 @@ class Dump(object):
                                 with open(filepath, "wb") as f:
                                     _ = safechardecode(value, True)
                                     f.write(_)
-                        except magic.MagicException, err:
-                            logger.debug(str(err))
+                        except magic.MagicException as ex:
+                            logger.debug(getSafeExString(ex))
 
                     if conf.dumpFormat == DUMP_FORMAT.CSV:
                         if field == fields:

@@ -139,7 +139,7 @@ class Entries:
                     continue
 
                 columns = kb.data.cachedColumns[safeSQLIdentificatorNaming(conf.db)][safeSQLIdentificatorNaming(tbl, True)]
-                colList = sorted(filter(None, columns.keys()))
+                colList = sorted(column for column in columns if column)
 
                 if conf.exclude:
                     colList = [_ for _ in colList if _ not in conf.exclude.split(',')]
@@ -444,13 +444,13 @@ class Entries:
                                                         "db": safeSQLIdentificatorNaming(conf.db)}
                     try:
                         attackDumpedTable()
-                    except (IOError, OSError), ex:
+                    except (IOError, OSError) as ex:
                         errMsg = "an error occurred while attacking "
                         errMsg += "table dump ('%s')" % getSafeExString(ex)
                         logger.critical(errMsg)
                     conf.dumper.dbTableValues(kb.data.dumpedTable)
 
-            except SqlmapConnectionException, ex:
+            except SqlmapConnectionException as ex:
                 errMsg = "connection exception detected in dumping phase "
                 errMsg += "('%s')" % getSafeExString(ex)
                 logger.critical(errMsg)
@@ -517,7 +517,7 @@ class Entries:
         choice = readInput(message, default='a')
 
         if not choice or choice in ('a', 'A'):
-            dumpFromDbs = dbs.keys()
+            dumpFromDbs = list(dbs.keys())
         elif choice in ('q', 'Q'):
             return
         else:
@@ -553,7 +553,7 @@ class Entries:
                     continue
 
                 conf.tbl = table
-                colList = filter(None, sorted(columns))
+                colList = [_ for _ in columns if _]
 
                 if conf.exclude:
                     colList = [_ for _ in colList if _ not in conf.exclude.split(',')]
@@ -584,7 +584,7 @@ class Entries:
         choice = readInput(message, default='a')
 
         if not choice or choice.lower() == 'a':
-            dumpFromDbs = tables.keys()
+            dumpFromDbs = list(tables.keys())
         elif choice.lower() == 'q':
             return
         else:

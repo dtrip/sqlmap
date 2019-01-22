@@ -695,7 +695,7 @@ class XmlTokenizer:
             self.final = len(data) < size
             try:
                 self.parser.Parse(data, self.final)
-            except xml.parsers.expat.ExpatError, e:
+            except xml.parsers.expat.ExpatError as e:
                 #if e.code == xml.parsers.expat.errors.XML_ERROR_NO_ELEMENTS:
                 if e.code == 3:
                     pass
@@ -732,7 +732,7 @@ class XmlParser(Parser):
         self.consume()
 
     def consume(self):
-        self.token = self.tokenizer.next()
+        self.token = next(self.tokenizer)
 
     def match_element_start(self, name):
         return self.token.type == XML_ELEMENT_START and self.token.name_or_data == name
@@ -1719,7 +1719,7 @@ class XPerfParser(Parser):
             lineterminator = '\r\n',
             quoting = csv.QUOTE_NONE)
         it = iter(reader)
-        row = reader.next()
+        row = next(reader)
         self.parse_header(row)
         for row in it:
             self.parse_row(row)

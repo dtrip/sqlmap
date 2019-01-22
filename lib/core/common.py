@@ -688,7 +688,7 @@ def paramToDict(place, parameters=None):
                     debugMsg += "is not inside the %s" % place
                     logger.debug(debugMsg)
 
-        elif len(conf.testParameter) != len(testableParameters.keys()):
+        elif len(conf.testParameter) != len(testableParameters):
             for parameter in conf.testParameter:
                 if parameter not in testableParameters:
                     debugMsg = "provided parameter '%s' " % parameter
@@ -913,7 +913,8 @@ def dataToStdout(data, forceOutput=False, bold=False, content_type=None, status=
 
     if not kb.get("threadException"):
         if forceOutput or not (getCurrentThreadData().disableStdOut or kb.get("wizardMode")):
-            if kb.get("multiThreadMode"):
+            multiThreadMode = isMultiThreadMode()
+            if multiThreadMode:
                 logging._acquireLock()
 
             if isinstance(data, unicode):
@@ -931,7 +932,7 @@ def dataToStdout(data, forceOutput=False, bold=False, content_type=None, status=
             except IOError:
                 pass
 
-            if kb.get("multiThreadMode"):
+            if multiThreadMode:
                 logging._releaseLock()
 
             kb.prependFlag = isinstance(data, basestring) and (len(data) == 1 and data not in ('\n', '\r') or len(data) > 2 and data[0] == '\r' and data[-1] != '\n')
@@ -943,7 +944,7 @@ def dataToTrafficFile(data):
     try:
         conf.trafficFP.write(data)
         conf.trafficFP.flush()
-    except IOError, ex:
+    except IOError as ex:
         errMsg = "something went wrong while trying "
         errMsg += "to write to the traffic file '%s' ('%s')" % (conf.trafficFile, getSafeExString(ex))
         raise SqlmapSystemException(errMsg)
@@ -952,7 +953,7 @@ def dataToDumpFile(dumpFile, data):
     try:
         dumpFile.write(data)
         dumpFile.flush()
-    except IOError, ex:
+    except IOError as ex:
         if "No space left" in getUnicode(ex):
             errMsg = "no space left on output device"
             logger.error(errMsg)
@@ -972,7 +973,7 @@ def dataToOutFile(filename, data):
             try:
                 with open(retVal, "w+b") as f:  # has to stay as non-codecs because data is raw ASCII encoded data
                     f.write(unicodeencode(data))
-            except UnicodeEncodeError, ex:
+            except UnicodeEncodeError as ex:
                 _ = normalizeUnicode(filename)
                 if filename != _:
                     filename = _
@@ -980,7 +981,7 @@ def dataToOutFile(filename, data):
                     errMsg = "couldn't write to the "
                     errMsg += "output file ('%s')" % getSafeExString(ex)
                     raise SqlmapGenericException(errMsg)
-            except IOError, ex:
+            except IOError as ex:
                 errMsg = "something went wrong while trying to write "
                 errMsg += "to the output file ('%s')" % getSafeExString(ex)
                 raise SqlmapGenericException(errMsg)
@@ -1446,7 +1447,7 @@ def parseTargetUrl():
 
     try:
         urlSplit = urlparse.urlsplit(conf.url)
-    except ValueError, ex:
+    except ValueError as ex:
         errMsg = "invalid URL '%s' has been given ('%s'). " % (conf.url, getSafeExString(ex))
         errMsg += "Please be sure that you don't have any leftover characters (e.g. '[' or ']') "
         errMsg += "in the hostname part"
@@ -1560,7 +1561,7 @@ def expandAsteriskForColumns(expression):
         columnsDict = conf.dbmsHandler.getColumns(onlyColNames=True)
 
         if columnsDict and conf.db in columnsDict and conf.tbl in columnsDict[conf.db]:
-            columns = columnsDict[conf.db][conf.tbl].keys()
+            columns = list(columnsDict[conf.db][conf.tbl].keys())
             columns.sort()
             columnsStr = ", ".join(column for column in columns)
             expression = expression.replace('*', columnsStr, 1)
@@ -1982,6 +1983,13 @@ def isHexEncodedString(subject):
 
     return re.match(r"\A[0-9a-fA-Fx]+\Z", subject) is not None
 
+def isMultiThreadMode():
+    """
+    Checks if running in multi-thread(ing) mode
+    """
+
+    return threading.activeCount() > 1
+
 @cachedmethod
 def getConsoleWidth(default=80):
     """
@@ -2038,7 +2046,7 @@ def parseXmlFile(xmlFile, handler):
     try:
         with contextlib.closing(StringIO(readCachedFileContent(xmlFile))) as stream:
             parse(stream, handler)
-    except (SAXParseException, UnicodeError), ex:
+    except (SAXParseException, UnicodeError) as ex:
         errMsg = "something appears to be wrong with "
         errMsg += "the file '%s' ('%s'). Please make " % (xmlFile, getSafeExString(ex))
         errMsg += "sure that you haven't made any changes to it"
@@ -2064,7 +2072,7 @@ def getSQLSnippet(dbms, sfile, **variables):
     retVal = re.sub(r"#.+", "", retVal)
     retVal = re.sub(r";\s+", "; ", retVal).strip("\r\n")
 
-    for _ in variables.keys():
+    for _ in variables:
         retVal = re.sub(r"%%%s%%" % _, variables[_].replace('\\', r'\\'), retVal)
 
     for _ in re.findall(r"%RANDSTR\d+%", retVal, re.I):
@@ -2104,7 +2112,7 @@ def readCachedFileContent(filename, mode="rb"):
                 try:
                     with openFile(filename, mode) as f:
                         kb.cache.content[filename] = f.read()
-                except (IOError, OSError, MemoryError), ex:
+                except (IOError, OSError, MemoryError) as ex:
                     errMsg = "something went wrong while trying "
                     errMsg += "to read the content of file '%s' ('%s')" % (filename, getSafeExString(ex))
                     raise SqlmapSystemException(errMsg)
@@ -2129,7 +2137,7 @@ def average(values):
     0.9
     """
 
-    return (sum(values) / len(values)) if values else None
+    return (1.0 * sum(values) / len(values)) if values else None
 
 @cachedmethod
 def stdev(values):
@@ -2218,12 +2226,12 @@ def getFileItems(filename, commentPrefix='#', unicoded=True, lowercase=False, un
                         retVal[line] = True
                     else:
                         retVal.append(line)
-    except (IOError, OSError, MemoryError), ex:
+    except (IOError, OSError, MemoryError) as ex:
         errMsg = "something went wrong while trying "
         errMsg += "to read the content of file '%s' ('%s')" % (filename, getSafeExString(ex))
         raise SqlmapSystemException(errMsg)
 
-    return retVal if not unique else retVal.keys()
+    return retVal if not unique else list(retVal.keys())
 
 def goGoodSamaritan(prevValue, originalCharset):
     """
@@ -2351,7 +2359,7 @@ def getUnicode(value, encoding=None, noneToNull=False):
         while True:
             try:
                 return unicode(value, encoding or (kb.get("pageEncoding") if kb.get("originalPage") else None) or UNICODE_ENCODING)
-            except UnicodeDecodeError, ex:
+            except UnicodeDecodeError as ex:
                 try:
                     return unicode(value, UNICODE_ENCODING)
                 except:
@@ -2407,7 +2415,7 @@ def pushValue(value):
             getCurrentThreadData().valueStack.append(copy.deepcopy(value))
             success = True
             break
-        except Exception, ex:
+        except Exception as ex:
             _ = ex
 
     if not success:
@@ -3056,7 +3064,7 @@ def saveConfig(conf, filename):
     config = UnicodeRawConfigParser()
     userOpts = {}
 
-    for family in optDict.keys():
+    for family in optDict:
         userOpts[family] = []
 
     for option, value in conf.items():
@@ -3095,7 +3103,7 @@ def saveConfig(conf, filename):
     with openFile(filename, "wb") as f:
         try:
             config.write(f)
-        except IOError, ex:
+        except IOError as ex:
             errMsg = "something went wrong while trying "
             errMsg += "to write to the configuration file '%s' ('%s')" % (filename, getSafeExString(ex))
             raise SqlmapSystemException(errMsg)
@@ -3442,7 +3450,7 @@ def createGithubIssue(errMsg, excMsg):
 
         try:
             content = urllib2.urlopen(req).read()
-        except Exception, ex:
+        except Exception as ex:
             content = None
 
         issueUrl = re.search(r"https://github.com/sqlmapproject/sqlmap/issues/\d+", content or "")
@@ -3555,7 +3563,7 @@ def removeReflectiveValues(content, payload, suppressWarning=False):
                     retVal = content.replace(payload, REFLECTED_VALUE_MARKER)  # dummy approach
 
                     if len(parts) > REFLECTED_MAX_REGEX_PARTS:  # preventing CPU hogs
-                        regex = _("%s%s%s" % (REFLECTED_REPLACEMENT_REGEX.join(parts[:REFLECTED_MAX_REGEX_PARTS / 2]), REFLECTED_REPLACEMENT_REGEX, REFLECTED_REPLACEMENT_REGEX.join(parts[-REFLECTED_MAX_REGEX_PARTS / 2:])))
+                        regex = _("%s%s%s" % (REFLECTED_REPLACEMENT_REGEX.join(parts[:REFLECTED_MAX_REGEX_PARTS // 2]), REFLECTED_REPLACEMENT_REGEX, REFLECTED_REPLACEMENT_REGEX.join(parts[-REFLECTED_MAX_REGEX_PARTS // 2:])))
 
                     parts = filter(None, regex.split(REFLECTED_REPLACEMENT_REGEX))
 
@@ -3795,7 +3803,7 @@ def expandMnemonics(mnemonics, parser, args):
                 logger.debug(debugMsg)
             else:
                 found = sorted(options.keys(), key=lambda x: len(x))[0]
-                warnMsg = "detected ambiguity (mnemonic '%s' can be resolved to any of: %s). " % (name, ", ".join("'%s'" % key for key in options.keys()))
+                warnMsg = "detected ambiguity (mnemonic '%s' can be resolved to any of: %s). " % (name, ", ".join("'%s'" % key for key in options))
                 warnMsg += "Resolved to shortest of those ('%s')" % found
                 logger.warn(warnMsg)
 
@@ -4063,7 +4071,7 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
                     continue
 
                 request = form.click()
-            except (ValueError, TypeError), ex:
+            except (ValueError, TypeError) as ex:
                 errMsg = "there has been a problem while "
                 errMsg += "processing page forms ('%s')" % getSafeExString(ex)
                 if raise_:
@@ -4193,7 +4201,7 @@ def evaluateCode(code, variables=None):
         exec(code, variables)
     except KeyboardInterrupt:
         raise
-    except Exception, ex:
+    except Exception as ex:
         errMsg = "an error occurred while evaluating provided code ('%s') " % getSafeExString(ex)
         raise SqlmapGenericException(errMsg)
 
@@ -4409,9 +4417,9 @@ def resetCookieJar(cookieJar):
                 errMsg = "no valid cookies found"
                 raise SqlmapGenericException(errMsg)
 
-        except cookielib.LoadError, msg:
+        except cookielib.LoadError as ex:
             errMsg = "there was a problem loading "
-            errMsg += "cookies file ('%s')" % re.sub(r"(cookies) file '[^']+'", r"\g<1>", str(msg))
+            errMsg += "cookies file ('%s')" % re.sub(r"(cookies) file '[^']+'", r"\g<1>", getSafeExString(ex))
             raise SqlmapGenericException(errMsg)
 
 def decloakToTemp(filename):
@@ -4715,7 +4723,7 @@ def parseRequestFile(reqFile, checkParams=True):
     try:
         with openFile(reqFile, "rb") as f:
             content = f.read()
-    except (IOError, OSError, MemoryError), ex:
+    except (IOError, OSError, MemoryError) as ex:
         errMsg = "something went wrong while trying "
         errMsg += "to read the content of file '%s' ('%s')" % (reqFile, getSafeExString(ex))
         raise SqlmapSystemException(errMsg)
@@ -4738,14 +4746,16 @@ def getSafeExString(ex, encoding=None):
     u'foobar'
     """
 
-    retVal = ex
-
     if getattr(ex, "message", None):
         retVal = ex.message
     elif getattr(ex, "msg", None):
         retVal = ex.msg
     elif isinstance(ex, (list, tuple)) and len(ex) > 1 and isinstance(ex[1], basestring):
         retVal = ex[1]
+    elif isinstance(ex, (list, tuple)) and len(ex) > 0 and isinstance(ex[0], basestring):
+        retVal = ex[0]
+    else:
+        retVal = str(ex)
 
     return getUnicode(retVal or "", encoding=encoding).strip()
 

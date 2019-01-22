@@ -5,6 +5,8 @@ Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
+from __future__ import print_function
+
 import re
 import time
 
@@ -92,7 +94,7 @@ def _oneShotErrorUse(expression, field=None, chunkTest=False):
                     candidate = len(result) - len(kb.chars.stop)
                     current = candidate if candidate != current else current - 1
             else:
-                current = current / 2
+                current = current // 2
 
         if kb.errorChunkLength:
             hashDBWrite(HASHDB_KEYS.KB_ERROR_CHUNK_LENGTH, kb.errorChunkLength)
@@ -242,7 +244,7 @@ def _errorFields(expression, expressionFields, expressionFieldsList, num=None, e
 
         if not suppressOutput:
             if kb.fileReadMode and output and output.strip():
-                print
+                print()
             elif output is not None and not (threadData.resumed and kb.suppressResumeInfo) and not (emptyFields and field in emptyFields):
                 status = "[%s] [INFO] %s: '%s'" % (time.strftime("%X"), "resumed" if threadData.resumed else "retrieved", output if kb.safeCharEncode else safecharencode(output))
 
@@ -403,7 +405,7 @@ def errorUse(expression, dump=False):
                             with kb.locks.limit:
                                 try:
                                     threadData.shared.counter += 1
-                                    num = threadData.shared.limits.next()
+                                    num = next(threadData.shared.limits)
                                 except StopIteration:
                                     break
 

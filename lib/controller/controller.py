@@ -90,7 +90,7 @@ def _selectInjection():
         if point not in points:
             points[point] = injection
         else:
-            for key in points[point].keys():
+            for key in points[point]:
                 if key != 'data':
                     points[point][key] = points[point][key] or injection[key]
             points[point]['data'].update(injection['data'])
@@ -244,7 +244,7 @@ def _saveToResultsFile():
         if key not in results:
             results[key] = []
 
-        results[key].extend(injection.data.keys())
+        results[key].extend(list(injection.data.keys()))
 
     try:
         for key, value in results.items():
@@ -257,7 +257,7 @@ def _saveToResultsFile():
             conf.resultsFP.write(line)
 
         conf.resultsFP.flush()
-    except IOError, ex:
+    except IOError as ex:
         errMsg = "unable to write to the results file '%s' ('%s'). " % (conf.resultsFilename, getSafeExString(ex))
         raise SqlmapSystemException(errMsg)
 
@@ -427,7 +427,7 @@ def start():
                     checkStability()
 
                 # Do a little prioritization reorder of a testable parameter list
-                parameters = conf.parameters.keys()
+                parameters = list(conf.parameters.keys())
 
                 # Order of testing list (first to last)
                 orderList = (PLACE.CUSTOM_POST, PLACE.CUSTOM_HEADER, PLACE.URI, PLACE.POST, PLACE.GET)
@@ -689,7 +689,7 @@ def start():
         except SqlmapSilentQuitException:
             raise
 
-        except SqlmapBaseException, ex:
+        except SqlmapBaseException as ex:
             errMsg = getSafeExString(ex)
 
             if conf.multipleTargets:

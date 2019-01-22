@@ -5,20 +5,16 @@ Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
-import re
-
-from lib.core.enums import HTTP_HEADER
 from lib.core.settings import WAF_ATTACK_VECTORS
 
-__product__ = "NSFOCUS Web Application Firewall (NSFOCUS)"
+__product__ = "NinjaFirewall (NinTechNet)"
 
 def detect(get_page):
     retval = False
 
     for vector in WAF_ATTACK_VECTORS:
-        _, headers, _ = get_page(get=vector)
-        retval = re.search(r"NSFocus", headers.get(HTTP_HEADER.SERVER, ""), re.I) is not None
-        if retval:
-            break
+        page, _, _ = get_page(get=vector)
+        retval = "<title>NinjaFirewall: 403 Forbidden" in (page or "")
+        retval |= all(_ in (page or "") for _ in ("For security reasons, it was blocked and logged", "NinjaFirewall"))
 
     return retval

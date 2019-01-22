@@ -194,7 +194,7 @@ def _loadQueries():
     tree = ElementTree()
     try:
         tree.parse(paths.QUERIES_XML)
-    except Exception, ex:
+    except Exception as ex:
         errMsg = "something appears to be wrong with "
         errMsg += "the file '%s' ('%s'). Please make " % (paths.QUERIES_XML, getSafeExString(ex))
         errMsg += "sure that you haven't made any changes to it"
@@ -313,7 +313,7 @@ def _setRequestFromFile():
         infoMsg = "parsing second-order HTTP request from '%s'" % conf.secondReq
         logger.info(infoMsg)
 
-        target = parseRequestFile(conf.secondReq, False).next()
+        target = next(parseRequestFile(conf.secondReq, False))
         kb.secondReq = target
 
 def _setCrawler():
@@ -335,7 +335,7 @@ def _setCrawler():
                 if conf.verbose in (1, 2):
                     status = "%d/%d links visited (%d%%)" % (i + 1, len(targets), round(100.0 * (i + 1) / len(targets)))
                     dataToStdout("\r[%s] [INFO] %s" % (time.strftime("%X"), status), True)
-            except Exception, ex:
+            except Exception as ex:
                 errMsg = "problem occurred while crawling at '%s' ('%s')" % (target, getSafeExString(ex))
                 logger.error(errMsg)
 
@@ -471,7 +471,7 @@ def _findPageForms():
                     dataToStdout("\r[%s] [INFO] %s" % (time.strftime("%X"), status), True)
             except KeyboardInterrupt:
                 break
-            except Exception, ex:
+            except Exception as ex:
                 errMsg = "problem occurred while searching for forms at '%s' ('%s')" % (target, getSafeExString(ex))
                 logger.error(errMsg)
 
@@ -768,7 +768,7 @@ def _setTamperingFunctions():
 
             try:
                 module = __import__(filename[:-3].encode(sys.getfilesystemencoding() or UNICODE_ENCODING))
-            except Exception, ex:
+            except Exception as ex:
                 raise SqlmapSyntaxException("cannot import tamper module '%s' (%s)" % (filename[:-3], getSafeExString(ex)))
 
             priority = PRIORITY.NORMAL if not hasattr(module, "__priority__") else module.__priority__
@@ -801,7 +801,7 @@ def _setTamperingFunctions():
                 elif name == "dependencies":
                     try:
                         function()
-                    except Exception, ex:
+                    except Exception as ex:
                         errMsg = "error occurred while checking dependencies "
                         errMsg += "for tamper module '%s' ('%s')" % (filename[:-3], getSafeExString(ex))
                         raise SqlmapGenericException(errMsg)
@@ -846,8 +846,8 @@ def _setWafFunctions():
                 if filename[:-3] in sys.modules:
                     del sys.modules[filename[:-3]]
                 module = __import__(filename[:-3].encode(sys.getfilesystemencoding() or UNICODE_ENCODING))
-            except ImportError, msg:
-                raise SqlmapSyntaxException("cannot import WAF script '%s' (%s)" % (filename[:-3], msg))
+            except ImportError as ex:
+                raise SqlmapSyntaxException("cannot import WAF script '%s' (%s)" % (filename[:-3], getSafeExString(ex)))
 
             _ = dict(inspect.getmembers(module))
             if "detect" not in _:
@@ -974,7 +974,7 @@ def _setHTTPHandlers():
 
         try:
             _ = urlparse.urlsplit(conf.proxy)
-        except Exception, ex:
+        except Exception as ex:
             errMsg = "invalid proxy address '%s' ('%s')" % (conf.proxy, getSafeExString(ex))
             raise SqlmapSyntaxException(errMsg)
 
@@ -1195,7 +1195,7 @@ def _setHTTPAuthentication():
         elif authType == AUTH_TYPE.NTLM:
             regExp = "^(.*\\\\.*):(.*?)$"
             errMsg = "HTTP NTLM authentication credentials value must "
-            errMsg += "be in format 'DOMAIN\username:password'"
+            errMsg += "be in format 'DOMAIN\\username:password'"
         elif authType == AUTH_TYPE.PKI:
             errMsg = "HTTP PKI authentication require "
             errMsg += "usage of option `--auth-pki`"
@@ -1376,7 +1376,7 @@ def _setHostname():
     if conf.url:
         try:
             conf.hostname = urlparse.urlsplit(conf.url).netloc.split(':')[0]
-        except ValueError, ex:
+        except ValueError as ex:
             errMsg = "problem occurred while "
             errMsg += "parsing an URL '%s' ('%s')" % (conf.url, getSafeExString(ex))
             raise SqlmapDataException(errMsg)
@@ -1430,7 +1430,7 @@ def _createTemporaryDirectory():
 
             warnMsg = "using '%s' as the temporary directory" % conf.tmpDir
             logger.warn(warnMsg)
-        except (OSError, IOError), ex:
+        except (OSError, IOError) as ex:
             errMsg = "there has been a problem while accessing "
             errMsg += "temporary directory location(s) ('%s')" % getSafeExString(ex)
             raise SqlmapSystemException(errMsg)
@@ -1438,7 +1438,7 @@ def _createTemporaryDirectory():
         try:
             if not os.path.isdir(tempfile.gettempdir()):
                 os.makedirs(tempfile.gettempdir())
-        except Exception, ex:
+        except Exception as ex:
             warnMsg = "there has been a problem while accessing "
             warnMsg += "system's temporary directory location(s) ('%s'). Please " % getSafeExString(ex)
             warnMsg += "make sure that there is enough disk space left. If problem persists, "
@@ -1457,7 +1457,7 @@ def _createTemporaryDirectory():
     if not os.path.isdir(tempfile.tempdir):
         try:
             os.makedirs(tempfile.tempdir)
-        except Exception, ex:
+        except Exception as ex:
             errMsg = "there has been a problem while setting "
             errMsg += "temporary directory location ('%s')" % getSafeExString(ex)
             raise SqlmapSystemException(errMsg)
@@ -1640,7 +1640,7 @@ def _cleanupOptions():
         map(lambda _: conf.__setitem__(_, True), WIZARD.ALL)
 
     if conf.noCast:
-        for _ in DUMP_REPLACEMENTS.keys():
+        for _ in list(DUMP_REPLACEMENTS.keys()):
             del DUMP_REPLACEMENTS[_]
 
     if conf.dumpFormat:
@@ -1829,7 +1829,6 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.matchRatio = None
     kb.maxConnectionsFlag = False
     kb.mergeCookies = None
-    kb.multiThreadMode = False
     kb.negativeLogic = False
     kb.nullConnection = None
     kb.oldMsf = None
@@ -2136,9 +2135,9 @@ def _setDNSServer():
         try:
             conf.dnsServer = DNSServer()
             conf.dnsServer.run()
-        except socket.error, msg:
+        except socket.error as ex:
             errMsg = "there was an error while setting up "
-            errMsg += "DNS server instance ('%s')" % msg
+            errMsg += "DNS server instance ('%s')" % getSafeExString(ex)
             raise SqlmapGenericException(errMsg)
     else:
         errMsg = "you need to run sqlmap as an administrator "
@@ -2306,7 +2305,7 @@ def _basicOptionValidation():
         errMsg = "option '--not-string' is incompatible with switch '--null-connection'"
         raise SqlmapSyntaxException(errMsg)
 
-    if conf.notString and conf.nullConnection:
+    if conf.tor and conf.osPwn:
         errMsg = "option '--tor' is incompatible with switch '--os-pwn'"
         raise SqlmapSyntaxException(errMsg)
 
@@ -2329,14 +2328,14 @@ def _basicOptionValidation():
     if conf.regexp:
         try:
             re.compile(conf.regexp)
-        except Exception, ex:
+        except Exception as ex:
             errMsg = "invalid regular expression '%s' ('%s')" % (conf.regexp, getSafeExString(ex))
             raise SqlmapSyntaxException(errMsg)
 
     if conf.crawlExclude:
         try:
             re.compile(conf.crawlExclude)
-        except Exception, ex:
+        except Exception as ex:
             errMsg = "invalid regular expression '%s' ('%s')" % (conf.crawlExclude, getSafeExString(ex))
             raise SqlmapSyntaxException(errMsg)
 

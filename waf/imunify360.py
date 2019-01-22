@@ -10,15 +10,15 @@ import re
 from lib.core.enums import HTTP_HEADER
 from lib.core.settings import WAF_ATTACK_VECTORS
 
-__product__ = "DOSarrest (DOSarrest Internet Security)"
+__product__ = "Imunify360 (CloudLinux Inc.)"
 
 def detect(get_page):
     retval = False
 
     for vector in WAF_ATTACK_VECTORS:
-        _, headers, _ = get_page(get=vector)
-        retval = re.search(r"DOSarrest", headers.get(HTTP_HEADER.SERVER, ""), re.I) is not None
-        retval |= headers.get("X-DIS-Request-ID") is not None
+        page, headers, _ = get_page(get=vector)
+        retval = re.search(r"\Aimunify360", headers.get(HTTP_HEADER.SERVER, ""), re.I) is not None
+        retval = any(_ in (page or "") for _ in ("protected by Imunify360", "Powered by Imunify360", "imunify360 preloader"))
         if retval:
             break
 

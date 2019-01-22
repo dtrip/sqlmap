@@ -87,7 +87,7 @@ class BigArray(list):
             try:
                 with open(self.chunks[-1], "rb") as f:
                     self.chunks[-1] = pickle.loads(bz2.decompress(f.read()))
-            except IOError, ex:
+            except IOError as ex:
                 errMsg = "exception occurred while retrieving data "
                 errMsg += "from a temporary file ('%s')" % ex.message
                 raise SqlmapSystemException(errMsg)
@@ -109,7 +109,7 @@ class BigArray(list):
             with open(filename, "w+b") as f:
                 f.write(bz2.compress(pickle.dumps(chunk, pickle.HIGHEST_PROTOCOL), BIGARRAY_COMPRESS_LEVEL))
             return filename
-        except (OSError, IOError), ex:
+        except (OSError, IOError) as ex:
             errMsg = "exception occurred while storing data "
             errMsg += "to a temporary file ('%s'). Please " % ex.message
             errMsg += "make sure that there is enough disk space left. If problem persists, "
@@ -126,7 +126,7 @@ class BigArray(list):
             try:
                 with open(self.chunks[index], "rb") as f:
                     self.cache = Cache(index, pickle.loads(bz2.decompress(f.read())), False)
-            except Exception, ex:
+            except Exception as ex:
                 errMsg = "exception occurred while retrieving data "
                 errMsg += "from a temporary file ('%s')" % ex.message
                 raise SqlmapSystemException(errMsg)
@@ -148,7 +148,7 @@ class BigArray(list):
         if y < 0:
             y += len(self)
 
-        index = y / self.chunk_length
+        index = y // self.chunk_length
         offset = y % self.chunk_length
         chunk = self.chunks[index]
 
@@ -159,7 +159,7 @@ class BigArray(list):
             return self.cache.data[offset]
 
     def __setitem__(self, y, value):
-        index = y / self.chunk_length
+        index = y // self.chunk_length
         offset = y % self.chunk_length
         chunk = self.chunks[index]
 

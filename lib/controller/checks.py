@@ -426,11 +426,14 @@ def checkSqlInjection(place, parameter, value):
                     templatePayload = None
                     vector = None
 
+                    origValue = value
+                    if kb.customInjectionMark in origValue:
+                        origValue = origValue.split(kb.customInjectionMark)[0]
+                        origValue = re.search(r"(\w*)\Z", origValue).group(1)
+
                     # Threat the parameter original value according to the
                     # test's <where> tag
                     if where == PAYLOAD.WHERE.ORIGINAL or conf.prefix:
-                        origValue = value
-
                         if kb.tamperFunctions:
                             templatePayload = agent.payload(place, parameter, value="", newValue=origValue, where=where)
                     elif where == PAYLOAD.WHERE.NEGATIVE:
@@ -440,7 +443,7 @@ def checkSqlInjection(place, parameter, value):
 
                         if conf.invalidLogical:
                             _ = int(kb.data.randomInt[:2])
-                            origValue = "%s AND %s LIKE %s" % (value, _, _ + 1)
+                            origValue = "%s AND %s LIKE %s" % (origValue, _, _ + 1)
                         elif conf.invalidBignum:
                             origValue = kb.data.randomInt[:6]
                         elif conf.invalidString:
@@ -615,7 +618,7 @@ def checkSqlInjection(place, parameter, value):
                                 page, headers, _ = Request.queryPage(reqPayload, place, content=True, raise404=False)
                                 output = extractRegexResult(check, page, re.DOTALL | re.IGNORECASE)
                                 output = output or extractRegexResult(check, threadData.lastHTTPError[2] if wasLastResponseHTTPError() else None, re.DOTALL | re.IGNORECASE)
-                                output = output or extractRegexResult(check, listToStrValue((headers[key] for key in headers.keys() if key.lower() != URI_HTTP_HEADER.lower()) if headers else None), re.DOTALL | re.IGNORECASE)
+                                output = output or extractRegexResult(check, listToStrValue((headers[key] for key in headers if key.lower() != URI_HTTP_HEADER.lower()) if headers else None), re.DOTALL | re.IGNORECASE)
                                 output = output or extractRegexResult(check, threadData.lastRedirectMsg[1] if threadData.lastRedirectMsg and threadData.lastRedirectMsg[0] == threadData.lastRequestUID else None, re.DOTALL | re.IGNORECASE)
 
                                 if output:
@@ -627,10 +630,10 @@ def checkSqlInjection(place, parameter, value):
 
                                         injectable = True
 
-                            except SqlmapConnectionException, msg:
+                            except SqlmapConnectionException as ex:
                                 debugMsg = "problem occurred most likely because the "
                                 debugMsg += "server hasn't recovered as expected from the "
-                                debugMsg += "error-based payload used ('%s')" % msg
+                                debugMsg += "error-based payload used ('%s')" % getSafeExString(ex)
                                 logger.debug(debugMsg)
 
                         # In case of time-based blind or stacked queries
@@ -1418,11 +1421,12 @@ def identifyWaf():
         page, headers, code = None, None, None
         try:
             pushValue(kb.redirectChoice)
-            kb.redirectChoice = REDIRECTION.NO
+            kb.redirectChoice = REDIRECTION.YES
             if kwargs.get("get"):
                 kwargs["get"] = urlencode(kwargs["get"])
             kwargs["raise404"] = False
             kwargs["silent"] = True
+            kwargs["finalCode"] = True
             page, headers, code = Request.getPage(*args, **kwargs)
         except Exception:
             pass
@@ -1439,7 +1443,7 @@ def identifyWaf():
         try:
             logger.debug("checking for WAF/IPS product '%s'" % product)
             found = function(_)
-        except Exception, ex:
+        except Exception as ex:
             errMsg = "exception occurred while running "
             errMsg += "WAF script for '%s' ('%s')" % (product, getSafeExString(ex))
             logger.critical(errMsg)
@@ -1542,11 +1546,11 @@ def checkConnection(suppressOutput=False):
             except socket.gaierror:
                 errMsg = "host '%s' does not exist" % conf.hostname
                 raise SqlmapConnectionException(errMsg)
-            except socket.error, ex:
+            except socket.error as ex:
                 errMsg = "problem occurred while "
                 errMsg += "resolving a host name '%s' ('%s')" % (conf.hostname, getSafeExString(ex))
                 raise SqlmapConnectionException(errMsg)
-            except UnicodeError, ex:
+            except UnicodeError as ex:
                 errMsg = "problem occurred while "
                 errMsg += "handling a host name '%s' ('%s')" % (conf.hostname, getSafeExString(ex))
                 raise SqlmapDataException(errMsg)
@@ -1588,9 +1592,9 @@ def checkConnection(suppressOutput=False):
                 conf.url = re.sub(r"https?://", "https://", conf.url)
                 match = re.search(r":(\d+)", threadData.lastRedirectURL[1])
                 port = match.group(1) if match else 443
-                conf.url = re.sub(r":\d+/", ":%s/" % port, conf.url)
+                conf.url = re.sub(r":\d+(/|\Z)", ":%s\g<1>" % port, conf.url)
 
-    except SqlmapConnectionException, ex:
+    except SqlmapConnectionException as ex:
         if conf.ipv6:
             warnMsg = "check connection to a provided "
             warnMsg += "IPv6 address with a tool like ping6 "

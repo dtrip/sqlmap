@@ -5,6 +5,8 @@ Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
+from __future__ import print_function
+
 try:
     from crypt import crypt
 except:  # removed ImportError because of https://github.com/sqlmapproject/sqlmap/issues/3171
@@ -19,7 +21,7 @@ try:
 
     # problems with ctypes (Reference: https://github.com/sqlmapproject/sqlmap/issues/2952)
     _ = multiprocessing.Value('i')
-except (ImportError, OSError):
+except (ImportError, OSError, AttributeError):
     pass
 else:
     try:
@@ -599,7 +601,7 @@ def attackCachedUsersPasswords():
         for (_, hash_, password) in results:
             lut[hash_.lower()] = password
 
-        for user in kb.data.cachedUsersPasswords.keys():
+        for user in kb.data.cachedUsersPasswords:
             for i in xrange(len(kb.data.cachedUsersPasswords[user])):
                 if (kb.data.cachedUsersPasswords[user][i] or "").strip():
                     value = kb.data.cachedUsersPasswords[user][i].lower().split()[0]
@@ -609,7 +611,7 @@ def attackCachedUsersPasswords():
 def attackDumpedTable():
     if kb.data.dumpedTable:
         table = kb.data.dumpedTable
-        columns = table.keys()
+        columns = list(table.keys())
         count = table["__infos__"]["count"]
 
         if not count:
@@ -770,8 +772,8 @@ def _bruteProcessVariantA(attack_info, hash_regex, suffix, retVal, proc_id, proc
             except (UnicodeEncodeError, UnicodeDecodeError):
                 pass  # ignore possible encoding problems caused by some words in custom dictionaries
 
-            except Exception, e:
-                warnMsg = "there was a problem while hashing entry: %s (%s). " % (repr(word), e)
+            except Exception as ex:
+                warnMsg = "there was a problem while hashing entry: %s ('%s'). " % (repr(word), getSafeExString(ex))
                 warnMsg += "Please report by e-mail to '%s'" % DEV_EMAIL_ADDRESS
                 logger.critical(warnMsg)
 
@@ -847,8 +849,8 @@ def _bruteProcessVariantB(user, hash_, kwargs, hash_regex, suffix, retVal, found
             except (UnicodeEncodeError, UnicodeDecodeError):
                 pass  # ignore possible encoding problems caused by some words in custom dictionaries
 
-            except Exception, e:
-                warnMsg = "there was a problem while hashing entry: %s (%s). " % (repr(word), e)
+            except Exception as ex:
+                warnMsg = "there was a problem while hashing entry: %s ('%s'). " % (repr(word), getSafeExString(ex))
                 warnMsg += "Please report by e-mail to '%s'" % DEV_EMAIL_ADDRESS
                 logger.critical(warnMsg)
 
@@ -983,7 +985,7 @@ def dictionaryAttack(attack_dict):
                     else:
                         logger.info("using default dictionary")
 
-                    dictPaths = filter(None, dictPaths)
+                    dictPaths = [_ for _ in dictPaths if _]
 
                     for dictPath in dictPaths:
                         checkFile(dictPath)
@@ -998,7 +1000,7 @@ def dictionaryAttack(attack_dict):
 
                     kb.wordlists = dictPaths
 
-                except Exception, ex:
+                except Exception as ex:
                     warnMsg = "there was a problem while loading dictionaries"
                     warnMsg += " ('%s')" % getSafeExString(ex)
                     logger.critical(warnMsg)
@@ -1061,7 +1063,7 @@ def dictionaryAttack(attack_dict):
                         _bruteProcessVariantA(attack_info, hash_regex, suffix, retVal, 0, 1, kb.wordlists, custom_wordlist, conf.api)
 
                 except KeyboardInterrupt:
-                    print
+                    print()
                     processException = True
                     warnMsg = "user aborted during dictionary-based attack phase (Ctrl+C was pressed)"
                     logger.warn(warnMsg)
@@ -1157,7 +1159,7 @@ def dictionaryAttack(attack_dict):
                             found = found_.value
 
                     except KeyboardInterrupt:
-                        print
+                        print()
                         processException = True
                         warnMsg = "user aborted during dictionary-based attack phase (Ctrl+C was pressed)"
                         logger.warn(warnMsg)

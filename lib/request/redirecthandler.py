@@ -16,6 +16,7 @@ from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
 from lib.core.common import getHostHeader
+from lib.core.common import getSafeExString
 from lib.core.common import getUnicode
 from lib.core.common import logHTTPTraffic
 from lib.core.common import readInput
@@ -75,9 +76,9 @@ class SmartRedirectHandler(urllib2.HTTPRedirectHandler):
 
         try:
             content = fp.read(MAX_CONNECTION_TOTAL_SIZE)
-        except Exception, msg:
+        except Exception as ex:
             dbgMsg = "there was a problem while retrieving "
-            dbgMsg += "redirect response content (%s)" % msg
+            dbgMsg += "redirect response content ('%s')" % getSafeExString(ex)
             logger.debug(dbgMsg)
         finally:
             if content:
@@ -140,8 +141,8 @@ class SmartRedirectHandler(urllib2.HTTPRedirectHandler):
 
             try:
                 result = urllib2.HTTPRedirectHandler.http_error_302(self, req, fp, code, msg, headers)
-            except urllib2.HTTPError, e:
-                result = e
+            except urllib2.HTTPError as ex:
+                result = ex
 
                 # Dirty hack for http://bugs.python.org/issue15701
                 try:
@@ -153,7 +154,7 @@ class SmartRedirectHandler(urllib2.HTTPRedirectHandler):
 
                 if not hasattr(result, "read"):
                     def _(self, length=None):
-                        return e.msg
+                        return ex.msg
                     result.read = types.MethodType(_, result)
 
                 if not getattr(result, "url", None):

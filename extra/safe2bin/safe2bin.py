@@ -7,6 +7,8 @@ Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
+from __future__ import print_function
+
 import binascii
 import re
 import string
@@ -108,11 +110,11 @@ def main():
         if not args.inputFile:
             parser.error('Missing the input file, -h for help')
 
-    except (OptionError, TypeError), e:
-        parser.error(e)
+    except (OptionError, TypeError) as ex:
+        parser.error(ex)
 
     if not os.path.isfile(args.inputFile):
-        print 'ERROR: the provided input file \'%s\' is not a regular file' % args.inputFile
+        print('ERROR: the provided input file \'%s\' is not a regular file' % args.inputFile)
         sys.exit(1)
 
     f = open(args.inputFile, 'r')

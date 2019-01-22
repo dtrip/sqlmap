@@ -6,6 +6,8 @@ Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
+from __future__ import print_function
+
 import contextlib
 import httplib
 import logging
@@ -95,7 +97,7 @@ class Database(object):
                     self.cursor.execute(statement, arguments)
                 else:
                     self.cursor.execute(statement)
-            except sqlite3.OperationalError, ex:
+            except sqlite3.OperationalError as ex:
                 if "locked" not in getSafeExString(ex):
                     raise
             else:
@@ -266,7 +268,7 @@ def setRestAPILog():
         try:
             conf.databaseCursor = Database(conf.database)
             conf.databaseCursor.connect("client")
-        except sqlite3.OperationalError, ex:
+        except sqlite3.OperationalError as ex:
             raise SqlmapConnectionException("%s ('%s')" % (ex, conf.database))
 
         # Set a logging handler that writes log messages to a IPC database
@@ -689,7 +691,7 @@ def server(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, adapter=REST
             eventlet.monkey_patch()
         logger.debug("Using adapter '%s' to run bottle" % adapter)
         run(host=host, port=port, quiet=True, debug=True, server=adapter)
-    except socket.error, ex:
+    except socket.error as ex:
         if "already in use" in getSafeExString(ex):
             logger.error("Address already in use ('%s:%s')" % (host, port))
         else:
@@ -697,7 +699,7 @@ def server(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, adapter=REST
     except ImportError:
         if adapter.lower() not in server_names:
             errMsg = "Adapter '%s' is unknown. " % adapter
-            errMsg += "List of supported adapters: %s" % ', '.join(sorted(server_names.keys()))
+            errMsg += "List of supported adapters: %s" % ', '.join(sorted(list(server_names.keys())))
         else:
             errMsg = "Server support for adapter '%s' is not installed on this system " % adapter
             errMsg += "(Note: you can try to install it with 'sudo apt-get install python-%s' or 'sudo pip install %s')" % (adapter, adapter)
@@ -743,7 +745,7 @@ def client(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, username=Non
 
     try:
         _client(addr)
-    except Exception, ex:
+    except Exception as ex:
         if not isinstance(ex, urllib2.HTTPError) or ex.code == httplib.UNAUTHORIZED:
             errMsg = "There has been a problem while connecting to the "
             errMsg += "REST-JSON API server at '%s' " % addr
@@ -762,7 +764,7 @@ def client(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, username=Non
             command = raw_input("api%s> " % (" (%s)" % taskid if taskid else "")).strip()
             command = re.sub(r"\A(\w+)", lambda match: match.group(1).lower(), command)
         except (EOFError, KeyboardInterrupt):
-            print
+            print()
             break
 
         if command in ("data", "log", "status", "stop", "kill"):
@@ -798,7 +800,7 @@ def client(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, username=Non
 
             try:
                 argv = ["sqlmap.py"] + shlex.split(command)[1:]
-            except Exception, ex:
+            except Exception as ex:
                 logger.error("Error occurred while parsing arguments ('%s')" % ex)
                 taskid = None
                 continue

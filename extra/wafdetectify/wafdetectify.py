@@ -5,21 +5,28 @@ Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
+from __future__ import print_function
+
 import cookielib
 import glob
 import httplib
 import inspect
 import os
 import re
+import socket
+import ssl
 import subprocess
 import sys
 import urllib2
 
 sys.dont_write_bytecode = True
 
+if hasattr(ssl, "_create_unverified_context"):
+    ssl._create_default_https_context = ssl._create_unverified_context
+
 NAME, VERSION, AUTHOR = "WAF Detectify", "0.1", "sqlmap developers (@sqlmap)"
 TIMEOUT = 10
-HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0", "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.5", "Accept-Encoding": "gzip, deflate", "Cache-Control": "max-age=0"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0", "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.5", "Accept-Encoding": "identity", "Cache-Control": "max-age=0"}
 SQLMAP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SCRIPTS_DIR = os.path.join(SQLMAP_DIR, "waf")
 LEVEL_COLORS = {"o": "\033[00;94m", "x": "\033[00;91m", "!": "\033[00;93m", "i": "\033[00;92m"}
@@ -43,7 +50,7 @@ def get_page(get=None, url=None, host=None, data=None):
         conn = urllib2.urlopen(req, timeout=TIMEOUT)
         page = conn.read()
         headers = conn.info()
-    except Exception, ex:
+    except Exception as ex:
         code = getattr(ex, "code", None)
         page = ex.read() if hasattr(ex, "read") else getattr(ex, "msg", "")
         headers = ex.info() if hasattr(ex, "info") else {}
@@ -63,7 +70,7 @@ def colorize(message):
 def main():
     global WAF_FUNCTIONS
 
-    print colorize("%s #v%s\n by: %s\n" % (NAME, VERSION, AUTHOR))
+    print(colorize("%s #v%s\n by: %s\n" % (NAME, VERSION, AUTHOR)))
 
     if len(sys.argv) < 2:
         exit(colorize("[x] usage: python %s <hostname>" % os.path.split(__file__)[-1]))
@@ -88,8 +95,8 @@ def main():
             if filename[:-3] in sys.modules:
                 del sys.modules[filename[:-3]]
             module = __import__(filename[:-3].encode(sys.getfilesystemencoding() or "utf8"))
-        except ImportError, msg:
-            exit(colorize("[x] cannot import WAF script '%s' (%s)" % (filename[:-3], msg)))
+        except ImportError as ex:
+            exit(colorize("[x] cannot import WAF script '%s' (%s)" % (filename[:-3], ex)))
 
         _ = dict(inspect.getmembers(module))
         if "detect" not in _:
@@ -99,7 +106,14 @@ def main():
 
     WAF_FUNCTIONS = sorted(WAF_FUNCTIONS, key=lambda _: "generic" in _[1].lower())
 
-    print colorize("[i] checking '%s'..." % sys.argv[1])
+    print(colorize("[i] checking '%s'..." % sys.argv[1]))
+
+    hostname = sys.argv[1].split("//")[-1].split('/')[0]
+    try:
+        socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        print(colorize("[x] host '%s' does not exist" % hostname))
+        exit(1)
 
     found = False
     for function, product in WAF_FUNCTIONS:
@@ -107,13 +121,12 @@ def main():
             continue
 
         if function(get_page):
-            print colorize("[!] WAF/IPS identified as '%s'" % product)
-            found = True
+            exit(colorize("[!] WAF/IPS identified as '%s'" % product))
 
     if not found:
-        print colorize("[o] nothing found")
+        print(colorize("[o] nothing found"))
 
-    print
+    print()
 
     exit(int(not found))
 

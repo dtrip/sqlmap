@@ -13,7 +13,6 @@ import os
 import random
 import re
 import socket
-import string
 import sys
 import tempfile
 import threading
@@ -33,13 +32,16 @@ from lib.core.common import Backend
 from lib.core.common import boldifyMessage
 from lib.core.common import checkFile
 from lib.core.common import dataToStdout
+from lib.core.common import decodeStringEscape
 from lib.core.common import getPublicTypeMembers
 from lib.core.common import getSafeExString
+from lib.core.common import getUnicode
 from lib.core.common import findLocalPort
 from lib.core.common import findPageForms
 from lib.core.common import getConsoleWidth
 from lib.core.common import getFileItems
 from lib.core.common import getFileType
+from lib.core.common import intersect
 from lib.core.common import normalizePath
 from lib.core.common import ntToPosixSlashes
 from lib.core.common import openFile
@@ -546,11 +548,11 @@ def _setMetasploit():
 
     if conf.msfPath:
         for path in (conf.msfPath, os.path.join(conf.msfPath, "bin")):
-            if any(os.path.exists(normalizePath(os.path.join(path, _))) for _ in ("msfcli", "msfconsole")):
+            if any(os.path.exists(normalizePath(os.path.join(path, "%s%s" % (_, ".bat" if IS_WIN else "")))) for _ in ("msfcli", "msfconsole")):
                 msfEnvPathExists = True
-                if all(os.path.exists(normalizePath(os.path.join(path, _))) for _ in ("msfvenom",)):
+                if all(os.path.exists(normalizePath(os.path.join(path, "%s%s" % (_, ".bat" if IS_WIN else "")))) for _ in ("msfvenom",)):
                     kb.oldMsf = False
-                elif all(os.path.exists(normalizePath(os.path.join(path, _))) for _ in ("msfencode", "msfpayload")):
+                elif all(os.path.exists(normalizePath(os.path.join(path, "%s%s" % (_, ".bat" if IS_WIN else "")))) for _ in ("msfencode", "msfpayload")):
                     kb.oldMsf = True
                 else:
                     msfEnvPathExists = False
@@ -585,11 +587,11 @@ def _setMetasploit():
         for envPath in envPaths:
             envPath = envPath.replace(";", "")
 
-            if any(os.path.exists(normalizePath(os.path.join(envPath, _))) for _ in ("msfcli", "msfconsole")):
+            if any(os.path.exists(normalizePath(os.path.join(envPath, "%s%s" % (_, ".bat" if IS_WIN else "")))) for _ in ("msfcli", "msfconsole")):
                 msfEnvPathExists = True
-                if all(os.path.exists(normalizePath(os.path.join(envPath, _))) for _ in ("msfvenom",)):
+                if all(os.path.exists(normalizePath(os.path.join(envPath, "%s%s" % (_, ".bat" if IS_WIN else "")))) for _ in ("msfvenom",)):
                     kb.oldMsf = False
-                elif all(os.path.exists(normalizePath(os.path.join(envPath, _))) for _ in ("msfencode", "msfpayload")):
+                elif all(os.path.exists(normalizePath(os.path.join(envPath, "%s%s" % (_, ".bat" if IS_WIN else "")))) for _ in ("msfencode", "msfpayload")):
                     kb.oldMsf = True
                 else:
                     msfEnvPathExists = False
@@ -1411,6 +1413,41 @@ def _checkDependencies():
     if conf.dependencies:
         checkDependencies()
 
+def _createHomeDirectories():
+    """
+    Creates directories inside sqlmap's home directory
+    """
+
+    for context in "output", "history":
+        directory = paths["SQLMAP_%s_PATH" % context.upper()]
+        try:
+            if not os.path.isdir(directory):
+                os.makedirs(directory)
+
+            _ = os.path.join(directory, randomStr())
+            open(_, "w+b").close()
+            os.remove(_)
+
+            if conf.outputDir and context == "output":
+                warnMsg = "using '%s' as the %s directory" % (directory, context)
+                logger.warn(warnMsg)
+        except (OSError, IOError) as ex:
+            try:
+                tempDir = tempfile.mkdtemp(prefix="sqlmap%s" % context)
+            except Exception as _:
+                errMsg = "unable to write to the temporary directory ('%s'). " % _
+                errMsg += "Please make sure that your disk is not full and "
+                errMsg += "that you have sufficient write permissions to "
+                errMsg += "create temporary files and/or directories"
+                raise SqlmapSystemException(errMsg)
+
+            warnMsg = "unable to %s %s directory " % ("create" if not os.path.isdir(directory) else "write to the", context)
+            warnMsg += "'%s' (%s). " % (directory, getUnicode(ex))
+            warnMsg += "Using temporary directory '%s' instead" % getUnicode(tempDir)
+            logger.warn(warnMsg)
+
+            paths["SQLMAP_%s_PATH" % context.upper()] = tempDir
+
 def _createTemporaryDirectory():
     """
     Creates temporary directory for this run.
@@ -1500,11 +1537,8 @@ def _cleanupOptions():
     else:
         conf.rParam = []
 
-    if conf.paramDel and '\\' in conf.paramDel:
-        try:
-            conf.paramDel = conf.paramDel.decode("string_escape")
-        except ValueError:
-            pass
+    if conf.paramDel:
+        conf.paramDel = decodeStringEscape(conf.paramDel)
 
     if conf.skip:
         conf.skip = conf.skip.replace(" ", "")
@@ -1616,7 +1650,7 @@ def _cleanupOptions():
         conf.code = int(conf.code)
 
     if conf.csvDel:
-        conf.csvDel = conf.csvDel.decode("string_escape")  # e.g. '\\t' -> '\t'
+        conf.csvDel = decodeStringEscape(conf.csvDel)
 
     if conf.torPort and isinstance(conf.torPort, basestring) and conf.torPort.isdigit():
         conf.torPort = int(conf.torPort)
@@ -1629,12 +1663,7 @@ def _cleanupOptions():
         setPaths(paths.SQLMAP_ROOT_PATH)
 
     if conf.string:
-        try:
-            conf.string = conf.string.decode("unicode_escape")
-        except:
-            charset = string.whitespace.replace(" ", "")
-            for _ in charset:
-                conf.string = conf.string.replace(_.encode("string_escape"), _)
+        conf.string = decodeStringEscape(conf.string)
 
     if conf.getAll:
         map(lambda _: conf.__setitem__(_, True), WIZARD.ALL)
@@ -1881,7 +1910,6 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.reduceTests = None
     kb.tlsSNI = {}
     kb.stickyDBMS = False
-    kb.stickyLevel = None
     kb.storeCrawlingChoice = None
     kb.storeHashesChoice = None
     kb.suppressResumeInfo = False
@@ -2424,8 +2452,14 @@ def _basicOptionValidation():
         raise SqlmapSyntaxException(errMsg)
 
     if conf.skip and conf.testParameter:
-        errMsg = "option '--skip' is incompatible with option '-p'"
-        raise SqlmapSyntaxException(errMsg)
+        if intersect(conf.skip, conf.testParameter):
+            errMsg = "option '--skip' is incompatible with option '-p'"
+            raise SqlmapSyntaxException(errMsg)
+
+    if conf.rParam and conf.testParameter:
+        if intersect(conf.rParam, conf.testParameter):
+            errMsg = "option '--randomize' is incompatible with option '-p'"
+            raise SqlmapSyntaxException(errMsg)
 
     if conf.mobile and conf.agent:
         errMsg = "switch '--mobile' is incompatible with option '--user-agent'"
@@ -2501,6 +2535,7 @@ def init():
     _cleanupEnvironment()
     _purge()
     _checkDependencies()
+    _createHomeDirectories()
     _createTemporaryDirectory()
     _basicOptionValidation()
     _setProxyList()

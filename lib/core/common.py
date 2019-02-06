@@ -872,9 +872,9 @@ def boldifyMessage(message):
 
     return retVal
 
-def setColor(message, color=None, bold=False):
+def setColor(message, color=None, bold=False, level=None):
     retVal = message
-    level = extractRegexResult(r"\[(?P<result>%s)\]" % '|'.join(_[0] for _ in getPublicTypeMembers(LOGGING_LEVELS)), message) or kb.get("stickyLevel")
+    level = level or extractRegexResult(r"\[(?P<result>%s)\]" % '|'.join(_[0] for _ in getPublicTypeMembers(LOGGING_LEVELS)), message)
 
     if isinstance(level, unicode):
         level = unicodeencode(level)
@@ -885,7 +885,6 @@ def setColor(message, color=None, bold=False):
         elif level:
             level = getattr(logging, level, None) if isinstance(level, basestring) else level
             retVal = LOGGER_HANDLER.colorize(message, level)
-            kb.stickyLevel = level if message and message[-1] != "\n" else None
 
     return retVal
 
@@ -996,7 +995,6 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
     """
 
     retVal = None
-    kb.stickyLevel = None
 
     message = getUnicode(message)
 
@@ -1270,14 +1268,22 @@ def setPaths(rootPath):
     paths.SQLMAP_XML_BANNER_PATH = os.path.join(paths.SQLMAP_XML_PATH, "banner")
     paths.SQLMAP_XML_PAYLOADS_PATH = os.path.join(paths.SQLMAP_XML_PATH, "payloads")
 
-    _ = os.path.join(os.path.expandvars(os.path.expanduser("~")), ".sqlmap")
-    paths.SQLMAP_HOME_PATH = _
-    paths.SQLMAP_OUTPUT_PATH = getUnicode(paths.get("SQLMAP_OUTPUT_PATH", os.path.join(_, "output")), encoding=sys.getfilesystemencoding() or UNICODE_ENCODING)
+    if IS_WIN:
+        if os.getenv("LOCALAPPDATA"):
+            paths.SQLMAP_HOME_PATH = os.path.expandvars("%LOCALAPPDATA%\\sqlmap")
+        elif os.getenv("USERPROFILE"):
+            paths.SQLMAP_HOME_PATH = os.path.expandvars("%USERPROFILE%\\Local Settings\\sqlmap")
+        else:
+            paths.SQLMAP_HOME_PATH = os.path.join(os.path.expandvars(os.path.expanduser("~")), "sqlmap")
+    else:
+        paths.SQLMAP_HOME_PATH = os.path.join(os.path.expandvars(os.path.expanduser("~")), ".sqlmap")
+
+    paths.SQLMAP_OUTPUT_PATH = getUnicode(paths.get("SQLMAP_OUTPUT_PATH", os.path.join(paths.SQLMAP_HOME_PATH, "output")), encoding=sys.getfilesystemencoding() or UNICODE_ENCODING)
     paths.SQLMAP_DUMP_PATH = os.path.join(paths.SQLMAP_OUTPUT_PATH, "%s", "dump")
     paths.SQLMAP_FILES_PATH = os.path.join(paths.SQLMAP_OUTPUT_PATH, "%s", "files")
 
     # history files
-    paths.SQLMAP_HISTORY_PATH = getUnicode(os.path.join(_, "history"), encoding=sys.getfilesystemencoding() or UNICODE_ENCODING)
+    paths.SQLMAP_HISTORY_PATH = getUnicode(os.path.join(paths.SQLMAP_HOME_PATH, "history"), encoding=sys.getfilesystemencoding() or UNICODE_ENCODING)
     paths.API_SHELL_HISTORY = os.path.join(paths.SQLMAP_HISTORY_PATH, "api.hst")
     paths.OS_SHELL_HISTORY = os.path.join(paths.SQLMAP_HISTORY_PATH, "os.hst")
     paths.SQL_SHELL_HISTORY = os.path.join(paths.SQLMAP_HISTORY_PATH, "sql.hst")
@@ -2036,7 +2042,6 @@ def clearConsoleLine(forceOutput=False):
         dataToStdout("\r%s\r" % (" " * (getConsoleWidth() - 1)), forceOutput)
 
     kb.prependFlag = False
-    kb.stickyLevel = None
 
 def parseXmlFile(xmlFile, handler):
     """
@@ -3355,8 +3360,7 @@ def unhandledExceptionMessage():
     errMsg += "repository at '%s'. If the exception persists, please open a new issue " % GIT_PAGE
     errMsg += "at '%s' " % ISSUES_PAGE
     errMsg += "with the following text and any other information required to "
-    errMsg += "reproduce the bug. The "
-    errMsg += "developers will try to reproduce the bug, fix it accordingly "
+    errMsg += "reproduce the bug. Developers will try to reproduce the bug, fix it accordingly "
     errMsg += "and get back to you\n"
     errMsg += "Running version: %s\n" % VERSION_STRING[VERSION_STRING.find('/') + 1:]
     errMsg += "Python version: %s\n" % PYVERSION
@@ -3492,7 +3496,7 @@ def maskSensitiveData(msg):
         retVal = retVal.replace(match.group(3), '*' * len(match.group(3)))
 
     # Fail-safe substitution
-    retVal = re.sub(r"(?i)\bhttps?://[^ ]+", lambda match: '*' * len(match.group(0)), retVal)
+    retVal = re.sub(r"(?i)(Command line:.+)\b(https?://[^ ]+)", lambda match: "%s%s" % (match.group(1), '*' * len(match.group(2))), retVal)
 
     if getpass.getuser():
         retVal = re.sub(r"(?i)\b%s\b" % re.escape(getpass.getuser()), '*' * len(getpass.getuser()), retVal)
@@ -3536,6 +3540,32 @@ def intersect(containerA, containerB, lowerCase=False):
             containerB = [val.lower() if isinstance(val, basestring) else val for val in containerB]
 
         retVal = [val for val in containerA if val in containerB]
+
+    return retVal
+
+def decodeStringEscape(value):
+    """
+    Decodes escaped string values (e.g. "\\t" -> "\t")
+    """
+
+    retVal = value
+
+    if value and '\\' in value:
+        if isinstance(value, unicode):
+            retVal = retVal.encode(UNICODE_ENCODING)
+
+        try:
+            retVal = codecs.escape_decode(retVal)[0]
+        except:
+            try:
+                retVal = retVal.decode("string_escape")
+            except:
+                charset = string.whitespace.replace(" ", "")
+                for _ in charset:
+                    retVal = retVal.replace(repr(_).strip("'"), _)
+
+        if isinstance(value, unicode):
+            retVal = getUnicode(retVal)
 
     return retVal
 
@@ -4152,6 +4182,9 @@ def getHostHeader(url):
             retVal = extractRegexResult(r"http(s)?://\[(?P<result>.+)\]", url)
         elif any(retVal.endswith(':%d' % _) for _ in (80, 443)):
             retVal = retVal.split(':')[0]
+
+    if retVal and retVal.count(':') > 1 and not any(_ in retVal for _ in ('[', ']')):
+        retVal = "[%s]" % retVal
 
     return retVal
 

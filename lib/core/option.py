@@ -76,6 +76,7 @@ from lib.core.enums import CUSTOM_LOGGING
 from lib.core.enums import DUMP_FORMAT
 from lib.core.enums import HTTP_HEADER
 from lib.core.enums import HTTPMETHOD
+from lib.core.enums import MKSTEMP_PREFIX
 from lib.core.enums import MOBILES
 from lib.core.enums import OPTION_TYPE
 from lib.core.enums import PAYLOAD
@@ -825,6 +826,80 @@ def _setTamperingFunctions():
             for _, function in priorities:
                 kb.tamperFunctions.append(function)
 
+def _setPreprocessFunctions():
+    """
+    Loads preprocess functions from given script(s)
+    """
+
+    if conf.preprocess:
+        for script in re.split(PARAMETER_SPLITTING_REGEX, conf.preprocess):
+            found = False
+
+            script = script.strip().encode(sys.getfilesystemencoding() or UNICODE_ENCODING)
+
+            try:
+                if not script:
+                    continue
+
+                if not os.path.exists(script):
+                    errMsg = "preprocess script '%s' does not exist" % script
+                    raise SqlmapFilePathException(errMsg)
+
+                elif not script.endswith(".py"):
+                    errMsg = "preprocess script '%s' should have an extension '.py'" % script
+                    raise SqlmapSyntaxException(errMsg)
+            except UnicodeDecodeError:
+                errMsg = "invalid character provided in option '--preprocess'"
+                raise SqlmapSyntaxException(errMsg)
+
+            dirname, filename = os.path.split(script)
+            dirname = os.path.abspath(dirname)
+
+            infoMsg = "loading preprocess module '%s'" % filename[:-3]
+            logger.info(infoMsg)
+
+            if not os.path.exists(os.path.join(dirname, "__init__.py")):
+                errMsg = "make sure that there is an empty file '__init__.py' "
+                errMsg += "inside of preprocess scripts directory '%s'" % dirname
+                raise SqlmapGenericException(errMsg)
+
+            if dirname not in sys.path:
+                sys.path.insert(0, dirname)
+
+            try:
+                module = __import__(filename[:-3].encode(sys.getfilesystemencoding() or UNICODE_ENCODING))
+            except Exception as ex:
+                raise SqlmapSyntaxException("cannot import preprocess module '%s' (%s)" % (filename[:-3], getSafeExString(ex)))
+
+            for name, function in inspect.getmembers(module, inspect.isfunction):
+                if name == "preprocess" and inspect.getargspec(function).args and all(_ in inspect.getargspec(function).args for _ in ("page", "headers", "code")):
+                    found = True
+
+                    kb.preprocessFunctions.append(function)
+                    function.func_name = module.__name__
+
+                    break
+
+            if not found:
+                errMsg = "missing function 'preprocess(page, headers=None, code=None)' "
+                errMsg += "in preprocess script '%s'" % script
+                raise SqlmapGenericException(errMsg)
+            else:
+                try:
+                    _, _, _ = function("", {}, None)
+                except:
+                    handle, filename = tempfile.mkstemp(prefix=MKSTEMP_PREFIX.PREPROCESS, suffix=".py")
+                    os.close(handle)
+
+                    open(filename, "w+b").write("#!/usr/bin/env\n\ndef preprocess(page, headers=None, code=None):\n    return page, headers, code\n")
+                    open(os.path.join(os.path.dirname(filename), "__init__.py"), "w+b").write("pass")
+
+                    errMsg = "function 'preprocess(page, headers=None, code=None)' "
+                    errMsg += "in preprocess script '%s' " % script
+                    errMsg += "should return a tuple '(page, headers, code)' "
+                    errMsg += "(Note: find template script at '%s')" % filename
+                    raise SqlmapGenericException(errMsg)
+
 def _setWafFunctions():
     """
     Loads WAF/IPS detecting functions from script(s)
@@ -1278,28 +1353,32 @@ def _setHTTPUserAgent():
           file choosed as user option
     """
 
+    debugMsg = "setting the HTTP User-Agent header"
+    logger.debug(debugMsg)
+
     if conf.mobile:
-        message = "which smartphone do you want sqlmap to imitate "
-        message += "through HTTP User-Agent header?\n"
-        items = sorted(getPublicTypeMembers(MOBILES, True))
+        if conf.randomAgent:
+            _ = random.sample([_[1] for _ in getPublicTypeMembers(MOBILES, True)], 1)[0]
+            conf.httpHeaders.append((HTTP_HEADER.USER_AGENT, _))
+        else:
+            message = "which smartphone do you want sqlmap to imitate "
+            message += "through HTTP User-Agent header?\n"
+            items = sorted(getPublicTypeMembers(MOBILES, True))
 
-        for count in xrange(len(items)):
-            item = items[count]
-            message += "[%d] %s%s\n" % (count + 1, item[0], " (default)" if item == MOBILES.IPHONE else "")
+            for count in xrange(len(items)):
+                item = items[count]
+                message += "[%d] %s%s\n" % (count + 1, item[0], " (default)" if item == MOBILES.IPHONE else "")
 
-        test = readInput(message.rstrip('\n'), default=items.index(MOBILES.IPHONE) + 1)
+            test = readInput(message.rstrip('\n'), default=items.index(MOBILES.IPHONE) + 1)
 
-        try:
-            item = items[int(test) - 1]
-        except:
-            item = MOBILES.IPHONE
+            try:
+                item = items[int(test) - 1]
+            except:
+                item = MOBILES.IPHONE
 
-        conf.httpHeaders.append((HTTP_HEADER.USER_AGENT, item[1]))
+            conf.httpHeaders.append((HTTP_HEADER.USER_AGENT, item[1]))
 
     elif conf.agent:
-        debugMsg = "setting the HTTP User-Agent header"
-        logger.debug(debugMsg)
-
         conf.httpHeaders.append((HTTP_HEADER.USER_AGENT, conf.agent))
 
     elif not conf.randomAgent:
@@ -1933,6 +2012,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
         kb.headerPaths = {}
         kb.keywords = set(getFileItems(paths.SQL_KEYWORDS))
         kb.passwordMgr = None
+        kb.preprocessFunctions = []
         kb.skipVulnHost = None
         kb.tamperFunctions = []
         kb.targets = oset()
@@ -2545,6 +2625,7 @@ def init():
     _setMultipleTargets()
     _listTamperingFunctions()
     _setTamperingFunctions()
+    _setPreprocessFunctions()
     _setWafFunctions()
     _setTrafficOutputFP()
     _setupHTTPCollector()

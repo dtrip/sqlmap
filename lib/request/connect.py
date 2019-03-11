@@ -603,7 +603,7 @@ class Connect(object):
             responseMsg += "[#%d] (%s %s):\r\n" % (threadData.lastRequestUID, code, status)
 
             if responseHeaders:
-                logHeaders = "\r\n".join(["%s: %s" % (getUnicode(key.capitalize() if isinstance(key, basestring) else key), getUnicode(value)) for (key, value) in responseHeaders.items()])
+                logHeaders = getUnicode("".join(responseHeaders.headers).strip())
 
             logHTTPTraffic(requestMsg, "%s%s\r\n\r\n%s" % (responseMsg, logHeaders, (page or "")[:MAX_CONNECTION_CHUNK_SIZE]), start, time.time())
 
@@ -765,12 +765,12 @@ class Connect(object):
                 requestMsg = re.sub(r"(?i)Content-length: \d+\n", "", requestMsg)
                 requestMsg = re.sub(r"(?s)\n\n.+", "\n", requestMsg)
 
-            responseMsg += "[#%d] (%d %s):\r\n" % (threadData.lastRequestUID, conn.code, status)
+            responseMsg += "[#%d] (%s %s):\r\n" % (threadData.lastRequestUID, conn.code, status)
         else:
             responseMsg += "[#%d] (%s %s):\r\n" % (threadData.lastRequestUID, code, status)
 
         if responseHeaders:
-            logHeaders = "\r\n".join(["%s: %s" % (getUnicode(key.capitalize() if isinstance(key, basestring) else key), getUnicode(value)) for (key, value) in responseHeaders.items()])
+            logHeaders = getUnicode("".join(responseHeaders.headers).strip())
 
         if not skipLogTraffic:
             logHTTPTraffic(requestMsg, "%s%s\r\n\r\n%s" % (responseMsg, logHeaders, (page or "")[:MAX_CONNECTION_CHUNK_SIZE]), start, time.time())
@@ -972,6 +972,10 @@ class Connect(object):
         if conf.csrfToken:
             def _adjustParameter(paramString, parameter, newValue):
                 retVal = paramString
+
+                if urlencode(parameter) in paramString:
+                    parameter = urlencode(parameter)
+
                 match = re.search(r"%s=[^&]*" % re.escape(parameter), paramString, re.I)
                 if match:
                     retVal = re.sub("(?i)%s" % re.escape(match.group(0)), ("%s=%s" % (parameter, newValue)).replace('\\', r'\\'), paramString)
@@ -979,10 +983,13 @@ class Connect(object):
                     match = re.search(r"(%s[\"']:[\"'])([^\"']+)" % re.escape(parameter), paramString, re.I)
                     if match:
                         retVal = re.sub("(?i)%s" % re.escape(match.group(0)), "%s%s" % (match.group(1), newValue), paramString)
+
                 return retVal
 
             token = AttribDict()
             page, headers, code = Connect.getPage(url=conf.csrfUrl or conf.url, data=conf.data if conf.csrfUrl == conf.url else None, method=conf.method if conf.csrfUrl == conf.url else None, cookie=conf.parameters.get(PLACE.COOKIE), direct=True, silent=True, ua=conf.parameters.get(PLACE.USER_AGENT), referer=conf.parameters.get(PLACE.REFERER), host=conf.parameters.get(PLACE.HOST))
+            page = urldecode(page)  # for anti-CSRF tokens with special characters in their name (e.g. 'foo:bar=...')
+
             match = re.search(r"(?i)<input[^>]+\bname=[\"']?(?P<name>%s)\b[^>]*\bvalue=[\"']?(?P<value>[^>'\"]*)" % conf.csrfToken, page or "", re.I)
 
             if not match:

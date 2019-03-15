@@ -54,6 +54,7 @@ from lib.core.common import readInput
 from lib.core.common import resetCookieJar
 from lib.core.common import runningAsAdmin
 from lib.core.common import safeExpandUser
+from lib.core.common import safeFilepathEncode
 from lib.core.common import saveConfig
 from lib.core.common import setColor
 from lib.core.common import setOptimize
@@ -734,8 +735,8 @@ def _setTamperingFunctions():
         for script in re.split(PARAMETER_SPLITTING_REGEX, conf.tamper):
             found = False
 
-            path = paths.SQLMAP_TAMPER_PATH.encode(sys.getfilesystemencoding() or UNICODE_ENCODING)
-            script = script.strip().encode(sys.getfilesystemencoding() or UNICODE_ENCODING)
+            path = safeFilepathEncode(paths.SQLMAP_TAMPER_PATH)
+            script = safeFilepathEncode(script.strip())
 
             try:
                 if not script:
@@ -770,9 +771,9 @@ def _setTamperingFunctions():
                 sys.path.insert(0, dirname)
 
             try:
-                module = __import__(filename[:-3].encode(sys.getfilesystemencoding() or UNICODE_ENCODING))
+                module = __import__(safeFilepathEncode(filename[:-3]))
             except Exception as ex:
-                raise SqlmapSyntaxException("cannot import tamper module '%s' (%s)" % (filename[:-3], getSafeExString(ex)))
+                raise SqlmapSyntaxException("cannot import tamper module '%s' (%s)" % (getUnicode(filename[:-3]), getSafeExString(ex)))
 
             priority = PRIORITY.NORMAL if not hasattr(module, "__priority__") else module.__priority__
 
@@ -806,7 +807,7 @@ def _setTamperingFunctions():
                         function()
                     except Exception as ex:
                         errMsg = "error occurred while checking dependencies "
-                        errMsg += "for tamper module '%s' ('%s')" % (filename[:-3], getSafeExString(ex))
+                        errMsg += "for tamper module '%s' ('%s')" % (getUnicode(filename[:-3]), getSafeExString(ex))
                         raise SqlmapGenericException(errMsg)
 
             if not found:
@@ -835,7 +836,7 @@ def _setPreprocessFunctions():
         for script in re.split(PARAMETER_SPLITTING_REGEX, conf.preprocess):
             found = False
 
-            script = script.strip().encode(sys.getfilesystemencoding() or UNICODE_ENCODING)
+            script = safeFilepathEncode(script.strip())
 
             try:
                 if not script:
@@ -867,9 +868,9 @@ def _setPreprocessFunctions():
                 sys.path.insert(0, dirname)
 
             try:
-                module = __import__(filename[:-3].encode(sys.getfilesystemencoding() or UNICODE_ENCODING))
+                module = __import__(safeFilepathEncode(filename[:-3]))
             except Exception as ex:
-                raise SqlmapSyntaxException("cannot import preprocess module '%s' (%s)" % (filename[:-3], getSafeExString(ex)))
+                raise SqlmapSyntaxException("cannot import preprocess module '%s' (%s)" % (getUnicode(filename[:-3]), getSafeExString(ex)))
 
             for name, function in inspect.getmembers(module, inspect.isfunction):
                 if name == "preprocess" and inspect.getargspec(function).args and all(_ in inspect.getargspec(function).args for _ in ("page", "headers", "code")):
@@ -922,9 +923,9 @@ def _setWafFunctions():
             try:
                 if filename[:-3] in sys.modules:
                     del sys.modules[filename[:-3]]
-                module = __import__(filename[:-3].encode(sys.getfilesystemencoding() or UNICODE_ENCODING))
+                module = __import__(safeFilepathEncode(filename[:-3]))
             except ImportError as ex:
-                raise SqlmapSyntaxException("cannot import WAF script '%s' (%s)" % (filename[:-3], getSafeExString(ex)))
+                raise SqlmapSyntaxException("cannot import WAF script '%s' (%s)" % (getUnicode(filename[:-3]), getSafeExString(ex)))
 
             _ = dict(inspect.getmembers(module))
             if "detect" not in _:

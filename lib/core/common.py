@@ -177,7 +177,7 @@ from thirdparty.clientform.clientform import ParseResponse
 from thirdparty.clientform.clientform import ParseError
 from thirdparty.colorama.initialise import init as coloramainit
 from thirdparty.magic import magic
-from thirdparty.odict.odict import OrderedDict
+from thirdparty.odict import OrderedDict
 from thirdparty.termcolor.termcolor import colored
 
 class UnicodeRawConfigParser(RawConfigParser):
@@ -1809,6 +1809,19 @@ def normalizePath(filepath):
 
     return retVal
 
+def safeFilepathEncode(filepath):
+    """
+    Returns filepath in (ASCII) format acceptable for OS handling (e.g. reading)
+    """
+
+    retVal = filepath
+
+    if filepath and isinstance(filepath, unicode):
+        retVal = filepath.encode(sys.getfilesystemencoding() or UNICODE_ENCODING)
+
+    return retVal
+
+
 def safeExpandUser(filepath):
     """
     Patch for a Python Issue18171 (http://bugs.python.org/issue18171)
@@ -2365,6 +2378,21 @@ def getUnicode(value, encoding=None, noneToNull=False):
     if isinstance(value, unicode):
         return value
     elif isinstance(value, basestring):
+        # Heuristics (if encoding not explicitly specified)
+        candidates = filter(None, (encoding, kb.get("pageEncoding") if kb.get("originalPage") else None, conf.get("encoding"), UNICODE_ENCODING, sys.getfilesystemencoding()))
+        if all(_ in value for _ in ('<', '>')):
+            pass
+        elif any(_ in value for _ in (":\\", '/', '.')) and '\n' not in value:
+            candidates = filter(None, (encoding, sys.getfilesystemencoding(), kb.get("pageEncoding") if kb.get("originalPage") else None, UNICODE_ENCODING, conf.get("encoding")))
+        elif conf.get("encoding") and '\n' not in value:
+            candidates = filter(None, (encoding, conf.get("encoding"), kb.get("pageEncoding") if kb.get("originalPage") else None, sys.getfilesystemencoding(), UNICODE_ENCODING))
+
+        for candidate in candidates:
+            try:
+                return unicode(value, candidate)
+            except UnicodeDecodeError:
+                pass
+
         while True:
             try:
                 return unicode(value, encoding or (kb.get("pageEncoding") if kb.get("originalPage") else None) or UNICODE_ENCODING)
@@ -3140,7 +3168,7 @@ def initTechnique(technique=None):
             for key, value in kb.injection.conf.items():
                 if value and (not hasattr(conf, key) or (hasattr(conf, key) and not getattr(conf, key))):
                     setattr(conf, key, value)
-                    debugMsg = "resuming configuration option '%s' (%s)" % (key, value)
+                    debugMsg = "resuming configuration option '%s' (%s)" % (key, ("'%s'" % value) if isinstance(value, basestring) else value)
                     logger.debug(debugMsg)
 
                     if value and key == "optimize":

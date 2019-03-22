@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -31,6 +31,7 @@ from lib.core.agent import agent
 from lib.core.common import asciifyUrl
 from lib.core.common import calculateDeltaSeconds
 from lib.core.common import checkSameHost
+from lib.core.common import chunkSplitPostData
 from lib.core.common import clearConsoleLine
 from lib.core.common import dataToStdout
 from lib.core.common import escapeJsonValue
@@ -271,9 +272,14 @@ class Connect(object):
         checking = kwargs.get("checking", False)
         skipRead = kwargs.get("skipRead", False)
         finalCode = kwargs.get("finalCode", False)
+        chunked = kwargs.get("chunked", False) or conf.chunked
 
         if multipart:
             post = multipart
+
+        if chunked and post:
+            post = urllib.unquote(post)
+            post = chunkSplitPostData(post)
 
         websocket_ = url.lower().startswith("ws")
 
@@ -396,6 +402,9 @@ class Connect(object):
 
             if conf.keepAlive:
                 headers[HTTP_HEADER.CONNECTION] = "keep-alive"
+            
+            if chunked:
+                headers[HTTP_HEADER.TRANSFER_ENCODING] = "chunked"
 
             if auxHeaders:
                 headers = forgeHeaders(auxHeaders, headers)
@@ -455,7 +464,7 @@ class Connect(object):
                     requestHeaders += "\r\n%s" % ("Cookie: %s" % ";".join("%s=%s" % (getUnicode(cookie.name), getUnicode(cookie.value)) for cookie in cookies))
 
                 if post is not None:
-                    if not getRequestHeader(req, HTTP_HEADER.CONTENT_LENGTH):
+                    if not getRequestHeader(req, HTTP_HEADER.CONTENT_LENGTH) and not chunked:
                         requestHeaders += "\r\n%s: %d" % (string.capwords(HTTP_HEADER.CONTENT_LENGTH), len(post))
 
                 if not getRequestHeader(req, HTTP_HEADER.CONNECTION):
@@ -466,7 +475,8 @@ class Connect(object):
                 if post is not None:
                     requestMsg += "\r\n\r\n%s" % getUnicode(post)
 
-                requestMsg += "\r\n"
+                if not chunked:
+                    requestMsg += "\r\n"
 
                 if not multipart:
                     threadData.lastRequestMsg = requestMsg
@@ -743,15 +753,19 @@ class Connect(object):
                     page = unicode(page, errors="ignore")
                 else:
                     page = getUnicode(page)
-            socket.setdefaulttimeout(conf.timeout)
 
-        for function in kb.preprocessFunctions:
-            try:
-                page, responseHeaders, code = function(page, responseHeaders, code)
-            except Exception as ex:
-                errMsg = "error occurred while running preprocess "
-                errMsg += "function '%s' ('%s')" % (function.func_name, getSafeExString(ex))
-                raise SqlmapGenericException(errMsg)
+            for function in kb.preprocessFunctions:
+                try:
+                    page, responseHeaders, code = function(page, responseHeaders, code)
+                except Exception as ex:
+                    errMsg = "error occurred while running preprocess "
+                    errMsg += "function '%s' ('%s')" % (function.func_name, getSafeExString(ex))
+                    raise SqlmapGenericException(errMsg)
+
+            threadData.lastPage = page
+            threadData.lastCode = code
+
+            socket.setdefaulttimeout(conf.timeout)
 
         processResponse(page, responseHeaders, status)
 
@@ -1299,10 +1313,9 @@ class Connect(object):
             page, headers, code = Connect.getPage(url=_(kb.secondReq[0]), post=_(kb.secondReq[2]), method=kb.secondReq[1], cookie=kb.secondReq[3], silent=silent, auxHeaders=dict(auxHeaders, **dict(kb.secondReq[4])), response=response, raise404=False, ignoreTimeout=timeBasedCompare, refreshing=True)
 
         threadData.lastQueryDuration = calculateDeltaSeconds(start)
-        threadData.lastPage = page
-        threadData.lastCode = code
 
-        kb.originalCode = kb.originalCode or code
+        kb.originalCode = code if kb.originalCode is None else kb.originalCode
+        kb.originalPage = page if kb.originalPage is None else kb.originalPage
 
         if kb.testMode:
             kb.testQueryCount += 1

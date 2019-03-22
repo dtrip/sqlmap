@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -215,12 +215,15 @@ def cmdLineParser(argv=None):
         request.add_option("--force-ssl", dest="forceSSL", action="store_true",
                            help="Force usage of SSL/HTTPS")
 
+        request.add_option("--chunked", dest="chunked", action="store_true",
+                           help="Use HTTP chunked transfer encoded (POST) requests")
+
         request.add_option("--hpp", dest="hpp", action="store_true",
                            help="Use HTTP parameter pollution method")
 
         request.add_option("--eval", dest="evalCode",
                            help="Evaluate provided Python code before the request (e.g. \"import hashlib;id2=hashlib.md5(id).hexdigest()\")")
-
+       
         # Optimization options
         optimization = OptionGroup(parser, "Optimization", "These options can be used to optimize the performance of sqlmap")
 

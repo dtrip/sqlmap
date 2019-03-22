@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -126,6 +126,7 @@ from lib.core.settings import GITHUB_REPORT_OAUTH_TOKEN
 from lib.core.settings import GOOGLE_ANALYTICS_COOKIE_PREFIX
 from lib.core.settings import HASHDB_MILESTONE_VALUE
 from lib.core.settings import HOST_ALIASES
+from lib.core.settings import HTTP_CHUNKED_SPLIT_KEYWORDS
 from lib.core.settings import IGNORE_SAVE_OPTIONS
 from lib.core.settings import INFERENCE_UNKNOWN_CHAR
 from lib.core.settings import INVALID_UNICODE_CHAR_FORMAT
@@ -1276,6 +1277,7 @@ def setPaths(rootPath):
     paths.SQLMAP_EXTRAS_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "extra")
     paths.SQLMAP_PROCS_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "procs")
     paths.SQLMAP_SHELL_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "shell")
+    paths.SQLMAP_SETTINGS_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "lib", "core", "settings.py")
     paths.SQLMAP_TAMPER_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "tamper")
     paths.SQLMAP_WAF_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "waf")
     paths.SQLMAP_TXT_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "txt")
@@ -1307,7 +1309,6 @@ def setPaths(rootPath):
     paths.GITHUB_HISTORY = os.path.join(paths.SQLMAP_HISTORY_PATH, "github.hst")
 
     # sqlmap files
-    paths.CHECKSUM_MD5 = os.path.join(paths.SQLMAP_TXT_PATH, "checksum.md5")
     paths.COMMON_COLUMNS = os.path.join(paths.SQLMAP_TXT_PATH, "common-columns.txt")
     paths.COMMON_TABLES = os.path.join(paths.SQLMAP_TXT_PATH, "common-tables.txt")
     paths.COMMON_OUTPUTS = os.path.join(paths.SQLMAP_TXT_PATH, 'common-outputs.txt')
@@ -1326,7 +1327,7 @@ def setPaths(rootPath):
     paths.PGSQL_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "postgresql.xml")
 
     for path in paths.values():
-        if any(path.endswith(_) for _ in (".md5", ".txt", ".xml", ".zip")):
+        if any(path.endswith(_) for _ in (".txt", ".xml", ".zip")):
             checkFile(path)
 
 def weAreFrozen():
@@ -2574,7 +2575,7 @@ def extractErrorMessage(page):
 
     if isinstance(page, basestring):
         for regex in ERROR_PARSING_REGEXES:
-            match = re.search(regex, page, re.DOTALL | re.IGNORECASE)
+            match = re.search(regex, page, re.IGNORECASE)
 
             if match:
                 retVal = htmlunescape(match.group("result")).replace("<br>", "\n").strip()
@@ -3393,15 +3394,14 @@ def checkIntegrity():
 
     retVal = True
 
-    if os.path.isfile(paths.CHECKSUM_MD5):
-        for checksum, _ in (re.split(r'\s+', _) for _ in getFileItems(paths.CHECKSUM_MD5)):
-            path = os.path.normpath(os.path.join(paths.SQLMAP_ROOT_PATH, _))
-            if not os.path.isfile(path):
-                logger.error("missing file detected '%s'" % path)
-                retVal = False
-            elif md5File(path) != checksum:
-                logger.error("wrong checksum of file '%s' detected" % path)
-                retVal = False
+    baseTime = os.path.getmtime(paths.SQLMAP_SETTINGS_PATH)
+    for root, dirnames, filenames in os.walk(paths.SQLMAP_ROOT_PATH):
+        for filename in filenames:
+            if re.search(r"(\.py|\.xml|_)\Z", filename):
+                filepath = os.path.join(root, filename)
+                if os.path.getmtime(filepath) > baseTime:
+                    logger.error("wrong modification time of '%s'" % filepath)
+                    retVal = False
 
     return retVal
 
@@ -4893,5 +4893,42 @@ def firstNotNone(*args):
         if _ is not None:
             retVal = _
             break
+
+    return retVal
+
+def chunkSplitPostData(data):
+    """
+    Convert POST data to chunked transfer-encoded data (Note: splitting done by SQL keywords)
+
+    >>> random.seed(0)
+    >>> chunkSplitPostData("SELECT username,password FROM users")
+    '5;UAqFz\\r\\nSELEC\\r\\n8;sDK4F\\r\\nT userna\\r\\n3;UMp48\\r\\nme,\\r\\n8;3tT3Q\\r\\npassword\\r\\n4;gAL47\\r\\n FRO\\r\\n5;1qXIa\\r\\nM use\\r\\n2;yZPaE\\r\\nrs\\r\\n0\\r\\n\\r\\n'
+    """
+
+    length = len(data)
+    retVal = ""
+    index = 0
+
+    while index < length:
+        chunkSize = randomInt(1)
+
+        if index + chunkSize >= length:
+            chunkSize = length - index
+
+        salt = randomStr(5, alphabet=string.ascii_letters + string.digits)
+
+        while chunkSize:
+            candidate = data[index:index + chunkSize]
+
+            if re.search(r"\b%s\b" % '|'.join(HTTP_CHUNKED_SPLIT_KEYWORDS), candidate, re.I):
+                chunkSize -= 1
+            else:
+                break
+
+        index += chunkSize
+        retVal += "%x;%s\r\n" % (chunkSize, salt)
+        retVal += "%s\r\n" % candidate
+
+    retVal += "0\r\n\r\n"
 
     return retVal

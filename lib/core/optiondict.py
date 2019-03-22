@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -61,6 +61,7 @@ optDict = {
         "csrfToken": "string",
         "csrfUrl": "string",
         "forceSSL": "boolean",
+        "chunked": "boolean",
         "hpp": "boolean",
         "evalCode": "string",
     },

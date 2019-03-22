@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -19,7 +19,7 @@ from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.3.3.30"
+VERSION = "1.3.3.43"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -347,10 +347,11 @@ ERROR_PARSING_REGEXES = (
     r"<b>[^<]*(fatal|error|warning|exception)[^<]*</b>:?\s*(?P<result>[^<]+)",
     r"(?m)^\s*(fatal|error|warning|exception):?\s*(?P<result>[^\n]+?)$",
     r"(?P<result>[^\n>]*SQL Syntax[^\n<]+)",
-    r"<li>Error Type:<br>(?P<result>.+?)</li>",
+    r"(?s)<li>Error Type:<br>(?P<result>.+?)</li>",
     r"CDbCommand (?P<result>[^<>\n]*SQL[^<>\n]+)",
     r"error '[0-9a-f]{8}'((<[^>]+>)|\s)+(?P<result>[^<>]+)",
-    r"\[[^\n\]]+(ODBC|JDBC)[^\n\]]+\](\[[^\]]+\])?(?P<result>[^\n]+(in query expression|\(SQL| at /[^ ]+pdo)[^\n<]+)"
+    r"\[[^\n\]]+(ODBC|JDBC)[^\n\]]+\](\[[^\]]+\])?(?P<result>[^\n]+(in query expression|\(SQL| at /[^ ]+pdo)[^\n<]+)",
+    r"(?P<result>query error: SELECT[^<>]+)"
 )
 
 # Regular expression used for parsing charset info from meta html headers
@@ -799,6 +800,9 @@ KB_CHARS_BOUNDARY_CHAR = 'q'
 
 # Letters of lower frequency used in kb.chars
 KB_CHARS_LOW_FREQUENCY_ALPHABET = "zqxjkvbp"
+
+# SQL keywords used for splitting in HTTP chunked transfer encoded requests (switch --chunk)
+HTTP_CHUNKED_SPLIT_KEYWORDS = ("SELECT", "UPDATE", "INSERT", "FROM", "LOAD_FILE", "UNION", "information_schema", "sysdatabases", "msysaccessobjects", "msysqueries", "sysmodules")
 
 # CSS style used in HTML dump format
 HTML_DUMP_CSS_STYLE = """<style>

@@ -12,7 +12,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import urlparse
 
 from lib.core.common import Backend
 from lib.core.common import getSafeExString
@@ -27,6 +26,7 @@ from lib.core.common import randomStr
 from lib.core.common import readInput
 from lib.core.common import resetCookieJar
 from lib.core.common import urldecode
+from lib.core.compat import xrange
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -74,6 +74,7 @@ from lib.core.settings import USER_AGENT_ALIASES
 from lib.core.settings import XML_RECOGNITION_REGEX
 from lib.utils.hashdb import HashDB
 from thirdparty.odict import OrderedDict
+from thirdparty.six.moves import urllib as _urllib
 
 def _setRequestParams():
     """
@@ -276,7 +277,7 @@ def _setRequestParams():
 
             if not kb.processUserMarks:
                 if place == PLACE.URI:
-                    query = urlparse.urlsplit(value).query
+                    query = _urllib.parse.urlsplit(value).query
                     if query:
                         parameters = conf.parameters[PLACE.GET] = query
                         paramDict = paramToDict(PLACE.GET, parameters)

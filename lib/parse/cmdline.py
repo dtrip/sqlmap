@@ -22,6 +22,7 @@ from lib.core.common import checkSystemEncoding
 from lib.core.common import dataToStdout
 from lib.core.common import expandMnemonics
 from lib.core.common import getUnicode
+from lib.core.compat import xrange
 from lib.core.data import cmdLineOptions
 from lib.core.data import conf
 from lib.core.data import logger

@@ -8,11 +8,12 @@ See the file 'LICENSE' for copying permission
 from __future__ import print_function
 
 import difflib
-import random
 import threading
 import time
 import traceback
 
+from lib.core.compat import WichmannHill
+from lib.core.compat import xrange
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -57,7 +58,7 @@ class _ThreadData(threading.local):
         self.lastRequestMsg = None
         self.lastRequestUID = 0
         self.lastRedirectURL = None
-        self.random = random.WichmannHill()
+        self.random = WichmannHill()
         self.resumed = False
         self.retriesCount = 0
         self.seqMatcher = difflib.SequenceMatcher(None)

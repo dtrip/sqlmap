@@ -15,9 +15,6 @@ This file lists bundled packages and their associated licensing terms.
   Copyright (C) 2013, Jonathan Hartley.
 * The Fcrypt library located under thirdparty/fcrypt/.
   Copyright (C) 2000, 2001, 2004 Carey Evans.
-* The Oset library located under thirdparty/oset/.
-  Copyright (C) 2010, BlueDynamics Alliance, Austria.
-  Copyright (C) 2009, Raymond Hettinger, and others.
 * The PrettyPrint library located under thirdparty/prettyprint/.
   Copyright (C) 2010, Chris Hall.
 * The SocksiPy library located under thirdparty/socks/.
@@ -281,6 +278,8 @@ be bound by the terms and conditions of this License Agreement.
   Copyright (C) 2012, Marcel Hellkamp.
 * The ordereddict library located under thirdparty/odict/.
   Copyright (C) 2009, Raymond Hettinger.
+* The six Python 2 and 3 compatibility library located under thirdparty/six/.
+  Copyright (C) 2010-2018, Benjamin Peterson.
 * The Termcolor library located under thirdparty/termcolor/.
   Copyright (C) 2008-2011, Volvox Development Team.
 

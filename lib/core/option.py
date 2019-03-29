@@ -5,9 +5,7 @@ Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
-import cookielib
 import glob
-import httplib
 import inspect
 import logging
 import os
@@ -18,8 +16,6 @@ import sys
 import tempfile
 import threading
 import time
-import urllib2
-import urlparse
 
 import lib.controller.checks
 import lib.core.common
@@ -37,6 +33,7 @@ from lib.core.common import decodeStringEscape
 from lib.core.common import getPublicTypeMembers
 from lib.core.common import getSafeExString
 from lib.core.common import getUnicode
+from lib.core.common import filterNone
 from lib.core.common import findLocalPort
 from lib.core.common import findPageForms
 from lib.core.common import getConsoleWidth
@@ -62,6 +59,7 @@ from lib.core.common import setOptimize
 from lib.core.common import setPaths
 from lib.core.common import singleTimeWarnMessage
 from lib.core.common import urldecode
+from lib.core.compat import xrange
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -69,6 +67,7 @@ from lib.core.data import mergedOptions
 from lib.core.data import queries
 from lib.core.datatype import AttribDict
 from lib.core.datatype import InjectionDict
+from lib.core.datatype import OrderedSet
 from lib.core.defaults import defaults
 from lib.core.dicts import DBMS_DICT
 from lib.core.dicts import DUMP_REPLACEMENTS
@@ -125,7 +124,6 @@ from lib.core.settings import SQLMAP_ENVIRONMENT_PREFIX
 from lib.core.settings import SUPPORTED_DBMS
 from lib.core.settings import SUPPORTED_OS
 from lib.core.settings import TIME_DELAY_CANDIDATES
-from lib.core.settings import UNICODE_ENCODING
 from lib.core.settings import UNION_CHAR_REGEX
 from lib.core.settings import UNKNOWN_DBMS_VERSION
 from lib.core.settings import URI_INJECTABLE_REGEX
@@ -151,17 +149,20 @@ from lib.utils.crawler import crawl
 from lib.utils.deps import checkDependencies
 from lib.utils.search import search
 from lib.utils.purge import purge
+from thirdparty import six
 from thirdparty.keepalive import keepalive
 from thirdparty.multipart import multipartpost
-from thirdparty.oset.pyoset import oset
+from thirdparty.six.moves import http_client as _http_client
+from thirdparty.six.moves import http_cookiejar as _http_cookiejar
+from thirdparty.six.moves import urllib as _urllib
 from thirdparty.socks import socks
 from xml.etree.ElementTree import ElementTree
 
-authHandler = urllib2.BaseHandler()
+authHandler = _urllib.request.BaseHandler()
 chunkedHandler = ChunkedHandler()
 httpsHandler = HTTPSHandler()
 keepAliveHandler = keepalive.HTTPHandler()
-proxyHandler = urllib2.ProxyHandler()
+proxyHandler = _urllib.request.ProxyHandler()
 redirectHandler = SmartRedirectHandler()
 rangeHandler = HTTPRangeHandler()
 multipartPostHandler = multipartpost.MultipartPostHandler()
@@ -660,7 +661,7 @@ def _setTechnique():
     validTechniques = sorted(getPublicTypeMembers(PAYLOAD.TECHNIQUE), key=lambda x: x[1])
     validLetters = [_[0][0].upper() for _ in validTechniques]
 
-    if conf.tech and isinstance(conf.tech, basestring):
+    if conf.tech and isinstance(conf.tech, six.string_types):
         _ = []
 
         for letter in conf.tech.upper():
@@ -784,7 +785,7 @@ def _setTamperingFunctions():
                 if name == "tamper" and inspect.getargspec(function).args and inspect.getargspec(function).keywords == "kwargs":
                     found = True
                     kb.tamperFunctions.append(function)
-                    function.func_name = module.__name__
+                    function.__name__ = module.__name__
 
                     if check_priority and priority > last_priority:
                         message = "it appears that you might have mixed "
@@ -880,7 +881,7 @@ def _setPreprocessFunctions():
                     found = True
 
                     kb.preprocessFunctions.append(function)
-                    function.func_name = module.__name__
+                    function.__name__ = module.__name__
 
                     break
 
@@ -1054,7 +1055,7 @@ def _setHTTPHandlers():
         logger.debug(debugMsg)
 
         try:
-            _ = urlparse.urlsplit(conf.proxy)
+            _ = _urllib.parse.urlsplit(conf.proxy)
         except Exception as ex:
             errMsg = "invalid proxy address '%s' ('%s')" % (conf.proxy, getSafeExString(ex))
             raise SqlmapSyntaxException(errMsg)
@@ -1090,10 +1091,14 @@ def _setHTTPHandlers():
         if scheme in (PROXY_TYPE.SOCKS4, PROXY_TYPE.SOCKS5):
             proxyHandler.proxies = {}
 
+            if scheme == PROXY_TYPE.SOCKS4:
+                warnMsg = "SOCKS4 does not support resolving (DNS) names (i.e. causing DNS leakage)"
+                singleTimeWarnMessage(warnMsg)
+
             socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5 if scheme == PROXY_TYPE.SOCKS5 else socks.PROXY_TYPE_SOCKS4, hostname, port, username=username, password=password)
-            socks.wrapmodule(urllib2)
+            socks.wrapmodule(_http_client)
         else:
-            socks.unwrapmodule(urllib2)
+            socks.unwrapmodule(_http_client)
 
             if conf.proxyCred:
                 # Reference: http://stackoverflow.com/questions/34079/how-to-specify-an-authenticated-proxy-for-a-python-http-connection
@@ -1109,16 +1114,16 @@ def _setHTTPHandlers():
     debugMsg = "creating HTTP requests opener object"
     logger.debug(debugMsg)
 
-    handlers = filter(None, [multipartPostHandler, proxyHandler if proxyHandler.proxies else None, authHandler, redirectHandler, rangeHandler, chunkedHandler if conf.chunked else None, httpsHandler])
+    handlers = filterNone([multipartPostHandler, proxyHandler if proxyHandler.proxies else None, authHandler, redirectHandler, rangeHandler, chunkedHandler if conf.chunked else None, httpsHandler])
 
     if not conf.dropSetCookie:
         if not conf.loadCookies:
-            conf.cj = cookielib.CookieJar()
+            conf.cj = _http_cookiejar.CookieJar()
         else:
-            conf.cj = cookielib.MozillaCookieJar()
+            conf.cj = _http_cookiejar.MozillaCookieJar()
             resetCookieJar(conf.cj)
 
-        handlers.append(urllib2.HTTPCookieProcessor(conf.cj))
+        handlers.append(_urllib.request.HTTPCookieProcessor(conf.cj))
 
     # Reference: http://www.w3.org/Protocols/rfc2616/rfc2616-sec8.html
     if conf.keepAlive:
@@ -1134,8 +1139,8 @@ def _setHTTPHandlers():
         else:
             handlers.append(keepAliveHandler)
 
-    opener = urllib2.build_opener(*handlers)
-    urllib2.install_opener(opener)
+    opener = _urllib.request.build_opener(*handlers)
+    _urllib.request.install_opener(opener)
 
 def _setSafeVisit():
     """
@@ -1148,14 +1153,14 @@ def _setSafeVisit():
         checkFile(conf.safeReqFile)
 
         raw = readCachedFileContent(conf.safeReqFile)
-        match = re.search(r"\A([A-Z]+) ([^ ]+) HTTP/[0-9.]+\Z", raw[:raw.find('\n')])
+        match = re.search(r"\A([A-Z]+) ([^ ]+) HTTP/[0-9.]+\Z", raw.split('\n')[0].strip())
 
         if match:
             kb.safeReq.method = match.group(1)
             kb.safeReq.url = match.group(2)
             kb.safeReq.headers = {}
 
-            for line in raw[raw.find('\n') + 1:].split('\n'):
+            for line in raw.split('\n')[1:]:
                 line = line.strip()
                 if line and ':' in line:
                     key, value = line.split(':', 1)
@@ -1167,7 +1172,7 @@ def _setSafeVisit():
                             if value.endswith(":443"):
                                 scheme = "https"
                             value = "%s://%s" % (scheme, value)
-                        kb.safeReq.url = urlparse.urljoin(value, kb.safeReq.url)
+                        kb.safeReq.url = _urllib.parse.urljoin(value, kb.safeReq.url)
                 else:
                     break
 
@@ -1290,7 +1295,7 @@ def _setHTTPAuthentication():
         conf.authUsername = aCredRegExp.group(1)
         conf.authPassword = aCredRegExp.group(2)
 
-        kb.passwordMgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        kb.passwordMgr = _urllib.request.HTTPPasswordMgrWithDefaultRealm()
 
         _setAuthCred()
 
@@ -1298,7 +1303,7 @@ def _setHTTPAuthentication():
             authHandler = SmartHTTPBasicAuthHandler(kb.passwordMgr)
 
         elif authType == AUTH_TYPE.DIGEST:
-            authHandler = urllib2.HTTPDigestAuthHandler(kb.passwordMgr)
+            authHandler = _urllib.request.HTTPDigestAuthHandler(kb.passwordMgr)
 
         elif authType == AUTH_TYPE.NTLM:
             try:
@@ -1460,7 +1465,7 @@ def _setHostname():
 
     if conf.url:
         try:
-            conf.hostname = urlparse.urlsplit(conf.url).netloc.split(':')[0]
+            conf.hostname = _urllib.parse.urlsplit(conf.url).netloc.split(':')[0]
         except ValueError as ex:
             errMsg = "problem occurred while "
             errMsg += "parsing an URL '%s' ('%s')" % (conf.url, getSafeExString(ex))
@@ -1735,7 +1740,7 @@ def _cleanupOptions():
     if conf.csvDel:
         conf.csvDel = decodeStringEscape(conf.csvDel)
 
-    if conf.torPort and isinstance(conf.torPort, basestring) and conf.torPort.isdigit():
+    if conf.torPort and hasattr(conf.torPort, "isdigit") and conf.torPort.isdigit():
         conf.torPort = int(conf.torPort)
 
     if conf.torType:
@@ -1784,8 +1789,8 @@ def _cleanupEnvironment():
     Cleanup environment (e.g. from leftovers after --sqlmap-shell).
     """
 
-    if issubclass(urllib2.socket.socket, socks.socksocket):
-        socks.unwrapmodule(urllib2)
+    if issubclass(_http_client.socket.socket, socks.socksocket):
+        socks.unwrapmodule(_http_client)
 
     if hasattr(socket, "_ready"):
         socket._ready.clear()
@@ -1882,6 +1887,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.connErrorChoice = None
     kb.connErrorCounter = 0
     kb.cookieEncodeChoice = None
+    kb.copyExecTest = None
     kb.counters = {}
     kb.customInjectionMark = CUSTOM_INJECTION_MARK_CHAR
     kb.data = AttribDict()
@@ -2019,7 +2025,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
         kb.preprocessFunctions = []
         kb.skipVulnHost = None
         kb.tamperFunctions = []
-        kb.targets = oset()
+        kb.targets = OrderedSet()
         kb.testedParams = set()
         kb.userAgents = None
         kb.vainRun = True
@@ -2312,11 +2318,11 @@ def _setTorSocksProxySettings():
 
     # SOCKS5 to prevent DNS leaks (http://en.wikipedia.org/wiki/Tor_%28anonymity_network%29)
     socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5 if conf.torType == PROXY_TYPE.SOCKS5 else socks.PROXY_TYPE_SOCKS4, LOCALHOST, port)
-    socks.wrapmodule(urllib2)
+    socks.wrapmodule(_http_client)
 
 def _setHttpChunked():
     if conf.chunked and conf.data:
-        httplib.HTTPConnection._set_content_length = lambda self, a, b: None
+        _http_client.HTTPConnection._set_content_length = lambda self, a, b: None
 
 def _checkWebSocket():
     if conf.url and (conf.url.startswith("ws:/") or conf.url.startswith("wss:/")):
@@ -2405,7 +2411,7 @@ def _basicOptionValidation():
         errMsg = "switch '--dump' is incompatible with switch '--search'"
         raise SqlmapSyntaxException(errMsg)
 
-    if conf.chunked and not any((conf.data, conf.requestFile)):
+    if conf.chunked and not any((conf.data, conf.requestFile, conf.forms)):
         errMsg = "switch '--chunked' requires usage of (POST) options/switches '--data', '-r' or '--forms'"
         raise SqlmapSyntaxException(errMsg)
 
@@ -2573,7 +2579,7 @@ def _basicOptionValidation():
         errMsg = "option '--crack' should be used as a standalone"
         raise SqlmapSyntaxException(errMsg)
 
-    if isinstance(conf.uCols, basestring):
+    if isinstance(conf.uCols, six.string_types):
         if not conf.uCols.isdigit() and ("-" not in conf.uCols or len(conf.uCols.split("-")) != 2):
             errMsg = "value for option '--union-cols' must be a range with hyphon "
             errMsg += "(e.g. 1-10) or integer value (e.g. 5)"

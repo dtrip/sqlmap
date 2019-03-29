@@ -7,14 +7,14 @@ See the file 'LICENSE' for copying permission
 
 import binascii
 import codecs
+import collections
 import contextlib
-import cookielib
 import copy
 import distutils
 import getpass
 import hashlib
-import httplib
 import inspect
+import io
 import json
 import keyword
 import locale
@@ -33,14 +33,8 @@ import tempfile
 import threading
 import time
 import types
-import urllib
-import urllib2
-import urlparse
 import unicodedata
 
-from ConfigParser import DEFAULTSECT
-from ConfigParser import RawConfigParser
-from StringIO import StringIO
 from difflib import SequenceMatcher
 from math import sqrt
 from optparse import OptionValueError
@@ -52,10 +46,7 @@ from extra.beep.beep import beep
 from extra.cloak.cloak import decloak
 from extra.safe2bin.safe2bin import safecharencode
 from lib.core.bigarray import BigArray
-from lib.core.data import conf
-from lib.core.data import kb
-from lib.core.data import logger
-from lib.core.data import paths
+from lib.core.compat import xrange
 from lib.core.convert import base64pickle
 from lib.core.convert import base64unpickle
 from lib.core.convert import hexdecode
@@ -63,6 +54,10 @@ from lib.core.convert import htmlunescape
 from lib.core.convert import stdoutencode
 from lib.core.convert import unicodeencode
 from lib.core.convert import utf8encode
+from lib.core.data import conf
+from lib.core.data import kb
+from lib.core.data import logger
+from lib.core.data import paths
 from lib.core.decorators import cachedmethod
 from lib.core.defaults import defaults
 from lib.core.dicts import DBMS_DICT
@@ -158,7 +153,6 @@ from lib.core.settings import REFLECTED_REPLACEMENT_REGEX
 from lib.core.settings import REFLECTED_REPLACEMENT_TIMEOUT
 from lib.core.settings import REFLECTED_VALUE_MARKER
 from lib.core.settings import REFLECTIVE_MISS_THRESHOLD
-from lib.core.settings import SAFE_VARIABLE_MARKER
 from lib.core.settings import SENSITIVE_DATA_REGEX
 from lib.core.settings import SENSITIVE_OPTIONS
 from lib.core.settings import STDIN_PIPE_DASH
@@ -175,14 +169,18 @@ from lib.core.settings import VERSION_STRING
 from lib.core.settings import WEBSCARAB_SPLITTER
 from lib.core.threads import getCurrentThreadData
 from lib.utils.sqlalchemy import _sqlalchemy
+from thirdparty import six
 from thirdparty.clientform.clientform import ParseResponse
 from thirdparty.clientform.clientform import ParseError
 from thirdparty.colorama.initialise import init as coloramainit
 from thirdparty.magic import magic
 from thirdparty.odict import OrderedDict
+from thirdparty.six.moves import configparser as _configparser
+from thirdparty.six.moves import http_client as _http_client
+from thirdparty.six.moves import urllib as _urllib
 from thirdparty.termcolor.termcolor import colored
 
-class UnicodeRawConfigParser(RawConfigParser):
+class UnicodeRawConfigParser(_configparser.RawConfigParser):
     """
     RawConfigParser with unicode writing support
     """
@@ -193,7 +191,7 @@ class UnicodeRawConfigParser(RawConfigParser):
         """
 
         if self._defaults:
-            fp.write("[%s]\n" % DEFAULTSECT)
+            fp.write("[%s]\n" % _configparser.DEFAULTSECT)
 
             for (key, value) in self._defaults.items():
                 fp.write("%s = %s\n" % (key, getUnicode(value, UNICODE_ENCODING).replace('\n', '\n\t')))
@@ -231,7 +229,7 @@ class Format(object):
         if versions is None and Backend.getVersionList():
             versions = Backend.getVersionList()
 
-        return Backend.getDbms() if versions is None else "%s %s" % (Backend.getDbms(), " and ".join(filter(None, versions)))
+        return Backend.getDbms() if versions is None else "%s %s" % (Backend.getDbms(), " and ".join(filterNone(versions)))
 
     @staticmethod
     def getErrorParsedDBMSes():
@@ -360,7 +358,7 @@ class Backend:
 
     @staticmethod
     def setVersion(version):
-        if isinstance(version, basestring):
+        if isinstance(version, six.string_types):
             kb.dbmsVersion = [version]
 
         return kb.dbmsVersion
@@ -369,7 +367,7 @@ class Backend:
     def setVersionList(versionsList):
         if isinstance(versionsList, list):
             kb.dbmsVersion = versionsList
-        elif isinstance(versionsList, basestring):
+        elif isinstance(versionsList, six.string_types):
             Backend.setVersion(versionsList)
         else:
             logger.error("invalid format of versionsList")
@@ -392,7 +390,7 @@ class Backend:
             return None
 
         # Little precaution, in theory this condition should always be false
-        elif kb.os is not None and isinstance(os, basestring) and kb.os.lower() != os.lower():
+        elif kb.os is not None and isinstance(os, six.string_types) and kb.os.lower() != os.lower():
             msg = "sqlmap previously fingerprinted back-end DBMS "
             msg += "operating system %s. However now it has " % kb.os
             msg += "been fingerprinted to be %s. " % os
@@ -411,7 +409,7 @@ class Backend:
                     warnMsg = "invalid value"
                     logger.warn(warnMsg)
 
-        elif kb.os is None and isinstance(os, basestring):
+        elif kb.os is None and isinstance(os, six.string_types):
             kb.os = os.capitalize()
 
         return kb.os
@@ -421,7 +419,7 @@ class Backend:
         if version is None:
             return None
 
-        elif kb.osVersion is None and isinstance(version, basestring):
+        elif kb.osVersion is None and isinstance(version, six.string_types):
             kb.osVersion = version
 
     @staticmethod
@@ -441,7 +439,7 @@ class Backend:
         while True:
             choice = readInput(msg, default='1')
 
-            if isinstance(choice, basestring) and choice.isdigit() and int(choice) in (1, 2):
+            if hasattr(choice, "isdigit") and choice.isdigit() and int(choice) in (1, 2):
                 kb.arch = 32 if int(choice) == 1 else 64
                 break
             else:
@@ -504,7 +502,7 @@ class Backend:
 
     @staticmethod
     def getVersion():
-        versions = filter(None, flattenValue(kb.dbmsVersion))
+        versions = filterNone(flattenValue(kb.dbmsVersion))
         if not isNoneValue(versions):
             return versions[0]
         else:
@@ -512,7 +510,7 @@ class Backend:
 
     @staticmethod
     def getVersionList():
-        versions = filter(None, flattenValue(kb.dbmsVersion))
+        versions = filterNone(flattenValue(kb.dbmsVersion))
         if not isNoneValue(versions):
             return versions
         else:
@@ -645,7 +643,7 @@ def paramToDict(place, parameters=None):
                                             if isinstance(value, (list, tuple, set, dict)):
                                                 if value:
                                                     walk(head, value)
-                                            elif isinstance(value, (bool, int, float, basestring)):
+                                            elif isinstance(value, (bool, int, float, six.string_types)):
                                                 original = current[key]
                                                 if isinstance(value, bool):
                                                     current[key] = "%s%s" % (getUnicode(value).lower(), BOUNDED_INJECTION_MARKER)
@@ -790,7 +788,7 @@ def getManualDirectories():
             else:
                 targets.add('.'.join(_[:-1]))
 
-            targets = filter(None, targets)
+            targets = filterNone(targets)
 
             for prefix in BRUTE_DOC_ROOT_PREFIXES.get(Backend.getOs(), DEFAULT_DOC_ROOTS[OS.LINUX]):
                 if BRUTE_DOC_ROOT_TARGET_MARK in prefix and re.match(IP_ADDRESS_REGEX, conf.hostname):
@@ -889,7 +887,7 @@ def setColor(message, color=None, bold=False, level=None):
         if bold or color:
             retVal = colored(message, color=color, on_color=None, attrs=("bold",) if bold else None)
         elif level:
-            level = getattr(logging, level, None) if isinstance(level, basestring) else level
+            level = getattr(logging, level, None) if isinstance(level, six.string_types) else level
             retVal = LOGGER_HANDLER.colorize(message, level)
 
     return retVal
@@ -940,7 +938,7 @@ def dataToStdout(data, forceOutput=False, bold=False, content_type=None, status=
             if multiThreadMode:
                 logging._releaseLock()
 
-            kb.prependFlag = isinstance(data, basestring) and (len(data) == 1 and data not in ('\n', '\r') or len(data) > 2 and data[0] == '\r' and data[-1] != '\n')
+            kb.prependFlag = isinstance(data, six.string_types) and (len(data) == 1 and data not in ('\n', '\r') or len(data) > 2 and data[0] == '\r' and data[-1] != '\n')
 
 def dataToTrafficFile(data):
     if not conf.trafficFile:
@@ -1073,7 +1071,7 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
             finally:
                 logging._releaseLock()
 
-    if retVal and default and isinstance(default, basestring) and len(default) == 1:
+    if retVal and default and isinstance(default, six.string_types) and len(default) == 1:
         retVal = retVal.strip()
 
     if boolean:
@@ -1469,14 +1467,14 @@ def parseTargetUrl():
         conf.url = conf.url.replace('?', URI_QUESTION_MARKER)
 
     try:
-        urlSplit = urlparse.urlsplit(conf.url)
+        urlSplit = _urllib.parse.urlsplit(conf.url)
     except ValueError as ex:
         errMsg = "invalid URL '%s' has been given ('%s'). " % (conf.url, getSafeExString(ex))
         errMsg += "Please be sure that you don't have any leftover characters (e.g. '[' or ']') "
         errMsg += "in the hostname part"
         raise SqlmapGenericException(errMsg)
 
-    hostnamePort = urlSplit.netloc.split(":") if not re.search(r"\[.+\]", urlSplit.netloc) else filter(None, (re.search(r"\[.+\]", urlSplit.netloc).group(0), re.search(r"\](:(?P<port>\d+))?", urlSplit.netloc).group("port")))
+    hostnamePort = urlSplit.netloc.split(":") if not re.search(r"\[.+\]", urlSplit.netloc) else filterNone((re.search(r"\[.+\]", urlSplit.netloc).group(0), re.search(r"\](:(?P<port>\d+))?", urlSplit.netloc).group("port")))
 
     conf.scheme = (urlSplit.scheme.strip().lower() or "http") if not conf.forceSSL else "https"
     conf.path = urlSplit.path.strip()
@@ -1668,7 +1666,7 @@ def parseUnionPage(page):
     else:
         data = page
 
-    if len(data) == 1 and isinstance(data[0], basestring):
+    if len(data) == 1 and isinstance(data[0], six.string_types):
         data = data[0]
 
     return data
@@ -1866,7 +1864,7 @@ def safeStringFormat(format_, params):
     else:
         retVal = re.sub(r"(\A|[^A-Za-z0-9])(%d)([^A-Za-z0-9]|\Z)", r"\g<1>%s\g<3>", format_)
 
-    if isinstance(params, basestring):
+    if isinstance(params, six.string_types):
         retVal = retVal.replace("%s", params, 1)
     elif not isListLike(params):
         retVal = retVal.replace("%s", getUnicode(params), 1)
@@ -2079,7 +2077,7 @@ def parseXmlFile(xmlFile, handler):
     """
 
     try:
-        with contextlib.closing(StringIO(readCachedFileContent(xmlFile))) as stream:
+        with contextlib.closing(io.StringIO(readCachedFileContent(xmlFile))) as stream:
             parse(stream, handler)
     except (SAXParseException, UnicodeError) as ex:
         errMsg = "something appears to be wrong with "
@@ -2388,30 +2386,30 @@ def getUnicode(value, encoding=None, noneToNull=False):
     if noneToNull and value is None:
         return NULL
 
-    if isinstance(value, unicode):
+    if isinstance(value, six.text_type):
         return value
-    elif isinstance(value, basestring):
+    elif isinstance(value, six.binary_type):
         # Heuristics (if encoding not explicitly specified)
-        candidates = filter(None, (encoding, kb.get("pageEncoding") if kb.get("originalPage") else None, conf.get("encoding"), UNICODE_ENCODING, sys.getfilesystemencoding()))
+        candidates = filterNone((encoding, kb.get("pageEncoding") if kb.get("originalPage") else None, conf.get("encoding"), UNICODE_ENCODING, sys.getfilesystemencoding()))
         if all(_ in value for _ in ('<', '>')):
             pass
         elif any(_ in value for _ in (":\\", '/', '.')) and '\n' not in value:
-            candidates = filter(None, (encoding, sys.getfilesystemencoding(), kb.get("pageEncoding") if kb.get("originalPage") else None, UNICODE_ENCODING, conf.get("encoding")))
+            candidates = filterNone((encoding, sys.getfilesystemencoding(), kb.get("pageEncoding") if kb.get("originalPage") else None, UNICODE_ENCODING, conf.get("encoding")))
         elif conf.get("encoding") and '\n' not in value:
-            candidates = filter(None, (encoding, conf.get("encoding"), kb.get("pageEncoding") if kb.get("originalPage") else None, sys.getfilesystemencoding(), UNICODE_ENCODING))
+            candidates = filterNone((encoding, conf.get("encoding"), kb.get("pageEncoding") if kb.get("originalPage") else None, sys.getfilesystemencoding(), UNICODE_ENCODING))
 
         for candidate in candidates:
             try:
-                return unicode(value, candidate)
+                return six.text_type(value, candidate)
             except UnicodeDecodeError:
                 pass
 
         while True:
             try:
-                return unicode(value, encoding or (kb.get("pageEncoding") if kb.get("originalPage") else None) or UNICODE_ENCODING)
+                return six.text_type(value, encoding or (kb.get("pageEncoding") if kb.get("originalPage") else None) or UNICODE_ENCODING)
             except UnicodeDecodeError as ex:
                 try:
-                    return unicode(value, UNICODE_ENCODING)
+                    return six.text_type(value, UNICODE_ENCODING)
                 except:
                     value = value[:ex.start] + "".join(INVALID_UNICODE_CHAR_FORMAT % ord(_) for _ in value[ex.start:ex.end]) + value[ex.end:]
     elif isListLike(value):
@@ -2419,9 +2417,9 @@ def getUnicode(value, encoding=None, noneToNull=False):
         return value
     else:
         try:
-            return unicode(value)
+            return six.text_type(value)
         except UnicodeDecodeError:
-            return unicode(str(value), errors="ignore")  # encoding ignored for non-basestring instances
+            return six.text_type(str(value), errors="ignore")  # encoding ignored for non-basestring instances
 
 def longestCommonPrefix(*sequences):
     """
@@ -2573,7 +2571,7 @@ def extractErrorMessage(page):
 
     retVal = None
 
-    if isinstance(page, basestring):
+    if isinstance(page, six.string_types):
         for regex in ERROR_PARSING_REGEXES:
             match = re.search(regex, page, re.IGNORECASE)
 
@@ -2655,7 +2653,7 @@ def urldecode(value, encoding=None, unsafe="%%&=;+%s" % CUSTOM_INJECTION_MARK_CH
             pass
         finally:
             if convall:
-                result = urllib.unquote_plus(value) if spaceplus else urllib.unquote(value)
+                result = _urllib.parse.unquote_plus(value) if spaceplus else _urllib.parse.unquote(value)
             else:
                 def _(match):
                     charset = reduce(lambda x, y: x.replace(y, ""), unsafe, string.printable)
@@ -2663,7 +2661,7 @@ def urldecode(value, encoding=None, unsafe="%%&=;+%s" % CUSTOM_INJECTION_MARK_CH
                     return char if char in charset else match.group(0)
                 result = value
                 if spaceplus:
-                    result = result.replace('+', ' ')  # plus sign has a special meaning in URL encoded data (hence the usage of urllib.unquote_plus in convall case)
+                    result = result.replace('+', ' ')  # plus sign has a special meaning in URL encoded data (hence the usage of _urllib.parse.unquote_plus in convall case)
                 result = re.sub(r"%([0-9a-fA-F]{2})", _, result)
 
     if isinstance(result, str):
@@ -2702,7 +2700,7 @@ def urlencode(value, safe="%&=-_", convall=False, limit=False, spaceplus=False):
             value = re.sub(r"%(?![0-9a-fA-F]{2})", "%25", value)
 
         while True:
-            result = urllib.quote(utf8encode(value), safe)
+            result = _urllib.parse.quote(utf8encode(value), safe)
 
             if limit and len(result) > URLENCODE_CHAR_LIMIT:
                 if count >= len(URLENCODE_FAILSAFE_CHARS):
@@ -2717,7 +2715,7 @@ def urlencode(value, safe="%&=-_", convall=False, limit=False, spaceplus=False):
                 break
 
         if spaceplus:
-            result = result.replace(urllib.quote(' '), '+')
+            result = result.replace(_urllib.parse.quote(' '), '+')
 
     return result
 
@@ -2840,7 +2838,7 @@ def extractTextTagContent(page):
         except MemoryError:
             page = page.replace(REFLECTED_VALUE_MARKER, "")
 
-    return filter(None, (_.group("result").strip() for _ in re.finditer(TEXT_TAG_REGEX, page)))
+    return filterNone(_.group("result").strip() for _ in re.finditer(TEXT_TAG_REGEX, page))
 
 def trimAlphaNum(value):
     """
@@ -2872,7 +2870,7 @@ def isNumPosStrValue(value):
     False
     """
 
-    return (value and isinstance(value, basestring) and value.isdigit() and int(value) > 0) or (isinstance(value, int) and value > 0)
+    return (hasattr(value, "isdigit") and value.isdigit() and int(value) > 0) or (isinstance(value, int) and value > 0)
 
 @cachedmethod
 def aliasToDbmsEnum(dbms):
@@ -2999,6 +2997,21 @@ def filterControlChars(value, replacement=' '):
 
     return filterStringValue(value, PRINTABLE_CHAR_REGEX, replacement)
 
+def filterNone(values):
+    """
+    Emulates filterNone([...]) functionality
+
+    >>> filterNone([1, 2, "", None, 3])
+    [1, 2, 3]
+    """
+
+    retVal = values
+
+    if isinstance(values, collections.Iterable):
+        retVal = [_ for _ in values if _]
+
+    return retVal
+
 def isDBMSVersionAtLeast(version):
     """
     Checks if the recognized DBMS version is at least the version
@@ -3020,7 +3033,7 @@ def isDBMSVersionAtLeast(version):
 
         value = filterStringValue(value, '[0-9.><=]')
 
-        if value and isinstance(value, basestring):
+        if value and isinstance(value, six.string_types):
             if value.startswith(">="):
                 value = float(value.replace(">=", ""))
             elif value.startswith(">"):
@@ -3045,7 +3058,7 @@ def parseSqliteTableSchema(value):
         table = {}
         columns = {}
 
-        for match in re.finditer(r"(\w+)[\"'`]?\s+(INT|INTEGER|TINYINT|SMALLINT|MEDIUMINT|BIGINT|UNSIGNED BIG INT|INT2|INT8|INTEGER|CHARACTER|VARCHAR|VARYING CHARACTER|NCHAR|NATIVE CHARACTER|NVARCHAR|TEXT|CLOB|LONGTEXT|BLOB|NONE|REAL|DOUBLE|DOUBLE PRECISION|FLOAT|REAL|NUMERIC|DECIMAL|BOOLEAN|DATE|DATETIME|NUMERIC)\b", value, re.I):
+        for match in re.finditer(r"(\w+)[\"'`]?\s+(INT|INTEGER|TINYINT|SMALLINT|MEDIUMINT|BIGINT|UNSIGNED BIG INT|INT2|INT8|INTEGER|CHARACTER|VARCHAR|VARYING CHARACTER|NCHAR|NATIVE CHARACTER|NVARCHAR|TEXT|CLOB|LONGTEXT|BLOB|NONE|REAL|DOUBLE|DOUBLE PRECISION|FLOAT|REAL|NUMERIC|DECIMAL|BOOLEAN|DATE|DATETIME|NUMERIC)\b", decodeStringEscape(value), re.I):
             retVal = True
             columns[match.group(1)] = match.group(2)
 
@@ -3150,7 +3163,7 @@ def saveConfig(conf, filename):
                 elif datatype == OPTION_TYPE.STRING:
                     value = ""
 
-            if isinstance(value, basestring):
+            if isinstance(value, six.string_types):
                 value = value.replace("\n", "\n ")
 
             config.set(family, option, value)
@@ -3181,7 +3194,7 @@ def initTechnique(technique=None):
             for key, value in kb.injection.conf.items():
                 if value and (not hasattr(conf, key) or (hasattr(conf, key) and not getattr(conf, key))):
                     setattr(conf, key, value)
-                    debugMsg = "resuming configuration option '%s' (%s)" % (key, ("'%s'" % value) if isinstance(value, basestring) else value)
+                    debugMsg = "resuming configuration option '%s' (%s)" % (key, ("'%s'" % value) if isinstance(value, six.string_types) else value)
                     logger.debug(debugMsg)
 
                     if value and key == "optimize":
@@ -3306,9 +3319,9 @@ def showHttpErrorCodes():
 
     if kb.httpErrorCodes:
         warnMsg = "HTTP error codes detected during run:\n"
-        warnMsg += ", ".join("%d (%s) - %d times" % (code, httplib.responses[code] if code in httplib.responses else '?', count) for code, count in kb.httpErrorCodes.items())
+        warnMsg += ", ".join("%d (%s) - %d times" % (code, _http_client.responses[code] if code in _http_client.responses else '?', count) for code, count in kb.httpErrorCodes.items())
         logger.warn(warnMsg)
-        if any((str(_).startswith('4') or str(_).startswith('5')) and _ != httplib.INTERNAL_SERVER_ERROR and _ != kb.originalCode for _ in kb.httpErrorCodes.keys()):
+        if any((str(_).startswith('4') or str(_).startswith('5')) and _ != _http_client.INTERNAL_SERVER_ERROR and _ != kb.originalCode for _ in kb.httpErrorCodes.keys()):
             msg = "too many 4xx and/or 5xx HTTP error codes "
             msg += "could mean that some kind of protection is involved (e.g. WAF)"
             logger.debug(msg)
@@ -3322,7 +3335,7 @@ def openFile(filename, mode='r', encoding=UNICODE_ENCODING, errors="replace", bu
         if filename not in kb.cache.content:
             kb.cache.content[filename] = sys.stdin.read()
 
-        return contextlib.closing(StringIO(readCachedFileContent(filename)))
+        return contextlib.closing(io.StringIO(readCachedFileContent(filename)))
     else:
         try:
             return codecs.open(filename, mode, encoding, errors, buffering)
@@ -3444,10 +3457,10 @@ def getLatestRevision():
     """
 
     retVal = None
-    req = urllib2.Request(url="https://raw.githubusercontent.com/sqlmapproject/sqlmap/master/lib/core/settings.py")
+    req = _urllib.request.Request(url="https://raw.githubusercontent.com/sqlmapproject/sqlmap/master/lib/core/settings.py")
 
     try:
-        content = urllib2.urlopen(req).read()
+        content = _urllib.request.urlopen(req).read()
         retVal = extractRegexResult(r"VERSION\s*=\s*[\"'](?P<result>[\d.]+)", content)
     except:
         pass
@@ -3487,10 +3500,10 @@ def createGithubIssue(errMsg, excMsg):
         ex = None
         errMsg = errMsg[errMsg.find("\n"):]
 
-        req = urllib2.Request(url="https://api.github.com/search/issues?q=%s" % urllib.quote("repo:sqlmapproject/sqlmap Unhandled exception (#%s)" % key))
+        req = _urllib.request.Request(url="https://api.github.com/search/issues?q=%s" % _urllib.parse.quote("repo:sqlmapproject/sqlmap Unhandled exception (#%s)" % key))
 
         try:
-            content = urllib2.urlopen(req).read()
+            content = _urllib.request.urlopen(req).read()
             _ = json.loads(content)
             duplicate = _["total_count"] > 0
             closed = duplicate and _["items"][0]["state"] == "closed"
@@ -3505,10 +3518,10 @@ def createGithubIssue(errMsg, excMsg):
             pass
 
         data = {"title": "Unhandled exception (#%s)" % key, "body": "```%s\n```\n```\n%s```" % (errMsg, excMsg)}
-        req = urllib2.Request(url="https://api.github.com/repos/sqlmapproject/sqlmap/issues", data=json.dumps(data), headers={"Authorization": "token %s" % GITHUB_REPORT_OAUTH_TOKEN.decode("base64")})
+        req = _urllib.request.Request(url="https://api.github.com/repos/sqlmapproject/sqlmap/issues", data=json.dumps(data), headers={"Authorization": "token %s" % GITHUB_REPORT_OAUTH_TOKEN.decode("base64")})
 
         try:
-            content = urllib2.urlopen(req).read()
+            content = _urllib.request.urlopen(req).read()
         except Exception as ex:
             content = None
 
@@ -3540,7 +3553,7 @@ def maskSensitiveData(msg):
 
     retVal = getUnicode(msg)
 
-    for item in filter(None, (conf.get(_) for _ in SENSITIVE_OPTIONS)):
+    for item in filterNone(conf.get(_) for _ in SENSITIVE_OPTIONS):
         regex = SENSITIVE_DATA_REGEX % re.sub(r"(\W)", r"\\\1", getUnicode(item))
         while extractRegexResult(regex, retVal):
             value = extractRegexResult(regex, retVal)
@@ -3591,8 +3604,8 @@ def intersect(containerA, containerB, lowerCase=False):
         containerB = arrayizeValue(containerB)
 
         if lowerCase:
-            containerA = [val.lower() if isinstance(val, basestring) else val for val in containerA]
-            containerB = [val.lower() if isinstance(val, basestring) else val for val in containerB]
+            containerA = [val.lower() if hasattr(val, "lower") else val for val in containerA]
+            containerB = [val.lower() if hasattr(val, "lower") else val for val in containerB]
 
         retVal = [val for val in containerA if val in containerB]
 
@@ -3643,14 +3656,14 @@ def removeReflectiveValues(content, payload, suppressWarning=False):
             regex = _(filterStringValue(payload, r"[A-Za-z0-9]", REFLECTED_REPLACEMENT_REGEX.encode("string_escape")))
 
             if regex != payload:
-                if all(part.lower() in content.lower() for part in filter(None, regex.split(REFLECTED_REPLACEMENT_REGEX))[1:]):  # fast optimization check
+                if all(part.lower() in content.lower() for part in filterNone(regex.split(REFLECTED_REPLACEMENT_REGEX))[1:]):  # fast optimization check
                     parts = regex.split(REFLECTED_REPLACEMENT_REGEX)
                     retVal = content.replace(payload, REFLECTED_VALUE_MARKER)  # dummy approach
 
                     if len(parts) > REFLECTED_MAX_REGEX_PARTS:  # preventing CPU hogs
                         regex = _("%s%s%s" % (REFLECTED_REPLACEMENT_REGEX.join(parts[:REFLECTED_MAX_REGEX_PARTS // 2]), REFLECTED_REPLACEMENT_REGEX, REFLECTED_REPLACEMENT_REGEX.join(parts[-REFLECTED_MAX_REGEX_PARTS // 2:])))
 
-                    parts = filter(None, regex.split(REFLECTED_REPLACEMENT_REGEX))
+                    parts = filterNone(regex.split(REFLECTED_REPLACEMENT_REGEX))
 
                     if regex.startswith(REFLECTED_REPLACEMENT_REGEX):
                         regex = r"%s%s" % (REFLECTED_BORDER_REGEX, regex[len(REFLECTED_REPLACEMENT_REGEX):])
@@ -3735,7 +3748,7 @@ def safeSQLIdentificatorNaming(name, isTable=False):
 
     retVal = name
 
-    if isinstance(name, basestring):
+    if isinstance(name, six.string_types):
         retVal = getUnicode(name)
         _ = isTable and Backend.getIdentifiedDbms() in (DBMS.MSSQL, DBMS.SYBASE)
 
@@ -3774,7 +3787,7 @@ def unsafeSQLIdentificatorNaming(name):
 
     retVal = name
 
-    if isinstance(name, basestring):
+    if isinstance(name, six.string_types):
         if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS):
             retVal = name.replace("`", "")
         elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.SQLITE, DBMS.INFORMIX, DBMS.HSQLDB):
@@ -3805,7 +3818,7 @@ def isNoneValue(value):
     False
     """
 
-    if isinstance(value, basestring):
+    if isinstance(value, six.string_types):
         return value in ("None", "")
     elif isListLike(value):
         return all(isNoneValue(_) for _ in value)
@@ -3824,7 +3837,7 @@ def isNullValue(value):
     False
     """
 
-    return isinstance(value, basestring) and value.upper() == NULL
+    return hasattr(value, "upper") and value.upper() == NULL
 
 def expandMnemonics(mnemonics, parser, args):
     """
@@ -3926,7 +3939,7 @@ def safeCSValue(value):
 
     retVal = value
 
-    if retVal and isinstance(retVal, basestring):
+    if retVal and isinstance(retVal, six.string_types):
         if not (retVal[0] == retVal[-1] == '"'):
             if any(_ in retVal for _ in (conf.get("csvDel", defaults.csvDel), '"', '\n')):
                 retVal = '"%s"' % retVal.replace('"', '""')
@@ -4020,7 +4033,7 @@ def asciifyUrl(url, forceQuote=False):
     u'http://www.xn--uuraj-gxa24d.com'
     """
 
-    parts = urlparse.urlsplit(url)
+    parts = _urllib.parse.urlsplit(url)
     if not parts.scheme or not parts.netloc:
         # apparently not an url
         return url
@@ -4041,10 +4054,10 @@ def asciifyUrl(url, forceQuote=False):
     def quote(s, safe):
         s = s or ''
         # Triggers on non-ascii characters - another option would be:
-        #     urllib.quote(s.replace('%', '')) != s.replace('%', '')
+        #     _urllib.parse.quote(s.replace('%', '')) != s.replace('%', '')
         # which would trigger on all %-characters, e.g. "&".
         if getUnicode(s).encode("ascii", "replace") != s or forceQuote:
-            return urllib.quote(s.encode(UNICODE_ENCODING) if isinstance(s, unicode) else s, safe=safe)
+            return _urllib.parse.quote(s.encode(UNICODE_ENCODING) if isinstance(s, unicode) else s, safe=safe)
         return s
 
     username = quote(parts.username, '')
@@ -4068,7 +4081,7 @@ def asciifyUrl(url, forceQuote=False):
     if port:
         netloc += ':' + str(port)
 
-    return urlparse.urlunsplit([parts.scheme, netloc, path, query, parts.fragment]) or url
+    return _urllib.parse.urlunsplit([parts.scheme, netloc, path, query, parts.fragment]) or url
 
 def isAdminFromPrivileges(privileges):
     """
@@ -4107,9 +4120,9 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
     set([(u'/input.php', 'POST', u'id=1', None, None)])
     """
 
-    class _(StringIO):
+    class _(io.BytesIO):
         def __init__(self, content, url):
-            StringIO.__init__(self, unicodeencode(content, kb.pageEncoding) if isinstance(content, unicode) else content)
+            io.BytesIO.__init__(self, unicodeencode(content, kb.pageEncoding) if isinstance(content, unicode) else content)
             self._url = url
 
         def geturl(self):
@@ -4226,7 +4239,7 @@ def checkSameHost(*urls):
                 value = "http://%s" % value
             return value
 
-        return all(re.sub(r"(?i)\Awww\.", "", urlparse.urlparse(_(url) or "").netloc.split(':')[0]) == re.sub(r"(?i)\Awww\.", "", urlparse.urlparse(_(urls[0]) or "").netloc.split(':')[0]) for url in urls[1:])
+        return all(re.sub(r"(?i)\Awww\.", "", _urllib.parse.urlparse(_(url) or "").netloc.split(':')[0]) == re.sub(r"(?i)\Awww\.", "", _urllib.parse.urlparse(_(urls[0]) or "").netloc.split(':')[0]) for url in urls[1:])
 
 def getHostHeader(url):
     """
@@ -4239,7 +4252,7 @@ def getHostHeader(url):
     retVal = url
 
     if url:
-        retVal = urlparse.urlparse(url).netloc
+        retVal = _urllib.parse.urlparse(url).netloc
 
         if re.search(r"http(s)?://\[.+\]", url, re.I):
             retVal = extractRegexResult(r"http(s)?://\[(?P<result>.+)\]", url)
@@ -4380,7 +4393,7 @@ def decodeHexValue(value, raw=False):
 
     def _(value):
         retVal = value
-        if value and isinstance(value, basestring):
+        if value and isinstance(value, six.string_types):
             if len(value) % 2 != 0:
                 retVal = "%s?" % hexdecode(value[:-1]) if len(value) > 1 else value
                 singleTimeWarnMessage("there was a problem decoding value '%s' from expected hexadecimal form" % value)
@@ -4428,7 +4441,7 @@ def extractExpectedValue(value, expected):
         elif expected == EXPECTED.BOOL:
             if isinstance(value, int):
                 value = bool(value)
-            elif isinstance(value, basestring):
+            elif isinstance(value, six.string_types):
                 value = value.strip().lower()
                 if value in ("true", "false"):
                     value = value == "true"
@@ -4441,7 +4454,7 @@ def extractExpectedValue(value, expected):
                 else:
                     value = None
         elif expected == EXPECTED.INT:
-            if isinstance(value, basestring):
+            if isinstance(value, six.string_types):
                 value = int(value) if value.isdigit() else None
 
     return value
@@ -4452,7 +4465,7 @@ def hashDBWrite(key, value, serialize=False):
     """
 
     if conf.hashDB:
-        _ = '|'.join((str(_) if not isinstance(_, basestring) else _) for _ in (conf.hostname, conf.path.strip('/') if conf.path is not None else conf.port, key, HASHDB_MILESTONE_VALUE))
+        _ = '|'.join((str(_) if not isinstance(_, six.string_types) else _) for _ in (conf.hostname, conf.path.strip('/') if conf.path is not None else conf.port, key, HASHDB_MILESTONE_VALUE))
         conf.hashDB.write(_, value, serialize)
 
 def hashDBRetrieve(key, unserialize=False, checkConf=False):
@@ -4463,10 +4476,10 @@ def hashDBRetrieve(key, unserialize=False, checkConf=False):
     retVal = None
 
     if conf.hashDB:
-        _ = '|'.join((str(_) if not isinstance(_, basestring) else _) for _ in (conf.hostname, conf.path.strip('/') if conf.path is not None else conf.port, key, HASHDB_MILESTONE_VALUE))
+        _ = '|'.join((str(_) if not isinstance(_, six.string_types) else _) for _ in (conf.hostname, conf.path.strip('/') if conf.path is not None else conf.port, key, HASHDB_MILESTONE_VALUE))
         retVal = conf.hashDB.retrieve(_, unserialize) if kb.resumeValues and not (checkConf and any((conf.flushSession, conf.freshQueries))) else None
 
-        if not kb.inferenceMode and not kb.fileReadMode and isinstance(retVal, basestring) and any(_ in retVal for _ in (PARTIAL_VALUE_MARKER, PARTIAL_HEX_VALUE_MARKER)):
+        if not kb.inferenceMode and not kb.fileReadMode and isinstance(retVal, six.string_types) and any(_ in retVal for _ in (PARTIAL_VALUE_MARKER, PARTIAL_HEX_VALUE_MARKER)):
             retVal = None
 
     return retVal
@@ -4485,7 +4498,7 @@ def resetCookieJar(cookieJar):
                 logger.info(infoMsg)
 
                 content = readCachedFileContent(conf.loadCookies)
-                lines = filter(None, (line.strip() for line in content.split("\n") if not line.startswith('#')))
+                lines = filterNone(line.strip() for line in content.split("\n") if not line.startswith('#'))
                 handle, filename = tempfile.mkstemp(prefix=MKSTEMP_PREFIX.COOKIE_JAR)
                 os.close(handle)
 
@@ -4513,7 +4526,7 @@ def resetCookieJar(cookieJar):
                 errMsg = "no valid cookies found"
                 raise SqlmapGenericException(errMsg)
 
-        except cookielib.LoadError as ex:
+        except Exception as ex:
             errMsg = "there was a problem loading "
             errMsg += "cookies file ('%s')" % re.sub(r"(cookies) file '[^']+'", r"\g<1>", getSafeExString(ex))
             raise SqlmapGenericException(errMsg)
@@ -4702,7 +4715,7 @@ def parseRequestFile(reqFile, checkParams=True):
             reqResList = re.finditer(BURP_REQUEST_REGEX, content, re.I | re.S)
 
         for match in reqResList:
-            request = match if isinstance(match, basestring) else match.group(1)
+            request = match if isinstance(match, six.string_types) else match.group(1)
             request = re.sub(r"\A[^\w]+", "", request)
             schemePort = re.search(r"(http[\w]*)\:\/\/.*?\:([\d]+).+?={10,}", request, re.I | re.S)
 
@@ -4794,7 +4807,7 @@ def parseRequestFile(reqFile, checkParams=True):
             data = data.rstrip("\r\n") if data else data
 
             if getPostReq and (params or cookie or not checkParams):
-                if not port and isinstance(scheme, basestring) and scheme.lower() == "https":
+                if not port and hasattr(scheme, "lower") and scheme.lower() == "https":
                     port = "443"
                 elif not scheme and port == "443":
                     scheme = "https"
@@ -4841,9 +4854,9 @@ def getSafeExString(ex, encoding=None):
         retVal = ex.message
     elif getattr(ex, "msg", None):
         retVal = ex.msg
-    elif isinstance(ex, (list, tuple)) and len(ex) > 1 and isinstance(ex[1], basestring):
+    elif isinstance(ex, (list, tuple)) and len(ex) > 1 and isinstance(ex[1], six.string_types):
         retVal = ex[1]
-    elif isinstance(ex, (list, tuple)) and len(ex) > 0 and isinstance(ex[0], basestring):
+    elif isinstance(ex, (list, tuple)) and len(ex) > 0 and isinstance(ex[0], six.string_types):
         retVal = ex[0]
 
     if retVal is None:

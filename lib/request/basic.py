@@ -7,15 +7,16 @@ See the file 'LICENSE' for copying permission
 
 import codecs
 import gzip
+import io
 import logging
 import re
-import StringIO
 import struct
 import zlib
 
 from lib.core.common import Backend
 from lib.core.common import extractErrorMessage
 from lib.core.common import extractRegexResult
+from lib.core.common import filterNone
 from lib.core.common import getPublicTypeMembers
 from lib.core.common import getSafeExString
 from lib.core.common import getUnicode
@@ -100,7 +101,7 @@ def forgeHeaders(items=None, base=None):
 
                 if ("%s=" % getUnicode(cookie.name)) in getUnicode(headers[HTTP_HEADER.COOKIE]):
                     if conf.loadCookies:
-                        conf.httpHeaders = filter(None, ((item if item[0] != HTTP_HEADER.COOKIE else None) for item in conf.httpHeaders))
+                        conf.httpHeaders = filterNone((item if item[0] != HTTP_HEADER.COOKIE else None) for item in conf.httpHeaders)
                     elif kb.mergeCookies is None:
                         message = "you provided a HTTP %s header value. " % HTTP_HEADER.COOKIE
                         message += "The target URL provided its own cookies within "
@@ -257,12 +258,12 @@ def decodePage(page, contentEncoding, contentType):
     if not page or (conf.nullConnection and len(page) < 2):
         return getUnicode(page)
 
-    if isinstance(contentEncoding, basestring) and contentEncoding:
+    if hasattr(contentEncoding, "lower"):
         contentEncoding = contentEncoding.lower()
     else:
         contentEncoding = ""
 
-    if isinstance(contentType, basestring) and contentType:
+    if hasattr(contentType, "lower"):
         contentType = contentType.lower()
     else:
         contentType = ""
@@ -273,9 +274,9 @@ def decodePage(page, contentEncoding, contentType):
 
         try:
             if contentEncoding == "deflate":
-                data = StringIO.StringIO(zlib.decompress(page, -15))  # Reference: http://stackoverflow.com/questions/1089662/python-inflate-and-deflate-implementations
+                data = io.BytesIO(zlib.decompress(page, -15))  # Reference: http://stackoverflow.com/questions/1089662/python-inflate-and-deflate-implementations
             else:
-                data = gzip.GzipFile("", "rb", 9, StringIO.StringIO(page))
+                data = gzip.GzipFile("", "rb", 9, io.BytesIO(page))
                 size = struct.unpack("<l", page[-4:])[0]  # Reference: http://pydoc.org/get.cgi/usr/local/lib/python2.5/gzip.py
                 if size > MAX_CONNECTION_TOTAL_SIZE:
                     raise Exception("size too large")

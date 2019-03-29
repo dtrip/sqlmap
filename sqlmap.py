@@ -27,7 +27,6 @@ try:
     import re
     import shutil
     import sys
-    import thread
     import threading
     import time
     import traceback
@@ -43,6 +42,7 @@ try:
     from lib.core.common import checkPipedInput
     from lib.core.common import createGithubIssue
     from lib.core.common import dataToStdout
+    from lib.core.common import filterNone
     from lib.core.common import getSafeExString
     from lib.core.common import getUnicode
     from lib.core.common import maskSensitiveData
@@ -69,6 +69,7 @@ try:
     from lib.core.settings import UNICODE_ENCODING
     from lib.core.settings import VERSION
     from lib.parse.cmdline import cmdLineParser
+    from thirdparty.six import PY2
 except KeyboardInterrupt:
     errMsg = "user aborted"
 
@@ -162,14 +163,14 @@ def main():
                 liveTest()
             else:
                 from lib.controller.controller import start
-                if conf.profile:
+                if conf.profile and PY2:
                     from lib.core.profiling import profile
                     globals()["start"] = start
                     profile()
                 else:
                     try:
                         start()
-                    except thread.error as ex:
+                    except Exception as ex:
                         if "can't start new thread" in getSafeExString(ex):
                             errMsg = "unable to start new threads. Please check OS (u)limits"
                             logger.critical(errMsg)
@@ -362,7 +363,7 @@ def main():
                         os.remove(filepath)
                     except OSError:
                         pass
-            if not filter(None, (filepath for filepath in glob.glob(os.path.join(kb.tempDir, '*')) if not any(filepath.endswith(_) for _ in ('.lock', '.exe', '_')))):
+            if not filterNone(filepath for filepath in glob.glob(os.path.join(kb.tempDir, '*')) if not any(filepath.endswith(_) for _ in ('.lock', '.exe', '_'))):
                 shutil.rmtree(kb.tempDir, ignore_errors=True)
 
         if conf.get("hashDB"):

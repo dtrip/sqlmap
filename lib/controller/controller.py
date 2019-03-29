@@ -40,6 +40,7 @@ from lib.core.common import safeCSValue
 from lib.core.common import showHttpErrorCodes
 from lib.core.common import urlencode
 from lib.core.common import urldecode
+from lib.core.compat import xrange
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger

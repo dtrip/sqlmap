@@ -7,6 +7,7 @@ See the file 'LICENSE' for copying permission
 
 import re
 
+from lib.core.compat import xrange
 from lib.core.enums import PRIORITY
 
 __priority__ = PRIORITY.NORMAL

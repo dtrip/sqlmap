@@ -11,6 +11,7 @@ import random
 import string
 
 from lib.core.common import singleTimeWarnMessage
+from lib.core.compat import xrange
 from lib.core.data import kb
 from lib.core.enums import DBMS
 from lib.core.enums import PRIORITY

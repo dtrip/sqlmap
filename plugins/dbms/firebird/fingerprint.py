@@ -11,6 +11,7 @@ from lib.core.common import Backend
 from lib.core.common import Format
 from lib.core.common import getUnicode
 from lib.core.common import randomRange
+from lib.core.compat import xrange
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger

@@ -66,17 +66,6 @@ __all__ = ['AmbiguityError', 'CheckboxControl', 'Control',
            'SubmitButtonControl', 'SubmitControl', 'TextControl',
            'TextareaControl', 'XHTMLCompatibleFormParser']
 
-try: True
-except NameError:
-    True = 1
-    False = 0
-
-try: bool
-except NameError:
-    def bool(expr):
-        if expr: return True
-        else: return False
-
 try:
     import logging
     import inspect
@@ -104,11 +93,25 @@ else:
         handler.setLevel(logging.DEBUG)
         _logger.addHandler(handler)
 
-import sys, urllib, urllib2, types, mimetools, copy, urlparse, \
-       htmlentitydefs, re, random
-from cStringIO import StringIO
+try:
+    from thirdparty.six.moves import cStringIO as _cStringIO
+    from thirdparty.six.moves import html_entities as _html_entities
+    from thirdparty.six.moves import urllib as _urllib
+except ImportError:
+    from six.moves import cStringIO as _cStringIO
+    from six.moves import html_entities as _html_entities
+    from six.moves import urllib as _urllib
 
-import sgmllib
+try:
+    import sgmllib
+except ImportError:
+    from lib.utils import sgmllib
+
+import sys, types, copy, re, random
+
+if sys.version_info >= (3, 0):
+    xrange = range
+
 # monkeypatch to fix http://www.python.org/sf/803422 :-(
 sgmllib.charref = re.compile("&#(x?[0-9a-fA-F]+)[^0-9a-fA-F]")
 
@@ -185,20 +188,20 @@ string.
     if not doseq:
         # preserve old behavior
         for k, v in query:
-            k = urllib.quote_plus(str(k))
-            v = urllib.quote_plus(str(v))
+            k = _urllib.parse.quote_plus(str(k))
+            v = _urllib.parse.quote_plus(str(v))
             l.append(k + '=' + v)
     else:
         for k, v in query:
-            k = urllib.quote_plus(str(k))
+            k = _urllib.parse.quote_plus(str(k))
             if type(v) == types.StringType:
-                v = urllib.quote_plus(v)
+                v = _urllib.parse.quote_plus(v)
                 l.append(k + '=' + v)
             elif type(v) == types.UnicodeType:
                 # is there a reasonable way to convert to ASCII?
                 # encode generates a string, but "replace" or "ignore"
                 # lose information and "strict" can raise UnicodeError
-                v = urllib.quote_plus(v.encode("ASCII","replace"))
+                v = _urllib.parse.quote_plus(v.encode("ASCII","replace"))
                 l.append(k + '=' + v)
             else:
                 try:
@@ -206,12 +209,12 @@ string.
                     x = len(v)
                 except TypeError:
                     # not a sequence
-                    v = urllib.quote_plus(str(v))
+                    v = _urllib.parse.quote_plus(str(v))
                     l.append(k + '=' + v)
                 else:
                     # loop over the sequence
                     for elt in v:
-                        l.append(k + '=' + urllib.quote_plus(str(elt)))
+                        l.append(k + '=' + _urllib.parse.quote_plus(str(elt)))
     return '&'.join(l)
 
 def unescape(data, entities, encoding=DEFAULT_ENCODING):
@@ -254,20 +257,19 @@ def unescape_charref(data, encoding):
         return repl
 
 def get_entitydefs():
-    import htmlentitydefs
     from codecs import latin_1_decode
     entitydefs = {}
     try:
-        htmlentitydefs.name2codepoint
+        _html_entities.name2codepoint
     except AttributeError:
         entitydefs = {}
-        for name, char in htmlentitydefs.entitydefs.items():
+        for name, char in _html_entities.entitydefs.items():
             uc = latin_1_decode(char)[0]
             if uc.startswith("&#") and uc.endswith(";"):
                 uc = unescape_charref(uc[2:-1], None)
             entitydefs["&%s;" % name] = uc
     else:
-        for name, codepoint in htmlentitydefs.name2codepoint.items():
+        for name, codepoint in _html_entities.name2codepoint.items():
             entitydefs["&%s;" % name] = unichr(codepoint)
     return entitydefs
 
@@ -792,7 +794,7 @@ else:
         def feed(self, data):
             try:
                 HTMLParser.HTMLParser.feed(self, data)
-            except HTMLParser.HTMLParseError, exc:
+            except HTMLParser.HTMLParseError as exc:
                 raise ParseError(exc)
 
         def start_option(self, attrs):
@@ -870,7 +872,7 @@ class FormParser(_AbstractSgmllibParser, sgmllib.SGMLParser):
     def feed(self, data):
         try:
             sgmllib.SGMLParser.feed(self, data)
-        except SGMLLIB_PARSEERROR, exc:
+        except SGMLLIB_PARSEERROR as exc:
             raise ParseError(exc)
 
     def close(self):
@@ -896,7 +898,7 @@ def _create_bs_classes(bs,
         def feed(self, data):
             try:
                 self.bs_base_class.feed(self, data)
-            except SGMLLIB_PARSEERROR, exc:
+            except SGMLLIB_PARSEERROR as exc:
                 raise ParseError(exc)
         def close(self):
             self.bs_base_class.close(self)
@@ -938,14 +940,14 @@ else:
 def ParseResponseEx(response,
                     select_default=False,
                     form_parser_class=FormParser,
-                    request_class=urllib2.Request,
+                    request_class=_urllib.request.Request,
                     entitydefs=None,
                     encoding=DEFAULT_ENCODING,
 
                     # private
-                    _urljoin=urlparse.urljoin,
-                    _urlparse=urlparse.urlparse,
-                    _urlunparse=urlparse.urlunparse,
+                    _urljoin=_urllib.parse.urljoin,
+                    _urlparse=_urllib.parse.urlparse,
+                    _urlunparse=_urllib.parse.urlunparse,
                     ):
     """Identical to ParseResponse, except that:
 
@@ -972,14 +974,14 @@ def ParseResponseEx(response,
 def ParseFileEx(file, base_uri,
                 select_default=False,
                 form_parser_class=FormParser,
-                request_class=urllib2.Request,
+                request_class=_urllib.request.Request,
                 entitydefs=None,
                 encoding=DEFAULT_ENCODING,
 
                 # private
-                _urljoin=urlparse.urljoin,
-                _urlparse=urlparse.urlparse,
-                _urlunparse=urlparse.urlunparse,
+                _urljoin=_urllib.parse.urljoin,
+                _urlparse=_urllib.parse.urlparse,
+                _urlunparse=_urllib.parse.urlunparse,
                 ):
     """Identical to ParseFile, except that:
 
@@ -1017,7 +1019,7 @@ def ParseResponse(response, *args, **kwds):
      pick the first item as the default if none are selected in the HTML
     form_parser_class: class to instantiate and use to pass
     request_class: class to return from .click() method (default is
-     urllib2.Request)
+     _urllib.request.Request)
     entitydefs: mapping like {"&amp;": "&", ...} containing HTML entity
      definitions (a sensible default is used)
     encoding: character encoding used for encoding numeric character references
@@ -1085,13 +1087,13 @@ def _ParseFileEx(file, base_uri,
                  select_default=False,
                  ignore_errors=False,
                  form_parser_class=FormParser,
-                 request_class=urllib2.Request,
+                 request_class=_urllib.request.Request,
                  entitydefs=None,
                  backwards_compat=True,
                  encoding=DEFAULT_ENCODING,
-                 _urljoin=urlparse.urljoin,
-                 _urlparse=urlparse.urlparse,
-                 _urlunparse=urlparse.urlunparse,
+                 _urljoin=_urllib.parse.urljoin,
+                 _urlparse=_urllib.parse.urlparse,
+                 _urlunparse=_urllib.parse.urlunparse,
                  ):
     if backwards_compat:
         deprecation("operating in backwards-compatibility mode", 1)
@@ -1327,8 +1329,8 @@ class ScalarControl(Control):
 
         self._clicked = False
 
-        self._urlparse = urlparse.urlparse
-        self._urlunparse = urlparse.urlunparse
+        self._urlparse = _urllib.parse.urlparse
+        self._urlunparse = _urllib.parse.urlunparse
 
     def __getattr__(self, name):
         if name == "value":
@@ -1448,7 +1450,7 @@ class FileControl(ScalarControl):
         # assert _name == self.name and _value == ''
         if len(self._upload_data) < 2:
             if len(self._upload_data) == 0:
-                file_object = StringIO()
+                file_object = _cStringIO()
                 content_type = "application/octet-stream"
                 filename = ""
             else:
@@ -1526,7 +1528,7 @@ class IsindexControl(ScalarControl):
     ISINDEX elements outside of FORMs are ignored.  If you want to submit one
     by hand, do it like so:
 
-    url = urlparse.urljoin(page_uri, "?"+urllib.quote_plus("my isindex value"))
+    url = _urllib.parse.urljoin(page_uri, "?"+_urllib.parse.quote_plus("my isindex value"))
     result = urllib2.urlopen(url)
 
     """
@@ -1540,7 +1542,7 @@ class IsindexControl(ScalarControl):
     def _totally_ordered_pairs(self):
         return []
 
-    def _click(self, form, coord, return_type, request_class=urllib2.Request):
+    def _click(self, form, coord, return_type, request_class=_urllib.request.Request):
         # Relative URL for ISINDEX submission: instead of "foo=bar+baz",
         # want "bar+baz".
         # This doesn't seem to be specified in HTML 4.01 spec. (ISINDEX is
@@ -1548,7 +1550,7 @@ class IsindexControl(ScalarControl):
         # Submission of ISINDEX is explained in the HTML 3.2 spec, though.
         parts = self._urlparse(form.action)
         rest, (query, frag) = parts[:-2], parts[-2:]
-        parts = rest + (urllib.quote_plus(self.value), None)
+        parts = rest + (_urllib.parse.quote_plus(self.value), None)
         url = self._urlunparse(parts)
         req_data = url, None, []
 
@@ -2467,7 +2469,7 @@ class SubmitControl(ScalarControl):
 
     def is_of_kind(self, kind): return kind == "clickable"
 
-    def _click(self, form, coord, return_type, request_class=urllib2.Request):
+    def _click(self, form, coord, return_type, request_class=_urllib.request.Request):
         self._clicked = coord
         r = form._switch_click(return_type, request_class)
         self._clicked = False
@@ -2763,7 +2765,7 @@ class HTMLForm:
     def __init__(self, action, method="GET",
                  enctype=None,
                  name=None, attrs=None,
-                 request_class=urllib2.Request,
+                 request_class=_urllib.request.Request,
                  forms=None, labels=None, id_to_labels=None,
                  backwards_compat=True):
         """
@@ -2795,8 +2797,8 @@ class HTMLForm:
 
         self.backwards_compat = backwards_compat  # note __setattr__
 
-        self._urlunparse = urlparse.urlunparse
-        self._urlparse = urlparse.urlparse
+        self._urlunparse = _urllib.parse.urlunparse
+        self._urlparse = _urllib.parse.urlparse
 
     def __getattr__(self, name):
         if name == "backwards_compat":
@@ -3094,11 +3096,11 @@ class HTMLForm:
 # Form submission methods, applying only to clickable controls.
 
     def click(self, name=None, type=None, id=None, nr=0, coord=(1,1),
-              request_class=urllib2.Request,
+              request_class=_urllib.request.Request,
               label=None):
         """Return request that would result from clicking on a control.
 
-        The request object is a urllib2.Request instance, which you can pass to
+        The request object is a _urllib.request.Request instance, which you can pass to
         urllib2.urlopen (or ClientCookie.urlopen).
 
         Only some control types (INPUT/SUBMIT & BUTTON/SUBMIT buttons and
@@ -3123,7 +3125,7 @@ class HTMLForm:
     def click_request_data(self,
                            name=None, type=None, id=None,
                            nr=0, coord=(1,1),
-                           request_class=urllib2.Request,
+                           request_class=_urllib.request.Request,
                            label=None):
         """As for click method, but return a tuple (url, data, headers).
 
@@ -3135,14 +3137,14 @@ class HTMLForm:
         # instead!
         import urllib
         url, data, hdrs = form.click_request_data()
-        r = urllib.urlopen(url, data)
+        r = _urllib.request.urlopen(url, data)
 
         # Untested.  I don't know of any reason to use httplib -- you can get
         # just as much control with urllib2.
         import httplib, urlparse
         url, data, hdrs = form.click_request_data()
         tup = urlparse(url)
-        host, path = tup[1], urlparse.urlunparse((None, None)+tup[2:])
+        host, path = tup[1], _urllib.parse.urlunparse((None, None)+tup[2:])
         conn = httplib.HTTPConnection(host)
         if data:
             httplib.request("POST", path, data, hdrs)
@@ -3314,7 +3316,7 @@ class HTMLForm:
         assert False
 
     def _click(self, name, type, id, label, nr, coord, return_type,
-               request_class=urllib2.Request):
+               request_class=_urllib.request.Request):
         try:
             control = self._find_control(
                 name, type, "clickable", id, label, None, nr)
@@ -3353,7 +3355,7 @@ class HTMLForm:
     def _request_data(self):
         """Return a tuple (url, data, headers)."""
         method = self.method.upper()
-        #scheme, netloc, path, parameters, query, frag = urlparse.urlparse(self.action)
+        #scheme, netloc, path, parameters, query, frag = _urllib.parse.urlparse(self.action)
         parts = self._urlparse(self.action)
         rest, (query, frag) = parts[:-2], parts[-2:]
 
@@ -3372,7 +3374,7 @@ class HTMLForm:
                 return (uri, self._pairs(),
                         [("Content-Type", self.enctype)])
             elif self.enctype == "multipart/form-data":
-                data = StringIO()
+                data = _cStringIO()
                 http_hdrs = []
                 mw = MimeWriter(data, http_hdrs)
                 f = mw.startmultipartbody("form-data", add_to_http_hdrs=True,
@@ -3387,7 +3389,7 @@ class HTMLForm:
         else:
             raise ValueError("Unknown method '%s'" % method)
 
-    def _switch_click(self, return_type, request_class=urllib2.Request):
+    def _switch_click(self, return_type, request_class=_urllib.request.Request):
         # This is called by HTMLForm and clickable Controls to hide switching
         # on return_type.
         if return_type == "pairs":

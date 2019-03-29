@@ -12,6 +12,7 @@ import stat
 import string
 
 from lib.core.common import getSafeExString
+from lib.core.compat import xrange
 from lib.core.data import logger
 
 def purge(directory):

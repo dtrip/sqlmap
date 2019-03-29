@@ -14,6 +14,7 @@ from lib.core.common import isTechniqueAvailable
 from lib.core.common import posixToNtSlashes
 from lib.core.common import randomStr
 from lib.core.common import readInput
+from lib.core.compat import xrange
 from lib.core.convert import base64encode
 from lib.core.convert import hexencode
 from lib.core.data import conf
@@ -28,9 +29,6 @@ from lib.request import inject
 from plugins.generic.filesystem import Filesystem as GenericFilesystem
 
 class Filesystem(GenericFilesystem):
-    def __init__(self):
-        GenericFilesystem.__init__(self)
-
     def _dataToScr(self, fileContent, chunkName):
         fileLines = []
         fileSize = len(fileContent)

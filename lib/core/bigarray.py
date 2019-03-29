@@ -16,6 +16,7 @@ import os
 import sys
 import tempfile
 
+from lib.core.compat import xrange
 from lib.core.enums import MKSTEMP_PREFIX
 from lib.core.exception import SqlmapSystemException
 from lib.core.settings import BIGARRAY_CHUNK_SIZE

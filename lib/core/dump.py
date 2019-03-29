@@ -28,6 +28,7 @@ from lib.core.common import randomInt
 from lib.core.common import safeCSValue
 from lib.core.common import unicodeencode
 from lib.core.common import unsafeSQLIdentificatorNaming
+from lib.core.compat import xrange
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -50,6 +51,7 @@ from lib.core.settings import UNICODE_ENCODING
 from lib.core.settings import UNSAFE_DUMP_FILEPATH_REPLACEMENT
 from lib.core.settings import VERSION_STRING
 from lib.core.settings import WINDOWS_RESERVED_NAMES
+from thirdparty import six
 from thirdparty.magic import magic
 
 from extra.safe2bin.safe2bin import safechardecode
@@ -133,7 +135,7 @@ class Dump(object):
             if "\n" in _:
                 self._write("%s:\n---\n%s\n---" % (header, _))
             else:
-                self._write("%s: %s" % (header, ("'%s'" % _) if isinstance(data, basestring) else _))
+                self._write("%s: %s" % (header, ("'%s'" % _) if isinstance(data, six.string_types) else _))
         else:
             self._write("%s:\tNone" % header)
 
@@ -142,7 +144,7 @@ class Dump(object):
             try:
                 elements = set(elements)
                 elements = list(elements)
-                elements.sort(key=lambda _: _.lower() if isinstance(_, basestring) else _)
+                elements.sort(key=lambda _: _.lower() if hasattr(_, "lower") else _)
             except:
                 pass
 
@@ -154,7 +156,7 @@ class Dump(object):
             self._write("%s [%d]:" % (header, len(elements)))
 
         for element in elements:
-            if isinstance(element, basestring):
+            if isinstance(element, six.string_types):
                 self._write("[*] %s" % element)
             elif isListLike(element):
                 self._write("[*] " + ", ".join(getUnicode(e) for e in element))
@@ -193,7 +195,7 @@ class Dump(object):
             userSettings = userSettings[0]
 
         users = userSettings.keys()
-        users.sort(key=lambda _: _.lower() if isinstance(_, basestring) else _)
+        users.sort(key=lambda _: _.lower() if hasattr(_, "lower") else _)
 
         if conf.api:
             self._write(userSettings, content_type=content_type)
@@ -287,7 +289,7 @@ class Dump(object):
                     colType = None
 
                     colList = columns.keys()
-                    colList.sort(key=lambda _: _.lower() if isinstance(_, basestring) else _)
+                    colList.sort(key=lambda _: _.lower() if hasattr(_, "lower") else _)
 
                     for column in colList:
                         colType = columns[column]
@@ -379,7 +381,7 @@ class Dump(object):
                     if count is None:
                         count = "Unknown"
 
-                    tables.sort(key=lambda _: _.lower() if isinstance(_, basestring) else _)
+                    tables.sort(key=lambda _: _.lower() if hasattr(_, "lower") else _)
 
                     for table in tables:
                         blank1 = " " * (maxlength1 - len(normalizeUnicode(table) or unicode(table)))

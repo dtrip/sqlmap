@@ -9,18 +9,15 @@ try:
     import cPickle as pickle
 except:
     import pickle
-finally:
-    import pickle as picklePy
 
 import base64
 import json
 import re
-import StringIO
 import sys
 
 from lib.core.settings import IS_WIN
 from lib.core.settings import UNICODE_ENCODING
-from lib.core.settings import PICKLE_REDUCE_WHITELIST
+from thirdparty import six
 
 def base64decode(value):
     """
@@ -30,7 +27,7 @@ def base64decode(value):
     'foobar'
     """
 
-    return base64.b64decode(value)
+    return base64.b64decode(unicodeencode(value))
 
 def base64encode(value):
     """
@@ -40,7 +37,7 @@ def base64encode(value):
     'Zm9vYmFy'
     """
 
-    return base64.b64encode(value)
+    return base64.b64encode(unicodeencode(value))
 
 def base64pickle(value):
     """
@@ -66,7 +63,7 @@ def base64pickle(value):
 
     return retVal
 
-def base64unpickle(value, unsafe=False):
+def base64unpickle(value):
     """
     Decodes value from Base64 to plain format and deserializes (with pickle) its content
 
@@ -76,26 +73,10 @@ def base64unpickle(value, unsafe=False):
 
     retVal = None
 
-    def _(self):
-        if len(self.stack) > 1:
-            func = self.stack[-2]
-            if func not in PICKLE_REDUCE_WHITELIST:
-                raise Exception("abusing reduce() is bad, Mkay!")
-        self.load_reduce()
-
-    def loads(str):
-        f = StringIO.StringIO(str)
-        if unsafe:
-            unpickler = picklePy.Unpickler(f)
-            unpickler.dispatch[picklePy.REDUCE] = _
-        else:
-            unpickler = pickle.Unpickler(f)
-        return unpickler.load()
-
     try:
-        retVal = loads(base64decode(value))
+        retVal = pickle.loads(base64decode(value))
     except TypeError:
-        retVal = loads(base64decode(bytes(value)))
+        retVal = pickle.loads(base64decode(bytes(value)))
 
     return retVal
 
@@ -108,7 +89,14 @@ def hexdecode(value):
     """
 
     value = value.lower()
-    return (value[2:] if value.startswith("0x") else value).decode("hex")
+    value = value[2:] if value.startswith("0x") else value
+
+    if six.PY2:
+        retVal = value.decode("hex")
+    else:
+        retVal = bytes.fromhex(value)
+
+    return retVal
 
 def hexencode(value, encoding=None):
     """
@@ -118,7 +106,14 @@ def hexencode(value, encoding=None):
     '666f6f626172'
     """
 
-    return unicodeencode(value, encoding).encode("hex")
+    retVal = unicodeencode(value, encoding)
+
+    if six.PY2:
+        retVal = retVal.encode("hex")
+    else:
+        retVal = retVal.hex()
+
+    return retVal
 
 def unicodeencode(value, encoding=None):
     """
@@ -129,11 +124,13 @@ def unicodeencode(value, encoding=None):
     """
 
     retVal = value
-    if isinstance(value, unicode):
+
+    if isinstance(value, six.text_type):
         try:
             retVal = value.encode(encoding or UNICODE_ENCODING)
         except UnicodeEncodeError:
-            retVal = value.encode(UNICODE_ENCODING, "replace")
+            retVal = value.encode(encoding or UNICODE_ENCODING, "replace")
+
     return retVal
 
 def utf8encode(value):
@@ -165,7 +162,7 @@ def htmlunescape(value):
     """
 
     retVal = value
-    if value and isinstance(value, basestring):
+    if value and isinstance(value, six.string_types):
         codes = (("&lt;", '<'), ("&gt;", '>'), ("&quot;", '"'), ("&nbsp;", ' '), ("&amp;", '&'), ("&apos;", "'"))
         retVal = reduce(lambda x, y: x.replace(y[0], y[1]), codes, retVal)
         try:
@@ -183,13 +180,11 @@ def stdoutencode(data):
     retVal = None
 
     try:
-        data = data or ""
+        retVal = unicodeencode(data or "", sys.stdout.encoding)
 
         # Reference: http://bugs.python.org/issue1602
         if IS_WIN:
-            output = data.encode(sys.stdout.encoding, "replace")
-
-            if '?' in output and '?' not in data:
+            if '?' in retVal and '?' not in retVal:
                 warnMsg = "cannot properly display Unicode characters "
                 warnMsg += "inside Windows OS command prompt "
                 warnMsg += "(http://bugs.python.org/issue1602). All "
@@ -199,11 +194,8 @@ def stdoutencode(data):
                 warnMsg += "corresponding output files. "
                 singleTimeWarnMessage(warnMsg)
 
-            retVal = output
-        else:
-            retVal = data.encode(sys.stdout.encoding)
     except:
-        retVal = data.encode(UNICODE_ENCODING) if isinstance(data, unicode) else data
+        retVal = unicodeencode(data or "")
 
     return retVal
 

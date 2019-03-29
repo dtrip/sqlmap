@@ -5,12 +5,11 @@ Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
+import io
 import os
 import posixpath
 import re
-import StringIO
 import tempfile
-import urlparse
 
 from extra.cloak.cloak import decloak
 from lib.core.agent import agent
@@ -32,12 +31,14 @@ from lib.core.common import randomInt
 from lib.core.common import randomStr
 from lib.core.common import readInput
 from lib.core.common import singleTimeWarnMessage
+from lib.core.compat import xrange
 from lib.core.convert import hexencode
 from lib.core.convert import utf8encode
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
 from lib.core.data import paths
+from lib.core.datatype import OrderedSet
 from lib.core.enums import DBMS
 from lib.core.enums import HTTP_HEADER
 from lib.core.enums import OS
@@ -51,7 +52,7 @@ from lib.core.settings import SHELL_RUNCMD_EXE_TAG
 from lib.core.settings import SHELL_WRITABLE_DIR_TAG
 from lib.core.settings import VIEWSTATE_REGEX
 from lib.request.connect import Connect as Request
-from thirdparty.oset.pyoset import oset
+from thirdparty.six.moves import urllib as _urllib
 
 class Web:
     """
@@ -97,7 +98,7 @@ class Web:
                     content = f.read()
 
         if content is not None:
-            stream = StringIO.StringIO(content)  # string content
+            stream = io.BytesIO(content)  # string content
 
         return self._webFileStreamUpload(stream, destFileName, directory)
 
@@ -254,9 +255,9 @@ class Web:
 
         directories = list(arrayizeValue(getManualDirectories()))
         directories.extend(getAutoDirectories())
-        directories = list(oset(directories))
+        directories = list(OrderedSet(directories))
 
-        path = urlparse.urlparse(conf.url).path or '/'
+        path = _urllib.parse.urlparse(conf.url).path or '/'
         path = re.sub(r"/[^/]*\.\w+\Z", '/', path)
         if path != '/':
             _ = []
@@ -295,7 +296,7 @@ class Web:
 
             for match in re.finditer('/', directory):
                 self.webBaseUrl = "%s://%s:%d%s/" % (conf.scheme, conf.hostname, conf.port, directory[match.start():].rstrip('/'))
-                self.webStagerUrl = urlparse.urljoin(self.webBaseUrl, stagerName)
+                self.webStagerUrl = _urllib.parse.urljoin(self.webBaseUrl, stagerName)
                 debugMsg = "trying to see if the file is accessible from '%s'" % self.webStagerUrl
                 logger.debug(debugMsg)
 
@@ -332,7 +333,7 @@ class Web:
 
                     for match in re.finditer('/', directory):
                         self.webBaseUrl = "%s://%s:%d%s/" % (conf.scheme, conf.hostname, conf.port, directory[match.start():].rstrip('/'))
-                        self.webStagerUrl = urlparse.urljoin(self.webBaseUrl, stagerName)
+                        self.webStagerUrl = _urllib.parse.urljoin(self.webBaseUrl, stagerName)
 
                         debugMsg = "trying to see if the file is accessible from '%s'" % self.webStagerUrl
                         logger.debug(debugMsg)

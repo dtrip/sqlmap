@@ -17,6 +17,7 @@ from lib.core.common import Backend
 from lib.core.common import checkFile
 from lib.core.common import dataToDumpFile
 from lib.core.common import dataToStdout
+from lib.core.common import getBytes
 from lib.core.common import getSafeExString
 from lib.core.common import getUnicode
 from lib.core.common import isListLike
@@ -26,7 +27,6 @@ from lib.core.common import openFile
 from lib.core.common import prioritySortColumns
 from lib.core.common import randomInt
 from lib.core.common import safeCSValue
-from lib.core.common import unicodeencode
 from lib.core.common import unsafeSQLIdentificatorNaming
 from lib.core.compat import xrange
 from lib.core.data import conf
@@ -242,7 +242,7 @@ class Dump(object):
                     if table and isListLike(table):
                         table = table[0]
 
-                    maxlength = max(maxlength, len(unsafeSQLIdentificatorNaming(normalizeUnicode(table) or unicode(table))))
+                    maxlength = max(maxlength, len(unsafeSQLIdentificatorNaming(normalizeUnicode(table) or getUnicode(table))))
 
             lines = "-" * (int(maxlength) + 2)
 
@@ -263,7 +263,7 @@ class Dump(object):
                         table = table[0]
 
                     table = unsafeSQLIdentificatorNaming(table)
-                    blank = " " * (maxlength - len(normalizeUnicode(table) or unicode(table)))
+                    blank = " " * (maxlength - len(normalizeUnicode(table) or getUnicode(table)))
                     self._write("| %s%s |" % (table, blank))
 
                 self._write("+%s+\n" % lines)
@@ -358,7 +358,7 @@ class Dump(object):
             for ctables in dbTables.values():
                 for tables in ctables.values():
                     for table in tables:
-                        maxlength1 = max(maxlength1, len(normalizeUnicode(table) or unicode(table)))
+                        maxlength1 = max(maxlength1, len(normalizeUnicode(table) or getUnicode(table)))
 
             for db, counts in dbTables.items():
                 self._write("Database: %s" % unsafeSQLIdentificatorNaming(db) if db else "Current database")
@@ -384,7 +384,7 @@ class Dump(object):
                     tables.sort(key=lambda _: _.lower() if hasattr(_, "lower") else _)
 
                     for table in tables:
-                        blank1 = " " * (maxlength1 - len(normalizeUnicode(table) or unicode(table)))
+                        blank1 = " " * (maxlength1 - len(normalizeUnicode(table) or getUnicode(table)))
                         blank2 = " " * (maxlength2 - len(str(count)))
                         self._write("| %s%s | %d%s |" % (table, blank1, count, blank2))
 
@@ -422,8 +422,8 @@ class Dump(object):
                 except:
                     warnFile = True
 
-                    _ = unicodeencode(re.sub(r"[^\w]", UNSAFE_DUMP_FILEPATH_REPLACEMENT, unsafeSQLIdentificatorNaming(db)))
-                    dumpDbPath = os.path.join(conf.dumpPath, "%s-%s" % (_, hashlib.md5(unicodeencode(db)).hexdigest()[:8]))
+                    _ = re.sub(r"[^\w]", UNSAFE_DUMP_FILEPATH_REPLACEMENT, unsafeSQLIdentificatorNaming(db))
+                    dumpDbPath = os.path.join(conf.dumpPath, "%s-%s" % (_, hashlib.md5(getBytes(db)).hexdigest()[:8]))
 
                     if not os.path.isdir(dumpDbPath):
                         try:
@@ -456,8 +456,8 @@ class Dump(object):
 
                     _ = re.sub(r"[^\w]", UNSAFE_DUMP_FILEPATH_REPLACEMENT, normalizeUnicode(unsafeSQLIdentificatorNaming(table)))
                     if len(_) < len(table) or IS_WIN and table.upper() in WINDOWS_RESERVED_NAMES:
-                        _ = unicodeencode(re.sub(r"[^\w]", UNSAFE_DUMP_FILEPATH_REPLACEMENT, unsafeSQLIdentificatorNaming(table)))
-                        dumpFileName = os.path.join(dumpDbPath, "%s-%s.%s" % (_, hashlib.md5(unicodeencode(table)).hexdigest()[:8], conf.dumpFormat.lower()))
+                        _ = re.sub(r"[^\w]", UNSAFE_DUMP_FILEPATH_REPLACEMENT, unsafeSQLIdentificatorNaming(table))
+                        dumpFileName = os.path.join(dumpDbPath, "%s-%s.%s" % (_, hashlib.md5(getBytes(table)).hexdigest()[:8], conf.dumpFormat.lower()))
                     else:
                         dumpFileName = os.path.join(dumpDbPath, "%s.%s" % (_, conf.dumpFormat.lower()))
             else:

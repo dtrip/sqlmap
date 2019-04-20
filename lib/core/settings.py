@@ -17,7 +17,7 @@ from lib.core.enums import DBMS_DIRECTORY_NAME
 from lib.core.enums import OS
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.3.4.9"
+VERSION = "1.3.4.32"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -71,6 +71,7 @@ ASTERISK_MARKER = "__ASTERISK_MARK__"
 REPLACEMENT_MARKER = "__REPLACEMENT_MARK__"
 BOUNDED_INJECTION_MARKER = "__BOUNDED_INJECTION_MARK__"
 SAFE_VARIABLE_MARKER = "__SAFE__"
+SAFE_HEX_MARKER = "__SAFE_HEX__"
 
 RANDOM_INTEGER_MARKER = "[RANDINT]"
 RANDOM_STRING_MARKER = "[RANDSTR]"
@@ -536,6 +537,9 @@ BRUTE_COLUMN_EXISTS_TEMPLATE = "EXISTS(SELECT %s FROM %s)"
 # Data inside shellcodeexec to be filled with random string
 SHELLCODEEXEC_RANDOM_STRING_MARKER = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
+# Period after last-update to start nagging about the old revision
+LAST_UPDATE_NAGGING_DAYS = 60
+
 # Generic address for checking the Internet connection while using switch --check-internet
 CHECK_INTERNET_ADDRESS = "https://ipinfo.io/"
 
@@ -682,7 +686,7 @@ VALID_TIME_CHARS_RUN_THRESHOLD = 100
 CHECK_ZERO_COLUMNS_THRESHOLD = 10
 
 # Boldify all logger messages containing these "patterns"
-BOLD_PATTERNS = ("' injectable", "provided empty", "leftover chars", "might be injectable", "' is vulnerable", "is not injectable", "does not seem to be", "test failed", "test passed", "live test final result", "test shows that", "the back-end DBMS is", "created Github", "blocked by the target server", "protection is involved", "CAPTCHA", "specific response", "NULL connection is supported", "PASSED", "FAILED")
+BOLD_PATTERNS = ("' injectable", "provided empty", "leftover chars", "might be injectable", "' is vulnerable", "is not injectable", "does not seem to be", "test failed", "test passed", "live test final result", "test shows that", "the back-end DBMS is", "created Github", "blocked by the target server", "protection is involved", "CAPTCHA", "specific response", "NULL connection is supported", "PASSED", "FAILED", "for more than")
 
 # TLDs used in randomization of email-alike parameter values
 RANDOMIZATION_TLDS = ("com", "net", "ru", "org", "de", "jp", "cn", "fr", "it", "pl", "tv", "edu", "in", "ir", "es", "me", "info", "gr", "gov", "ca", "co", "se", "cz", "to", "vn", "nl", "cc", "az", "hu", "ua", "be", "no", "biz", "io", "ch", "ro", "sk", "eu", "us", "tw", "pt", "fi", "at", "lt", "kz", "cl", "hr", "pk", "lv", "la", "pe")
@@ -716,6 +720,9 @@ RESTAPI_DEFAULT_ADDRESS = "127.0.0.1"
 
 # Default REST-JSON API server listen port
 RESTAPI_DEFAULT_PORT = 8775
+
+# Use "Supplementary Private Use Area-A"
+INVALID_UNICODE_PRIVATE_AREA = False
 
 # Format used for representing invalid unicode characters
 INVALID_UNICODE_CHAR_FORMAT = r"\x%02x"
@@ -824,9 +831,18 @@ th{
 </style>"""
 
 # Leaving (dirty) possibility to change values from here (e.g. `export SQLMAP__MAX_NUMBER_OF_THREADS=20`)
-
 for key, value in os.environ.items():
     if key.upper().startswith("%s_" % SQLMAP_ENVIRONMENT_PREFIX):
         _ = key[len(SQLMAP_ENVIRONMENT_PREFIX) + 1:].upper()
         if _ in globals():
             globals()[_] = value
+
+# Installing "reversible" unicode (decoding) error handler
+def _reversible(ex):
+    if isinstance(ex, UnicodeDecodeError):
+        if INVALID_UNICODE_PRIVATE_AREA:
+            return ("".join(unichr(int('000f00%2x' % ord(_), 16)) for _ in ex.object[ex.start:ex.end]), ex.end)
+        else:
+            return ("".join(INVALID_UNICODE_CHAR_FORMAT % ord(_) for _ in ex.object[ex.start:ex.end]).decode(UNICODE_ENCODING), ex.end)
+
+codecs.register_error("reversible", _reversible)

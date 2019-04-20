@@ -224,7 +224,7 @@ def cmdLineParser(argv=None):
 
         request.add_option("--eval", dest="evalCode",
                            help="Evaluate provided Python code before the request (e.g. \"import hashlib;id2=hashlib.md5(id).hexdigest()\")")
-       
+
         # Optimization options
         optimization = OptionGroup(parser, "Optimization", "These options can be used to optimize the performance of sqlmap")
 
@@ -600,7 +600,7 @@ def cmdLineParser(argv=None):
                            help="Parse and display DBMS error messages from responses")
 
         general.add_option("--preprocess", dest="preprocess",
-                             help="Use given script(s) for preprocessing of response data")
+                           help="Use given script(s) for preprocessing of response data")
 
         general.add_option("--repair", dest="repair", action="store_true",
                            help="Redump entries having unknown character marker (%s)" % INFERENCE_UNKNOWN_CHAR)
@@ -681,6 +681,10 @@ def cmdLineParser(argv=None):
                                  help="Simple wizard interface for beginner users")
 
         # Hidden and/or experimental options
+        parser.add_option("--base64", dest="base64Parameter",
+                          help=SUPPRESS_HELP)
+#                          help="Parameter(s) containing Base64 encoded values")
+
         parser.add_option("--crack", dest="hashFile",
                           help=SUPPRESS_HELP)
 #                          help="Load and crack hashes from a file (standalone)")
@@ -716,6 +720,9 @@ def cmdLineParser(argv=None):
                           help=SUPPRESS_HELP)
 
         parser.add_option("--live-test", dest="liveTest", action="store_true",
+                          help=SUPPRESS_HELP)
+
+        parser.add_option("--vuln-test", dest="vulnTest", action="store_true",
                           help=SUPPRESS_HELP)
 
         parser.add_option("--stop-fail", dest="stopFail", action="store_true",
@@ -851,6 +858,14 @@ def cmdLineParser(argv=None):
             elif argv[i] == "-H":
                 if i + 1 < len(argv):
                     extraHeaders.append(argv[i + 1])
+            elif argv[i] == "-r":
+                for j in xrange(i + 2, len(argv)):
+                    value = argv[j]
+                    if os.path.isfile(value):
+                        argv[i + 1] += ",%s" % value
+                        argv[j] = ''
+                    else:
+                        break
             elif re.match(r"\A\d+!\Z", argv[i]) and argv[max(0, i - 1)] == "--threads" or re.match(r"\A--threads.+\d+!\Z", argv[i]):
                 argv[i] = argv[i][:-1]
                 conf.skipThreadCheck = True
@@ -901,7 +916,7 @@ def cmdLineParser(argv=None):
         if args.dummy:
             args.url = args.url or DUMMY_URL
 
-        if not any((args.direct, args.url, args.logFile, args.bulkFile, args.googleDork, args.configFile, args.requestFile, args.updateAll, args.smokeTest, args.liveTest, args.wizard, args.dependencies, args.purge, args.sitemapUrl, args.listTampers, args.hashFile)):
+        if not any((args.direct, args.url, args.logFile, args.bulkFile, args.googleDork, args.configFile, args.requestFile, args.updateAll, args.smokeTest, args.vulnTest, args.liveTest, args.wizard, args.dependencies, args.purge, args.sitemapUrl, args.listTampers, args.hashFile)):
             errMsg = "missing a mandatory option (-d, -u, -l, -m, -r, -g, -c, -x, --list-tampers, --wizard, --update, --purge or --dependencies). "
             errMsg += "Use -h for basic and -hh for advanced help\n"
             parser.error(errMsg)

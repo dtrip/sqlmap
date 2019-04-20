@@ -34,6 +34,7 @@ from lib.core.common import evaluateCode
 from lib.core.common import extractRegexResult
 from lib.core.common import filterNone
 from lib.core.common import findMultipartPostBoundary
+from lib.core.common import getBytes
 from lib.core.common import getCurrentThreadData
 from lib.core.common import getHeader
 from lib.core.common import getHostHeader
@@ -54,7 +55,6 @@ from lib.core.common import singleTimeLogMessage
 from lib.core.common import singleTimeWarnMessage
 from lib.core.common import stdev
 from lib.core.common import wasLastResponseDelayed
-from lib.core.common import unicodeencode
 from lib.core.common import unsafeVariableNaming
 from lib.core.common import urldecode
 from lib.core.common import urlencode
@@ -278,7 +278,10 @@ class Connect(object):
         if multipart:
             post = multipart
 
-        if chunked and post:
+        if not post:
+            chunked = False
+
+        elif chunked:
             post = _urllib.parse.unquote(post)
             post = chunkSplitPostData(post)
 
@@ -403,7 +406,7 @@ class Connect(object):
 
             if conf.keepAlive:
                 headers[HTTP_HEADER.CONNECTION] = "keep-alive"
-            
+
             if chunked:
                 headers[HTTP_HEADER.TRANSFER_ENCODING] = "chunked"
 
@@ -412,13 +415,12 @@ class Connect(object):
 
             for key, value in headers.items():
                 del headers[key]
-                value = unicodeencode(value, kb.pageEncoding)
                 for char in (r"\r", r"\n"):
                     value = re.sub(r"(%s)([^ \t])" % char, r"\g<1>\t\g<2>", value)
-                headers[unicodeencode(key, kb.pageEncoding)] = value.strip("\r\n")
+                headers[getBytes(key)] = getBytes(value.strip("\r\n"))
 
-            url = unicodeencode(url)
-            post = unicodeencode(post)
+            url = getBytes(url)
+            post = getBytes(post)
 
             if websocket_:
                 ws = websocket.WebSocket()
@@ -449,7 +451,7 @@ class Connect(object):
                 logger.log(CUSTOM_LOGGING.TRAFFIC_OUT, requestMsg)
             else:
                 if method and method not in (HTTPMETHOD.GET, HTTPMETHOD.POST):
-                    method = unicodeencode(method)
+                    method = getBytes(method)
                     req = MethodRequest(url, post, headers)
                     req.set_method(method)
                 elif url is not None:
@@ -605,7 +607,7 @@ class Connect(object):
                 page = getUnicode(page)
 
             code = ex.code
-            status = getSafeExString(ex)
+            status = getattr(ex, "reason", None) or getSafeExString(ex).split(": ", 1)[-1]
 
             kb.originalCode = kb.originalCode or code
             threadData.lastHTTPError = (threadData.lastRequestUID, code, status)
@@ -633,6 +635,12 @@ class Connect(object):
                     errMsg = "not authorized, try to provide right HTTP "
                     errMsg += "authentication type and valid credentials (%d)" % code
                     raise SqlmapConnectionException(errMsg)
+                elif chunked and ex.code in (_http_client.METHOD_NOT_ALLOWED, _http_client.LENGTH_REQUIRED):
+                    warnMsg = "turning off HTTP chunked transfer encoding "
+                    warnMsg += "as it seems that the target site doesn't support it (%d)" % code
+                    singleTimeWarnMessage(warnMsg)
+                    conf.chunked = kwargs["chunked"] = False
+                    return Connect.getPage(**kwargs)
                 elif ex.code == _http_client.NOT_FOUND:
                     if raise404:
                         errMsg = "page not found (%d)" % code
@@ -773,33 +781,33 @@ class Connect(object):
 
         processResponse(page, responseHeaders, status)
 
-        if conn and getattr(conn, "redurl", None):
-            _ = _urllib.parse.urlsplit(conn.redurl)
-            _ = ("%s%s" % (_.path or "/", ("?%s" % _.query) if _.query else ""))
-            requestMsg = re.sub(r"(\n[A-Z]+ ).+?( HTTP/\d)", r"\g<1>%s\g<2>" % getUnicode(_).replace("\\", "\\\\"), requestMsg, 1)
-
-            if kb.resendPostOnRedirect is False:
-                requestMsg = re.sub(r"(\[#\d+\]:\n)POST ", r"\g<1>GET ", requestMsg)
-                requestMsg = re.sub(r"(?i)Content-length: \d+\n", "", requestMsg)
-                requestMsg = re.sub(r"(?s)\n\n.+", "\n", requestMsg)
-
-            responseMsg += "[#%d] (%s %s):\r\n" % (threadData.lastRequestUID, conn.code, status)
-        else:
-            responseMsg += "[#%d] (%s %s):\r\n" % (threadData.lastRequestUID, code, status)
-
-        if responseHeaders:
-            logHeaders = getUnicode("".join(responseHeaders.headers).strip())
-
         if not skipLogTraffic:
+            if conn and getattr(conn, "redurl", None):
+                _ = _urllib.parse.urlsplit(conn.redurl)
+                _ = ("%s%s" % (_.path or "/", ("?%s" % _.query) if _.query else ""))
+                requestMsg = re.sub(r"(\n[A-Z]+ ).+?( HTTP/\d)", r"\g<1>%s\g<2>" % getUnicode(_).replace("\\", "\\\\"), requestMsg, 1)
+
+                if kb.resendPostOnRedirect is False:
+                    requestMsg = re.sub(r"(\[#\d+\]:\n)POST ", r"\g<1>GET ", requestMsg)
+                    requestMsg = re.sub(r"(?i)Content-length: \d+\n", "", requestMsg)
+                    requestMsg = re.sub(r"(?s)\n\n.+", "\n", requestMsg)
+
+                responseMsg += "[#%d] (%s %s):\r\n" % (threadData.lastRequestUID, conn.code, status)
+            elif "\n" not in responseMsg:
+                responseMsg += "[#%d] (%s %s):\r\n" % (threadData.lastRequestUID, code, status)
+
+            if responseHeaders:
+                logHeaders = getUnicode("".join(responseHeaders.headers).strip())
+
             logHTTPTraffic(requestMsg, "%s%s\r\n\r\n%s" % (responseMsg, logHeaders, (page or "")[:MAX_CONNECTION_CHUNK_SIZE]), start, time.time())
 
-        if conf.verbose <= 5:
-            responseMsg += getUnicode(logHeaders)
-        elif conf.verbose > 5:
-            responseMsg += "%s\r\n\r\n%s" % (logHeaders, (page or "")[:MAX_CONNECTION_CHUNK_SIZE])
+            if conf.verbose <= 5:
+                responseMsg += getUnicode(logHeaders)
+            elif conf.verbose > 5:
+                responseMsg += "%s\r\n\r\n%s" % (logHeaders, (page or "")[:MAX_CONNECTION_CHUNK_SIZE])
 
-        if not multipart:
-            logger.log(CUSTOM_LOGGING.TRAFFIC_IN, responseMsg)
+            if not multipart:
+                logger.log(CUSTOM_LOGGING.TRAFFIC_IN, responseMsg)
 
         return page, responseHeaders, code
 
@@ -1124,7 +1132,7 @@ class Connect(object):
 
             while True:
                 try:
-                    compile(unicodeencode(conf.evalCode.replace(';', '\n')), "", "exec")
+                    compile(getBytes(conf.evalCode.replace(';', '\n')), "", "exec")
                 except SyntaxError as ex:
                     if ex.text:
                         original = replacement = ex.text.strip()

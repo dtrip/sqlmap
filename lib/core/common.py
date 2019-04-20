@@ -52,7 +52,6 @@ from lib.core.convert import base64unpickle
 from lib.core.convert import hexdecode
 from lib.core.convert import htmlunescape
 from lib.core.convert import stdoutencode
-from lib.core.convert import unicodeencode
 from lib.core.convert import utf8encode
 from lib.core.data import conf
 from lib.core.data import kb
@@ -124,7 +123,7 @@ from lib.core.settings import HOST_ALIASES
 from lib.core.settings import HTTP_CHUNKED_SPLIT_KEYWORDS
 from lib.core.settings import IGNORE_SAVE_OPTIONS
 from lib.core.settings import INFERENCE_UNKNOWN_CHAR
-from lib.core.settings import INVALID_UNICODE_CHAR_FORMAT
+from lib.core.settings import INVALID_UNICODE_PRIVATE_AREA
 from lib.core.settings import IP_ADDRESS_REGEX
 from lib.core.settings import ISSUES_PAGE
 from lib.core.settings import IS_WIN
@@ -153,6 +152,7 @@ from lib.core.settings import REFLECTED_REPLACEMENT_REGEX
 from lib.core.settings import REFLECTED_REPLACEMENT_TIMEOUT
 from lib.core.settings import REFLECTED_VALUE_MARKER
 from lib.core.settings import REFLECTIVE_MISS_THRESHOLD
+from lib.core.settings import SAFE_HEX_MARKER
 from lib.core.settings import SENSITIVE_DATA_REGEX
 from lib.core.settings import SENSITIVE_OPTIONS
 from lib.core.settings import STDIN_PIPE_DASH
@@ -603,7 +603,20 @@ def paramToDict(place, parameters=None):
             condition |= place == PLACE.COOKIE and len(intersect((PLACE.COOKIE,), conf.testParameter, True)) > 0
 
             if condition:
-                testableParameters[parameter] = "=".join(parts[1:])
+                value = "=".join(parts[1:])
+
+                if parameter in (conf.base64Parameter or []):
+                    try:
+                        oldValue = value
+                        value = value.decode("base64")
+                        parameters = re.sub(r"\b%s\b" % re.escape(oldValue), value, parameters)
+                    except:
+                        errMsg = "parameter '%s' does not contain " % parameter
+                        errMsg += "valid Base64 encoded value ('%s')" % value
+                        raise SqlmapValueException(errMsg)
+
+                testableParameters[parameter] = value
+
                 if not conf.multipleTargets and not (conf.csrfToken and re.search(conf.csrfToken, parameter, re.I)):
                     _ = urldecode(testableParameters[parameter], convall=True)
                     if (_.endswith("'") and _.count("'") == 1 or re.search(r'\A9{3,}', _) or re.search(r'\A-\d+\Z', _) or re.search(DUMMY_USER_INJECTION, _)) and not parameter.upper().startswith(GOOGLE_ANALYTICS_COOKIE_PREFIX):
@@ -869,6 +882,16 @@ def singleTimeLogMessage(message, level=logging.INFO, flag=None):
         logger.log(level, message)
 
 def boldifyMessage(message):
+    """
+    Sets ANSI bold marking on entire message if parts found in predefined BOLD_PATTERNS
+
+    >>> boldifyMessage("Hello World")
+    'Hello World'
+
+    >>> boldifyMessage("GET parameter id is not injectable")
+    '\\x1b[1mGET parameter id is not injectable\\x1b[0m'
+    """
+
     retVal = message
 
     if any(_ in message for _ in BOLD_PATTERNS):
@@ -877,17 +900,24 @@ def boldifyMessage(message):
     return retVal
 
 def setColor(message, color=None, bold=False, level=None):
+    """
+    Sets ANSI color codes
+
+    >>> setColor("Hello World", "red")
+    '\\x1b[31mHello World\\x1b[0m'
+    """
+
     retVal = message
     level = level or extractRegexResult(r"\[(?P<result>%s)\]" % '|'.join(_[0] for _ in getPublicTypeMembers(LOGGING_LEVELS)), message)
-
-    if isinstance(level, unicode):
-        level = unicodeencode(level)
 
     if message and getattr(LOGGER_HANDLER, "is_tty", False):  # colorizing handler
         if bold or color:
             retVal = colored(message, color=color, on_color=None, attrs=("bold",) if bold else None)
         elif level:
-            level = getattr(logging, level, None) if isinstance(level, six.string_types) else level
+            try:
+                level = getattr(logging, level, None)
+            except UnicodeError:
+                level = None
             retVal = LOGGER_HANDLER.colorize(message, level)
 
     return retVal
@@ -920,7 +950,7 @@ def dataToStdout(data, forceOutput=False, bold=False, content_type=None, status=
             if multiThreadMode:
                 logging._acquireLock()
 
-            if isinstance(data, unicode):
+            if isinstance(data, six.text_type):
                 message = stdoutencode(data)
             else:
                 message = data
@@ -975,7 +1005,7 @@ def dataToOutFile(filename, data):
 
             try:
                 with open(retVal, "w+b") as f:  # has to stay as non-codecs because data is raw ASCII encoded data
-                    f.write(unicodeencode(data))
+                    f.write(getBytes(data))
             except UnicodeEncodeError as ex:
                 _ = normalizeUnicode(filename)
                 if filename != _:
@@ -1827,7 +1857,7 @@ def safeFilepathEncode(filepath):
 
     retVal = filepath
 
-    if filepath and isinstance(filepath, unicode):
+    if filepath and isinstance(filepath, six.text_type):
         retVal = filepath.encode(sys.getfilesystemencoding() or UNICODE_ENCODING)
 
     return retVal
@@ -1914,7 +1944,7 @@ def getFilteredPageContent(page, onlyText=True, split=" "):
     retVal = page
 
     # only if the page's charset has been successfully identified
-    if isinstance(page, unicode):
+    if isinstance(page, six.text_type):
         retVal = re.sub(r"(?si)<script.+?</script>|<!--.+?-->|<style.+?</style>%s" % (r"|<[^>]+>|\t|\n|\r" if onlyText else ""), split, page)
         retVal = re.sub(r"%s{2,}" % split, split, retVal)
         retVal = htmlunescape(retVal.strip().strip(split))
@@ -1932,7 +1962,7 @@ def getPageWordSet(page):
     retVal = set()
 
     # only if the page's charset has been successfully identified
-    if isinstance(page, unicode):
+    if isinstance(page, six.text_type):
         retVal = set(_.group(0) for _ in re.finditer(r"\w+", getFilteredPageContent(page)))
 
     return retVal
@@ -2060,6 +2090,19 @@ def getConsoleWidth(default=80):
             pass
 
     return width or default
+
+def shellExec(cmd):
+    """
+    Executes arbitrary shell command
+
+    >>> shellExec('echo 1').strip()
+    '1'
+    """
+
+    try:
+        return subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0] or ""
+    except Exception as ex:
+        return six.text_type(ex)
 
 def clearConsoleLine(forceOutput=False):
     """
@@ -2404,14 +2447,10 @@ def getUnicode(value, encoding=None, noneToNull=False):
             except UnicodeDecodeError:
                 pass
 
-        while True:
-            try:
-                return six.text_type(value, encoding or (kb.get("pageEncoding") if kb.get("originalPage") else None) or UNICODE_ENCODING)
-            except UnicodeDecodeError as ex:
-                try:
-                    return six.text_type(value, UNICODE_ENCODING)
-                except:
-                    value = value[:ex.start] + "".join(INVALID_UNICODE_CHAR_FORMAT % ord(_) for _ in value[ex.start:ex.end]) + value[ex.end:]
+        try:
+            return six.text_type(value, encoding or (kb.get("pageEncoding") if kb.get("originalPage") else None) or UNICODE_ENCODING)
+        except UnicodeDecodeError:
+            return six.text_type(value, UNICODE_ENCODING, errors="reversible")
     elif isListLike(value):
         value = list(getUnicode(_, encoding, noneToNull) for _ in value)
         return value
@@ -2420,6 +2459,30 @@ def getUnicode(value, encoding=None, noneToNull=False):
             return six.text_type(value)
         except UnicodeDecodeError:
             return six.text_type(str(value), errors="ignore")  # encoding ignored for non-basestring instances
+
+def getBytes(value, encoding=UNICODE_ENCODING, errors="strict"):
+    """
+    Returns byte representation of provided Unicode value
+
+    >>> getBytes(getUnicode("foo\x01\x83\xffbar")) == "foo\x01\x83\xffbar"
+    True
+    """
+
+    retVal = value
+
+    if isinstance(value, six.text_type):
+        if INVALID_UNICODE_PRIVATE_AREA:
+            for char in xrange(0xF0000, 0xF00FF + 1):
+                value = value.replace(unichr(char), "%s%02x" % (SAFE_HEX_MARKER, char - 0xF0000))
+
+            retVal = value.encode(encoding, errors)
+
+            retVal = re.sub(r"%s([0-9a-f]{2})" % SAFE_HEX_MARKER, lambda _: _.group(1).decode("hex"), retVal)
+        else:
+            retVal = value.encode(encoding, errors)
+            retVal = re.sub(r"\\x([0-9a-f]{2})", lambda _: _.group(1).decode("hex"), retVal)
+
+    return retVal
 
 def longestCommonPrefix(*sequences):
     """
@@ -2547,11 +2610,12 @@ def adjustTimeDelay(lastQueryDuration, lowerStdLimit):
         kb.delayCandidates = [candidate] + kb.delayCandidates[:-1]
 
         if all((_ == candidate for _ in kb.delayCandidates)) and candidate < conf.timeSec:
-            conf.timeSec = candidate
+            if lastQueryDuration / (1.0 * conf.timeSec / candidate) > MIN_VALID_DELAYED_RESPONSE:  # Note: to prevent problems with fast responses for heavy-queries like RANDOMBLOB
+                conf.timeSec = candidate
 
-            infoMsg = "adjusting time delay to "
-            infoMsg += "%d second%s due to good response times" % (conf.timeSec, 's' if conf.timeSec > 1 else '')
-            logger.info(infoMsg)
+                infoMsg = "adjusting time delay to "
+                infoMsg += "%d second%s due to good response times" % (conf.timeSec, 's' if conf.timeSec > 1 else '')
+                logger.info(infoMsg)
 
 def getLastRequestHTTPError():
     """
@@ -3326,7 +3390,7 @@ def showHttpErrorCodes():
             msg += "could mean that some kind of protection is involved (e.g. WAF)"
             logger.debug(msg)
 
-def openFile(filename, mode='r', encoding=UNICODE_ENCODING, errors="replace", buffering=1):  # "buffering=1" means line buffered (Reference: http://stackoverflow.com/a/3168436)
+def openFile(filename, mode='r', encoding=UNICODE_ENCODING, errors="reversible", buffering=1):  # "buffering=1" means line buffered (Reference: http://stackoverflow.com/a/3168436)
     """
     Returns file handle of a given filename
     """
@@ -3417,6 +3481,16 @@ def checkIntegrity():
                     retVal = False
 
     return retVal
+
+def getDaysFromLastUpdate():
+    """
+    Get total number of days from last update
+    """
+
+    if not paths:
+        return
+
+    return int(time.time() - os.path.getmtime(paths.SQLMAP_SETTINGS_PATH)) // (3600 * 24)
 
 def unhandledExceptionMessage():
     """
@@ -3622,21 +3696,23 @@ def decodeStringEscape(value):
     retVal = value
 
     if value and '\\' in value:
-        if isinstance(value, unicode):
-            retVal = retVal.encode(UNICODE_ENCODING)
+        charset = "\\%s" % string.whitespace.replace(" ", "")
+        for _ in charset:
+            retVal = retVal.replace(repr(_).strip("'"), _)
 
-        try:
-            retVal = codecs.escape_decode(retVal)[0]
-        except:
-            try:
-                retVal = retVal.decode("string_escape")
-            except:
-                charset = string.whitespace.replace(" ", "")
-                for _ in charset:
-                    retVal = retVal.replace(repr(_).strip("'"), _)
+    return retVal
 
-        if isinstance(value, unicode):
-            retVal = getUnicode(retVal)
+def encodeStringEscape(value):
+    """
+    Encodes escaped string values (e.g. "\t" -> "\\t")
+    """
+
+    retVal = value
+
+    if value:
+        charset = "\\%s" % string.whitespace.replace(" ", "")
+        for _ in charset:
+            retVal = retVal.replace(_, repr(_).strip("'"))
 
     return retVal
 
@@ -3649,14 +3725,14 @@ def removeReflectiveValues(content, payload, suppressWarning=False):
     retVal = content
 
     try:
-        if all((content, payload)) and isinstance(content, unicode) and kb.reflectiveMechanism and not kb.heuristicMode:
+        if all((content, payload)) and isinstance(content, six.text_type) and kb.reflectiveMechanism and not kb.heuristicMode:
             def _(value):
                 while 2 * REFLECTED_REPLACEMENT_REGEX in value:
                     value = value.replace(2 * REFLECTED_REPLACEMENT_REGEX, REFLECTED_REPLACEMENT_REGEX)
                 return value
 
             payload = getUnicode(urldecode(payload.replace(PAYLOAD_DELIMITER, ""), convall=True))
-            regex = _(filterStringValue(payload, r"[A-Za-z0-9]", REFLECTED_REPLACEMENT_REGEX.encode("string_escape")))
+            regex = _(filterStringValue(payload, r"[A-Za-z0-9]", encodeStringEscape(REFLECTED_REPLACEMENT_REGEX)))
 
             if regex != payload:
                 if all(part.lower() in content.lower() for part in filterNone(regex.split(REFLECTED_REPLACEMENT_REGEX))[1:]):  # fast optimization check
@@ -3741,7 +3817,7 @@ def normalizeUnicode(value):
     'sucuraj'
     """
 
-    return unicodedata.normalize("NFKD", value).encode("ascii", "ignore") if isinstance(value, unicode) else value
+    return unicodedata.normalize("NFKD", value).encode("ascii", "ignore") if isinstance(value, six.text_type) else value
 
 def safeSQLIdentificatorNaming(name, isTable=False):
     """
@@ -4060,7 +4136,7 @@ def asciifyUrl(url, forceQuote=False):
         #     _urllib.parse.quote(s.replace('%', '')) != s.replace('%', '')
         # which would trigger on all %-characters, e.g. "&".
         if getUnicode(s).encode("ascii", "replace") != s or forceQuote:
-            return _urllib.parse.quote(s.encode(UNICODE_ENCODING) if isinstance(s, unicode) else s, safe=safe)
+            return _urllib.parse.quote(s.encode(UNICODE_ENCODING) if isinstance(s, six.text_type) else s, safe=safe)
         return s
 
     username = quote(parts.username, '')
@@ -4125,7 +4201,7 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
 
     class _(io.BytesIO):
         def __init__(self, content, url):
-            io.BytesIO.__init__(self, unicodeencode(content, kb.pageEncoding) if isinstance(content, unicode) else content)
+            io.BytesIO.__init__(self, getBytes(content, kb.pageEncoding))
             self._url = url
 
         def geturl(self):
@@ -4414,8 +4490,8 @@ def decodeHexValue(value, raw=False):
                         retVal = retVal.decode("utf-16-be")
                     except UnicodeDecodeError:
                         pass
-                if not isinstance(retVal, unicode):
-                    retVal = getUnicode(retVal, conf.encoding or "utf8")
+                if not isinstance(retVal, six.text_type):
+                    retVal = getUnicode(retVal, conf.encoding or UNICODE_ENCODING)
 
         return retVal
 

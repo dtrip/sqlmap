@@ -1,9 +1,13 @@
-*.py[cod]
+
 *.bak
 *.sw[op]
+*.py[cod]
 output/
+__pycache__/
+*.py[cod]
 .sqlmap_history
 traffic.txt
 *.orig
 *~
 .idea/
+req*.txt

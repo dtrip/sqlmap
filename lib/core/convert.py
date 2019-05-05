@@ -11,55 +11,39 @@ except:
     import pickle
 
 import base64
+import codecs
 import json
 import re
 import sys
 
+from lib.core.settings import INVALID_UNICODE_PRIVATE_AREA
 from lib.core.settings import IS_WIN
+from lib.core.settings import PICKLE_PROTOCOL
+from lib.core.settings import SAFE_HEX_MARKER
 from lib.core.settings import UNICODE_ENCODING
 from thirdparty import six
-
-def base64decode(value):
-    """
-    Decodes string value from Base64 to plain format
-
-    >>> base64decode('Zm9vYmFy')
-    'foobar'
-    """
-
-    return base64.b64decode(unicodeencode(value))
-
-def base64encode(value):
-    """
-    Encodes string value from plain to Base64 format
-
-    >>> base64encode('foobar')
-    'Zm9vYmFy'
-    """
-
-    return base64.b64encode(unicodeencode(value))
 
 def base64pickle(value):
     """
     Serializes (with pickle) and encodes to Base64 format supplied (binary) value
 
-    >>> base64pickle('foobar')
-    'gAJVBmZvb2JhcnEBLg=='
+    >>> base64unpickle(base64pickle([1, 2, 3])) == [1, 2, 3]
+    True
     """
 
     retVal = None
 
     try:
-        retVal = base64encode(pickle.dumps(value, pickle.HIGHEST_PROTOCOL))
+        retVal = encodeBase64(pickle.dumps(value, PICKLE_PROTOCOL))
     except:
         warnMsg = "problem occurred while serializing "
         warnMsg += "instance of a type '%s'" % type(value)
         singleTimeWarnMessage(warnMsg)
 
         try:
-            retVal = base64encode(pickle.dumps(value))
+            retVal = encodeBase64(pickle.dumps(value))
         except:
-            retVal = base64encode(pickle.dumps(str(value), pickle.HIGHEST_PROTOCOL))
+            retVal = encodeBase64(pickle.dumps(str(value), PICKLE_PROTOCOL))
 
     return retVal
 
@@ -67,91 +51,18 @@ def base64unpickle(value):
     """
     Decodes value from Base64 to plain format and deserializes (with pickle) its content
 
-    >>> base64unpickle('gAJVBmZvb2JhcnEBLg==')
-    'foobar'
+    >>> type(base64unpickle('gAJjX19idWlsdGluX18Kb2JqZWN0CnEBKYFxAi4=')) == object
+    True
     """
 
     retVal = None
 
     try:
-        retVal = pickle.loads(base64decode(value))
+        retVal = pickle.loads(decodeBase64(value))
     except TypeError:
-        retVal = pickle.loads(base64decode(bytes(value)))
+        retVal = pickle.loads(decodeBase64(bytes(value)))
 
     return retVal
-
-def hexdecode(value):
-    """
-    Decodes string value from hex to plain format
-
-    >>> hexdecode('666f6f626172')
-    'foobar'
-    """
-
-    value = value.lower()
-    value = value[2:] if value.startswith("0x") else value
-
-    if six.PY2:
-        retVal = value.decode("hex")
-    else:
-        retVal = bytes.fromhex(value)
-
-    return retVal
-
-def hexencode(value, encoding=None):
-    """
-    Encodes string value from plain to hex format
-
-    >>> hexencode('foobar')
-    '666f6f626172'
-    """
-
-    retVal = unicodeencode(value, encoding)
-
-    if six.PY2:
-        retVal = retVal.encode("hex")
-    else:
-        retVal = retVal.hex()
-
-    return retVal
-
-def unicodeencode(value, encoding=None):
-    """
-    Returns 8-bit string representation of the supplied unicode value
-
-    >>> unicodeencode(u'foobar')
-    'foobar'
-    """
-
-    retVal = value
-
-    if isinstance(value, six.text_type):
-        try:
-            retVal = value.encode(encoding or UNICODE_ENCODING)
-        except UnicodeEncodeError:
-            retVal = value.encode(encoding or UNICODE_ENCODING, "replace")
-
-    return retVal
-
-def utf8encode(value):
-    """
-    Returns 8-bit string representation of the supplied UTF-8 value
-
-    >>> utf8encode(u'foobar')
-    'foobar'
-    """
-
-    return unicodeencode(value, "utf-8")
-
-def utf8decode(value):
-    """
-    Returns UTF-8 representation of the supplied 8-bit string representation
-
-    >>> utf8decode('foobar')
-    u'foobar'
-    """
-
-    return value.decode("utf-8")
 
 def htmlunescape(value):
     """
@@ -163,10 +74,12 @@ def htmlunescape(value):
 
     retVal = value
     if value and isinstance(value, six.string_types):
-        codes = (("&lt;", '<'), ("&gt;", '>'), ("&quot;", '"'), ("&nbsp;", ' '), ("&amp;", '&'), ("&apos;", "'"))
-        retVal = reduce(lambda x, y: x.replace(y[0], y[1]), codes, retVal)
+        replacements = (("&lt;", '<'), ("&gt;", '>'), ("&quot;", '"'), ("&nbsp;", ' '), ("&amp;", '&'), ("&apos;", "'"))
+        for code, value in replacements:
+            retVal = retVal.replace(code, value)
+
         try:
-            retVal = re.sub(r"&#x([^ ;]+);", lambda match: unichr(int(match.group(1), 16)), retVal)
+            retVal = re.sub(r"&#x([^ ;]+);", lambda match: six.unichr(int(match.group(1), 16)), retVal)
         except ValueError:
             pass
     return retVal
@@ -177,25 +90,26 @@ def singleTimeWarnMessage(message):  # Cross-referenced function
     sys.stdout.flush()
 
 def stdoutencode(data):
-    retVal = None
+    retVal = data
 
-    try:
-        retVal = unicodeencode(data or "", sys.stdout.encoding)
+    if six.PY2:
+        try:
+            retVal = getBytes(data or "", sys.stdout.encoding)
 
-        # Reference: http://bugs.python.org/issue1602
-        if IS_WIN:
-            if '?' in retVal and '?' not in retVal:
-                warnMsg = "cannot properly display Unicode characters "
-                warnMsg += "inside Windows OS command prompt "
-                warnMsg += "(http://bugs.python.org/issue1602). All "
-                warnMsg += "unhandled occurrences will result in "
-                warnMsg += "replacement with '?' character. Please, find "
-                warnMsg += "proper character representation inside "
-                warnMsg += "corresponding output files. "
-                singleTimeWarnMessage(warnMsg)
+            # Reference: http://bugs.python.org/issue1602
+            if IS_WIN:
+                if '?' in retVal and '?' not in retVal:
+                    warnMsg = "cannot properly display Unicode characters "
+                    warnMsg += "inside Windows OS command prompt "
+                    warnMsg += "(http://bugs.python.org/issue1602). All "
+                    warnMsg += "unhandled occurrences will result in "
+                    warnMsg += "replacement with '?' character. Please, find "
+                    warnMsg += "proper character representation inside "
+                    warnMsg += "corresponding output files. "
+                    singleTimeWarnMessage(warnMsg)
 
-    except:
-        retVal = unicodeencode(data or "")
+        except:
+            retVal = getBytes(data or "")
 
     return retVal
 
@@ -213,8 +127,148 @@ def dejsonize(data):
     """
     Returns JSON deserialized data
 
-    >>> dejsonize('{\\n    "foo": "bar"\\n}')
-    {u'foo': u'bar'}
+    >>> dejsonize('{\\n    "foo": "bar"\\n}') == {u'foo': u'bar'}
+    True
     """
 
     return json.loads(data)
+
+def decodeHex(value, binary=True):
+    """
+    Returns a decoded representation of provided hexadecimal value
+
+    >>> decodeHex("313233") == b"123"
+    True
+    >>> decodeHex("313233", binary=False) == u"123"
+    True
+    """
+
+    retVal = value
+
+    if isinstance(value, six.binary_type):
+        value = value.decode(UNICODE_ENCODING)
+
+    if value.lower().startswith("0x"):
+        value = value[2:]
+
+    retVal = codecs.decode(value, "hex")
+
+    if not binary:
+        retVal = getText(retVal)
+
+    return retVal
+
+def encodeHex(value, binary=True):
+    """
+    Returns a encoded representation of provided string value
+
+    >>> encodeHex(b"123") == b"313233"
+    True
+    >>> encodeHex("123", binary=False)
+    '313233'
+    """
+
+    if isinstance(value, six.text_type):
+        value = value.encode(UNICODE_ENCODING)
+
+    retVal = codecs.encode(value, "hex")
+
+    if not binary:
+        retVal = getText(retVal)
+
+    return retVal
+
+def decodeBase64(value, binary=True):
+    """
+    Returns a decoded representation of provided Base64 value
+
+    >>> decodeBase64("MTIz") == b"123"
+    True
+    >>> decodeBase64("MTIz", binary=False)
+    '123'
+    """
+
+    retVal = base64.b64decode(value)
+
+    if not binary:
+        retVal = getText(retVal)
+
+    return retVal
+
+def encodeBase64(value, binary=True):
+    """
+    Returns a decoded representation of provided Base64 value
+
+    >>> encodeBase64(b"123") == b"MTIz"
+    True
+    >>> encodeBase64(u"123", binary=False)
+    'MTIz'
+    """
+
+    if isinstance(value, six.text_type):
+        value = value.encode(UNICODE_ENCODING)
+
+    retVal = base64.b64encode(value)
+
+    if not binary:
+        retVal = getText(retVal)
+
+    return retVal
+
+def getBytes(value, encoding=UNICODE_ENCODING, errors="strict"):
+    """
+    Returns byte representation of provided Unicode value
+
+    >>> getBytes(u"foo\\\\x01\\\\x83\\\\xffbar") == b"foo\\x01\\x83\\xffbar"
+    True
+    """
+
+    retVal = value
+
+    if isinstance(value, six.text_type):
+        if INVALID_UNICODE_PRIVATE_AREA:
+            for char in xrange(0xF0000, 0xF00FF + 1):
+                value = value.replace(six.unichr(char), "%s%02x" % (SAFE_HEX_MARKER, char - 0xF0000))
+
+            retVal = value.encode(encoding, errors)
+            retVal = re.sub(r"%s([0-9a-f]{2})" % SAFE_HEX_MARKER, lambda _: decodeHex(_.group(1)), retVal)
+        else:
+            retVal = value.encode(encoding, errors)
+            retVal = re.sub(b"\\\\x([0-9a-f]{2})", lambda _: decodeHex(_.group(1)), retVal)
+
+    return retVal
+
+def getOrds(value):
+    """
+    Returns ORD(...) representation of provided string value
+
+    >>> getOrds(u'fo\\xf6bar')
+    [102, 111, 246, 98, 97, 114]
+    >>> getOrds(b"fo\\xc3\\xb6bar")
+    [102, 111, 195, 182, 98, 97, 114]
+    """
+
+    return [_ if isinstance(_, int) else ord(_) for _ in value]
+
+def getText(value):
+    """
+    Returns textual value of a given value (Note: not necessary Unicode on Python2)
+
+    >>> getText(b"foobar")
+    'foobar'
+    >>> isinstance(getText(u"fo\\u2299bar"), six.text_type)
+    True
+    """
+
+    retVal = value
+
+    if isinstance(value, six.binary_type):
+        retVal = value.decode(UNICODE_ENCODING)
+
+    if six.PY2:
+        try:
+            retVal = str(retVal)
+        except:
+            pass
+
+    return retVal

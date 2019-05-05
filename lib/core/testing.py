@@ -8,6 +8,7 @@ See the file 'LICENSE' for copying permission
 import codecs
 import doctest
 import os
+import random
 import re
 import shutil
 import sys
@@ -19,13 +20,14 @@ import traceback
 from extra.beep.beep import beep
 from extra.vulnserver import vulnserver
 from lib.controller.controller import start
-from lib.core.common import checkIntegrity
 from lib.core.common import clearConsoleLine
 from lib.core.common import dataToStdout
 from lib.core.common import getUnicode
 from lib.core.common import randomStr
 from lib.core.common import readXmlFile
 from lib.core.common import shellExec
+from lib.core.compat import round
+from lib.core.compat import xrange
 from lib.core.data import conf
 from lib.core.data import logger
 from lib.core.data import paths
@@ -46,6 +48,7 @@ class Failures(object):
     failedTraceBack = None
 
 _failures = Failures()
+_rand = 0
 
 def vulnTest():
     """
@@ -54,24 +57,27 @@ def vulnTest():
 
     retVal = True
     count, length = 0, 6
+    address, port = "127.0.0.10", random.randint(1025, 65535)
 
     def _thread():
         vulnserver.init(quiet=True)
-        vulnserver.run()
+        vulnserver.run(address=address, port=port)
 
     thread = threading.Thread(target=_thread)
     thread.daemon = True
     thread.start()
 
     for options, checks in (
-        ("--version", ("1.", "#")),
-        ("--flush-session", ("Type: boolean-based blind", "Type: time-based blind", "Type: UNION query", "back-end DBMS: SQLite", "3 columns")),
+        ("--flush-session --identify-waf", ("CloudFlare",)),
+        ("--flush-session --parse-errors", (": syntax error", "Type: boolean-based blind", "Type: time-based blind", "Type: UNION query", "back-end DBMS: SQLite", "3 columns")),
         ("--banner --schema --dump -T users --binary-fields=surname --where 'id>3'", ("banner: '3", "INTEGER", "TEXT", "id", "name", "surname", "2 entries", "6E616D6569736E756C6C")),
-        ("--all", ("5 entries", "luther", "blisset", "fluffy", "ming", "NULL", "nameisnull")),
-        ("--technique=B --hex --fresh-queries --sql-query='SELECT 987654321'", ("single-thread", ": '987654321'",)),
-        ("--technique=T --fresh-queries --sql-query='SELECT 987654321'", (": '987654321'",)),
+        ("--all --tamper=between,randomcase", ("5 entries", "luther", "blisset", "fluffy", "179ad45c6ce2cb97cf1029e212046e81", "NULL", "nameisnull", "testpass")),
+        ("--technique=B --hex --fresh-queries --threads=4 --sql-query='SELECT 987654321'", ("length of query output", ": '987654321'",)),
+        ("--technique=T --fresh-queries --sql-query='SELECT 1234'", (": '1234'",)),
     ):
-        output = shellExec("python sqlmap.py -u http://%s:%d/?id=1 --batch %s" % (vulnserver.LISTEN_ADDRESS, vulnserver.LISTEN_PORT, options))
+        output = shellExec("%s %s -u http://%s:%d/?id=1 --batch %s" % (sys.executable, os.path.join(os.path.dirname(__file__), "..", "..", "sqlmap.py"), address, port, options))
+        output = getUnicode(output)
+
         if not all(check in output for check in checks):
             retVal = False
 
@@ -87,16 +93,47 @@ def vulnTest():
 
     return retVal
 
+def dirtyPatchRandom():
+    """
+    Unifying random generated data across different Python versions
+    """
+
+    def _lcg():
+        global _rand
+        a = 1140671485
+        c = 128201163
+        m = 2 ** 24
+        _rand = (a * _rand + c) % m
+        return _rand
+
+    def _randint(a, b):
+        _ = a + (_lcg() % (b - a + 1))
+        return _
+
+    def _choice(seq):
+        return seq[_randint(0, len(seq) - 1)]
+
+    def _sample(population, k):
+        return [_choice(population) for _ in xrange(k)]
+
+    def _seed(seed):
+        global _rand
+        _rand = seed
+
+    random.choice = _choice
+    random.randint = _randint
+    random.sample = _sample
+    random.seed = _seed
+
 def smokeTest():
     """
     Runs the basic smoke testing of a program
     """
 
+    dirtyPatchRandom()
+
     retVal = True
     count, length = 0, 0
-
-    if not checkIntegrity():
-        retVal = False
 
     for root, _, files in os.walk(paths.SQLMAP_ROOT_PATH):
         if any(_ in root for _ in ("thirdparty", "extra")):
@@ -143,7 +180,7 @@ def smokeTest():
     return retVal
 
 def adjustValueType(tagName, value):
-    for family in optDict.keys():
+    for family in optDict:
         for name, type_ in optDict[family].items():
             if type(type_) == tuple:
                 type_ = type_[0]

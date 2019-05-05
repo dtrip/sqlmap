@@ -21,6 +21,7 @@ from lib.core.common import checkDeprecatedOptions
 from lib.core.common import checkSystemEncoding
 from lib.core.common import dataToStdout
 from lib.core.common import expandMnemonics
+from lib.core.common import getSafeExString
 from lib.core.common import getUnicode
 from lib.core.compat import xrange
 from lib.core.data import cmdLineOptions
@@ -40,6 +41,7 @@ from lib.core.shell import autoCompletion
 from lib.core.shell import clearHistory
 from lib.core.shell import loadHistory
 from lib.core.shell import saveHistory
+from thirdparty.six.moves import input as _input
 
 def cmdLineParser(argv=None):
     """
@@ -54,7 +56,7 @@ def cmdLineParser(argv=None):
     # Reference: https://stackoverflow.com/a/4012683 (Note: previously used "...sys.getfilesystemencoding() or UNICODE_ENCODING")
     _ = getUnicode(os.path.basename(argv[0]), encoding=sys.stdin.encoding)
 
-    usage = "%s%s [options]" % ("python " if not IS_WIN else "", "\"%s\"" % _ if " " in _ else _)
+    usage = "%s%s [options]" % ("%s " % os.path.basename(sys.executable) if not IS_WIN else "", "\"%s\"" % _ if " " in _ else _)
     parser = OptionParser(usage=usage)
 
     try:
@@ -448,7 +450,7 @@ def cmdLineParser(argv=None):
         enumeration.add_option("--last", dest="lastChar", type="int",
                                help="Last query output word character to retrieve")
 
-        enumeration.add_option("--sql-query", dest="query",
+        enumeration.add_option("--sql-query", dest="sqlQuery",
                                help="SQL statement to be executed")
 
         enumeration.add_option("--sql-shell", dest="sqlShell", action="store_true",
@@ -762,7 +764,7 @@ def cmdLineParser(argv=None):
             return retVal
 
         parser.formatter._format_option_strings = parser.formatter.format_option_strings
-        parser.formatter.format_option_strings = type(parser.formatter.format_option_strings)(_, parser, type(parser))
+        parser.formatter.format_option_strings = type(parser.formatter.format_option_strings)(_, parser)
 
         # Dirty hack for making a short option '-hh'
         option = parser.get_option("--hh")
@@ -809,7 +811,7 @@ def cmdLineParser(argv=None):
                 command = None
 
                 try:
-                    command = raw_input("sqlmap-shell> ").strip()
+                    command = _input("sqlmap-shell> ").strip()
                     command = getUnicode(command, encoding=sys.stdin.encoding)
                 except (KeyboardInterrupt, EOFError):
                     print()
@@ -835,7 +837,7 @@ def cmdLineParser(argv=None):
                 for arg in shlex.split(command):
                     argv.append(getUnicode(arg, encoding=sys.stdin.encoding))
             except ValueError as ex:
-                raise SqlmapSyntaxException("something went wrong during command line parsing ('%s')" % ex.message)
+                raise SqlmapSyntaxException("something went wrong during command line parsing ('%s')" % getSafeExString(ex))
 
         for i in xrange(len(argv)):
             if argv[i] == "-hh":
@@ -930,7 +932,7 @@ def cmdLineParser(argv=None):
         # Protection against Windows dummy double clicking
         if IS_WIN:
             dataToStdout("\nPress Enter to continue...")
-            raw_input()
+            _input()
         raise
 
     debugMsg = "parsing command line"

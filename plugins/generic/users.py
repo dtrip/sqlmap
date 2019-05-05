@@ -22,7 +22,7 @@ from lib.core.common import parsePasswordHash
 from lib.core.common import readInput
 from lib.core.common import unArrayizeValue
 from lib.core.compat import xrange
-from lib.core.convert import hexencode
+from lib.core.convert import encodeHex
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -43,6 +43,7 @@ from lib.request import inject
 from lib.utils.hash import attackCachedUsersPasswords
 from lib.utils.hash import storeHashesToFile
 from lib.utils.pivotdumptable import pivotDumpTable
+from thirdparty.six.moves import zip as _zip
 
 class Users:
     """
@@ -192,7 +193,7 @@ class Users:
                 retVal = pivotDumpTable("(%s) AS %s" % (query, kb.aliasName), ['%s.name' % kb.aliasName, '%s.password' % kb.aliasName], blind=False)
 
                 if retVal:
-                    for user, password in filterPairValues(zip(retVal[0]["%s.name" % kb.aliasName], retVal[0]["%s.password" % kb.aliasName])):
+                    for user, password in filterPairValues(_zip(retVal[0]["%s.name" % kb.aliasName], retVal[0]["%s.password" % kb.aliasName])):
                         if user not in kb.data.cachedUsersPasswords:
                             kb.data.cachedUsersPasswords[user] = [password]
                         else:
@@ -237,8 +238,8 @@ class Users:
                 retVal = pivotDumpTable("(%s) AS %s" % (query, kb.aliasName), ['%s.name' % kb.aliasName, '%s.password' % kb.aliasName], blind=True)
 
                 if retVal:
-                    for user, password in filterPairValues(zip(retVal[0]["%s.name" % kb.aliasName], retVal[0]["%s.password" % kb.aliasName])):
-                        password = "0x%s" % hexencode(password, conf.encoding).upper()
+                    for user, password in filterPairValues(_zip(retVal[0]["%s.name" % kb.aliasName], retVal[0]["%s.password" % kb.aliasName])):
+                        password = "0x%s" % encodeHex(password, binary=False).upper()
 
                         if user not in kb.data.cachedUsersPasswords:
                             kb.data.cachedUsersPasswords[user] = [password]

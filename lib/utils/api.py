@@ -24,8 +24,9 @@ from lib.core.common import getSafeExString
 from lib.core.common import saveConfig
 from lib.core.common import unArrayizeValue
 from lib.core.compat import xrange
-from lib.core.convert import base64encode
-from lib.core.convert import hexencode
+from lib.core.convert import encodeBase64
+from lib.core.convert import encodeHex
+from lib.core.convert import decodeBase64
 from lib.core.convert import dejsonize
 from lib.core.convert import jsonize
 from lib.core.data import conf
@@ -57,6 +58,7 @@ from thirdparty.bottle.bottle import response
 from thirdparty.bottle.bottle import run
 from thirdparty.bottle.bottle import server_names
 from thirdparty.six.moves import http_client as _http_client
+from thirdparty.six.moves import input as _input
 from thirdparty.six.moves import urllib as _urllib
 
 # Global data storage
@@ -293,7 +295,7 @@ def check_authentication():
         request.environ["PATH_INFO"] = "/error/401"
 
     try:
-        creds = match.group(1).decode("base64")
+        creds = decodeBase64(match.group(1), binary=False)
     except:
         request.environ["PATH_INFO"] = "/error/401"
     else:
@@ -363,7 +365,7 @@ def task_new():
     """
     Create a new task
     """
-    taskid = hexencode(os.urandom(8))
+    taskid = encodeHex(os.urandom(8), binary=False)
     remote_addr = request.remote_addr
 
     DataStore.tasks[taskid] = Task(taskid, remote_addr)
@@ -648,7 +650,7 @@ def download(taskid, target, filename):
         logger.debug("(%s) Retrieved content of file %s" % (taskid, target))
         with open(path, 'rb') as inf:
             file_content = inf.read()
-        return jsonize({"success": True, "file": base64encode(file_content)})
+        return jsonize({"success": True, "file": encodeBase64(file_content, binary=False)})
     else:
         logger.warning("[%s] File does not exist %s" % (taskid, target))
         return jsonize({"success": False, "message": "File does not exist"})
@@ -658,7 +660,7 @@ def server(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, adapter=REST
     REST-JSON API server
     """
 
-    DataStore.admin_token = hexencode(os.urandom(16))
+    DataStore.admin_token = encodeHex(os.urandom(16), binary=False)
     DataStore.username = username
     DataStore.password = password
 
@@ -715,7 +717,7 @@ def _client(url, options=None):
         headers = {"Content-Type": "application/json"}
 
         if DataStore.username or DataStore.password:
-            headers["Authorization"] = "Basic %s" % base64encode("%s:%s" % (DataStore.username or "", DataStore.password or ""))
+            headers["Authorization"] = "Basic %s" % encodeBase64("%s:%s" % (DataStore.username or "", DataStore.password or ""), binary=False)
 
         req = _urllib.request.Request(url, data, headers)
         response = _urllib.request.urlopen(req)
@@ -762,7 +764,7 @@ def client(host=RESTAPI_DEFAULT_ADDRESS, port=RESTAPI_DEFAULT_PORT, username=Non
 
     while True:
         try:
-            command = raw_input("api%s> " % (" (%s)" % taskid if taskid else "")).strip()
+            command = _input("api%s> " % (" (%s)" % taskid if taskid else "")).strip()
             command = re.sub(r"\A(\w+)", lambda match: match.group(1).lower(), command)
         except (EOFError, KeyboardInterrupt):
             print()

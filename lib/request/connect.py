@@ -34,7 +34,6 @@ from lib.core.common import evaluateCode
 from lib.core.common import extractRegexResult
 from lib.core.common import filterNone
 from lib.core.common import findMultipartPostBoundary
-from lib.core.common import getBytes
 from lib.core.common import getCurrentThreadData
 from lib.core.common import getHeader
 from lib.core.common import getHostHeader
@@ -58,7 +57,9 @@ from lib.core.common import wasLastResponseDelayed
 from lib.core.common import unsafeVariableNaming
 from lib.core.common import urldecode
 from lib.core.common import urlencode
+from lib.core.compat import patchHeaders
 from lib.core.compat import xrange
+from lib.core.convert import getBytes
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -193,7 +194,7 @@ class Connect(object):
 
     @staticmethod
     def _connReadProxy(conn):
-        retVal = ""
+        retVal = b""
 
         if not kb.dnsMode and conn:
             headers = conn.info()
@@ -413,13 +414,15 @@ class Connect(object):
             if auxHeaders:
                 headers = forgeHeaders(auxHeaders, headers)
 
-            for key, value in headers.items():
+            for key, value in list(headers.items()):
                 del headers[key]
                 for char in (r"\r", r"\n"):
                     value = re.sub(r"(%s)([^ \t])" % char, r"\g<1>\t\g<2>", value)
                 headers[getBytes(key)] = getBytes(value.strip("\r\n"))
 
-            url = getBytes(url)
+            if six.PY2:
+                url = getBytes(url)  # Note: Python3 requires text while Python2 has problems when mixing text with binary POST
+
             post = getBytes(post)
 
             if websocket_:
@@ -518,6 +521,7 @@ class Connect(object):
                     code = (code or conn.code) if conn.code == kb.originalCode else conn.code  # do not override redirection code (for comparison purposes)
                     responseHeaders = conn.info()
                     responseHeaders[URI_HTTP_HEADER] = conn.geturl()
+                    patchHeaders(responseHeaders)
                     kb.serverHeader = responseHeaders.get(HTTP_HEADER.SERVER, kb.serverHeader)
                 else:
                     code = None
@@ -593,6 +597,7 @@ class Connect(object):
                 page = ex.read() if not skipRead else None
                 responseHeaders = ex.info()
                 responseHeaders[URI_HTTP_HEADER] = ex.geturl()
+                patchHeaders(responseHeaders)
                 page = decodePage(page, responseHeaders.get(HTTP_HEADER.CONTENT_ENCODING), responseHeaders.get(HTTP_HEADER.CONTENT_TYPE))
             except socket.timeout:
                 warnMsg = "connection timed out while trying "
@@ -669,6 +674,7 @@ class Connect(object):
         except (_urllib.error.URLError, socket.error, socket.timeout, _http_client.HTTPException, struct.error, binascii.Error, ProxyError, SqlmapCompressionException, WebSocketException, TypeError, ValueError, OverflowError):
             tbMsg = traceback.format_exc()
 
+            print(tbMsg)
             if checking:
                 return None, None, None
             elif "no host given" in tbMsg:
@@ -797,7 +803,7 @@ class Connect(object):
                 responseMsg += "[#%d] (%s %s):\r\n" % (threadData.lastRequestUID, code, status)
 
             if responseHeaders:
-                logHeaders = getUnicode("".join(responseHeaders.headers).strip())
+                logHeaders = getUnicode("".join(responseHeaders.headers).strip() if six.PY2 else responseHeaders.__bytes__())
 
             logHTTPTraffic(requestMsg, "%s%s\r\n\r\n%s" % (responseMsg, logHeaders, (page or "")[:MAX_CONNECTION_CHUNK_SIZE]), start, time.time())
 
@@ -851,7 +857,7 @@ class Connect(object):
 
         if conf.httpHeaders:
             headers = OrderedDict(conf.httpHeaders)
-            contentType = max(headers[_] if _.upper() == HTTP_HEADER.CONTENT_TYPE.upper() else None for _ in headers)
+            contentType = max(headers[_] if _.upper() == HTTP_HEADER.CONTENT_TYPE.upper() else "" for _ in headers) or None
 
             if (kb.postHint or conf.skipUrlEncode) and postUrlEncode:
                 postUrlEncode = False
@@ -1266,7 +1272,7 @@ class Connect(object):
                     warnMsg += "10 or more)"
                     logger.critical(warnMsg)
 
-        if conf.safeFreq > 0:
+        if (conf.safeFreq or 0) > 0:
             kb.queryCounter += 1
             if kb.queryCounter % conf.safeFreq == 0:
                 if conf.safeUrl:
@@ -1349,6 +1355,8 @@ class Connect(object):
         if message:
             kb.permissionFlag = True
             singleTimeWarnMessage("potential permission problems detected ('%s')" % message)
+
+        patchHeaders(headers)
 
         if content or response:
             return page, headers, code

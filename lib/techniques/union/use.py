@@ -22,7 +22,6 @@ from lib.core.common import extractRegexResult
 from lib.core.common import firstNotNone
 from lib.core.common import flattenValue
 from lib.core.common import safeStringFormat
-from lib.core.common import getBytes
 from lib.core.common import getConsoleWidth
 from lib.core.common import getPartRun
 from lib.core.common import getUnicode
@@ -41,6 +40,8 @@ from lib.core.common import singleTimeWarnMessage
 from lib.core.common import unArrayizeValue
 from lib.core.common import wasLastResponseDBMSError
 from lib.core.compat import xrange
+from lib.core.convert import decodeBase64
+from lib.core.convert import getBytes
 from lib.core.convert import htmlunescape
 from lib.core.data import conf
 from lib.core.data import kb
@@ -121,14 +122,14 @@ def _oneShotUnionUse(expression, unpack=True, limited=False):
                                 break
 
                             try:
-                                value.decode("base64")
+                                decodeBase64(value)
                             except binascii.Error:
                                 base64 = False
                                 break
 
                         if base64:
                             for child in root:
-                                child.attrib[column] = child.attrib.get(column, "").decode("base64") or NULL
+                                child.attrib[column] = decodeBase64(child.attrib.get(column, ""), binary=False) or NULL
 
                     for child in root:
                         row = []

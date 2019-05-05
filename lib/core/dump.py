@@ -17,7 +17,6 @@ from lib.core.common import Backend
 from lib.core.common import checkFile
 from lib.core.common import dataToDumpFile
 from lib.core.common import dataToStdout
-from lib.core.common import getBytes
 from lib.core.common import getSafeExString
 from lib.core.common import getUnicode
 from lib.core.common import isListLike
@@ -29,6 +28,7 @@ from lib.core.common import randomInt
 from lib.core.common import safeCSValue
 from lib.core.common import unsafeSQLIdentificatorNaming
 from lib.core.compat import xrange
+from lib.core.convert import getBytes
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -194,7 +194,7 @@ class Dump(object):
             self._areAdmins = userSettings[1]
             userSettings = userSettings[0]
 
-        users = userSettings.keys()
+        users = list(userSettings.keys())
         users.sort(key=lambda _: _.lower() if hasattr(_, "lower") else _)
 
         if conf.api:
@@ -288,7 +288,7 @@ class Dump(object):
 
                     colType = None
 
-                    colList = columns.keys()
+                    colList = list(columns.keys())
                     colList.sort(key=lambda _: _.lower() if hasattr(_, "lower") else _)
 
                     for column in colList:
@@ -372,7 +372,7 @@ class Dump(object):
                 self._write("| Table%s | Entries%s |" % (blank1, blank2))
                 self._write("+%s+%s+" % (lines1, lines2))
 
-                sortedCounts = counts.keys()
+                sortedCounts = list(counts.keys())
                 sortedCounts.sort(reverse=True)
 
                 for count in sortedCounts:
@@ -484,7 +484,7 @@ class Dump(object):
         field = 1
         fields = len(tableValues) - 1
 
-        columns = prioritySortColumns(tableValues.keys())
+        columns = prioritySortColumns(list(tableValues.keys()))
 
         if conf.col:
             cols = conf.col.split(',')
@@ -704,7 +704,7 @@ class Dump(object):
 
             self.dbTableColumns(_)
 
-    def query(self, query, queryRes):
+    def sqlQuery(self, query, queryRes):
         self.string(query, queryRes, content_type=CONTENT_TYPE.SQL_QUERY)
 
     def rFile(self, fileData):

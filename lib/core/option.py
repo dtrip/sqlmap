@@ -59,6 +59,7 @@ from lib.core.common import setOptimize
 from lib.core.common import setPaths
 from lib.core.common import singleTimeWarnMessage
 from lib.core.common import urldecode
+from lib.core.compat import round
 from lib.core.compat import xrange
 from lib.core.data import conf
 from lib.core.data import kb
@@ -532,7 +533,7 @@ def _setMetasploit():
                 retVal = None
 
                 try:
-                    from _winreg import ConnectRegistry, OpenKey, QueryValueEx, HKEY_LOCAL_MACHINE
+                    from six.moves.winreg import ConnectRegistry, OpenKey, QueryValueEx, HKEY_LOCAL_MACHINE
                     _ = ConnectRegistry(None, HKEY_LOCAL_MACHINE)
                     _ = OpenKey(_, key)
                     retVal = QueryValueEx(_, value)[0]
@@ -1765,7 +1766,8 @@ def _cleanupOptions():
         conf.string = decodeStringEscape(conf.string)
 
     if conf.getAll:
-        map(lambda _: conf.__setitem__(_, True), WIZARD.ALL)
+        for _ in WIZARD.ALL:
+            conf.__setitem__(_, True)
 
     if conf.noCast:
         for _ in list(DUMP_REPLACEMENTS.keys()):
@@ -2061,7 +2063,7 @@ def _useWizardInterface():
     message = "%s data (--data) [Enter for None]: " % ((conf.method if conf.method != HTTPMETHOD.GET else conf.method) or HTTPMETHOD.POST)
     conf.data = readInput(message, default=None)
 
-    if not (filter(lambda _: '=' in unicode(_), (conf.url, conf.data)) or '*' in conf.url):
+    if not (any('=' in _ for _ in (conf.url, conf.data)) or '*' in conf.url):
         warnMsg = "no GET and/or %s parameter(s) found for testing " % ((conf.method if conf.method != HTTPMETHOD.GET else conf.method) or HTTPMETHOD.POST)
         warnMsg += "(e.g. GET parameter 'id' in 'http://www.site.com/vuln.php?id=1'). "
         if not conf.crawlDepth and not conf.forms:
@@ -2095,11 +2097,14 @@ def _useWizardInterface():
             choice = readInput(message, default='1')
 
             if choice == '2':
-                map(lambda _: conf.__setitem__(_, True), WIZARD.INTERMEDIATE)
+                options = WIZARD.INTERMEDIATE
             elif choice == '3':
-                map(lambda _: conf.__setitem__(_, True), WIZARD.ALL)
+                options = WIZARD.ALL
             else:
-                map(lambda _: conf.__setitem__(_, True), WIZARD.BASIC)
+                options = WIZARD.BASIC
+
+            for _ in options:
+                conf.__setitem__(_, True)
 
     logger.debug("muting sqlmap.. it will do the magic for you")
     conf.verbose = 0

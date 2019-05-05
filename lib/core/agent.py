@@ -306,16 +306,19 @@ class Agent(object):
         if payload is None:
             return
 
-        replacements = (
-            ("[DELIMITER_START]", kb.chars.start),
-            ("[DELIMITER_STOP]", kb.chars.stop),
-            ("[AT_REPLACE]", kb.chars.at),
-            ("[SPACE_REPLACE]", kb.chars.space),
-            ("[DOLLAR_REPLACE]", kb.chars.dollar),
-            ("[HASH_REPLACE]", kb.chars.hash_),
-            ("[GENERIC_SQL_COMMENT]", GENERIC_SQL_COMMENT)
-        )
-        payload = reduce(lambda x, y: x.replace(y[0], y[1]), replacements, payload)
+        replacements = {
+            "[DELIMITER_START]": kb.chars.start,
+            "[DELIMITER_STOP]": kb.chars.stop,
+            "[AT_REPLACE]": kb.chars.at,
+            "[SPACE_REPLACE]": kb.chars.space,
+            "[DOLLAR_REPLACE]": kb.chars.dollar,
+            "[HASH_REPLACE]": kb.chars.hash_,
+            "[GENERIC_SQL_COMMENT]": GENERIC_SQL_COMMENT
+        }
+
+        for value in re.findall(r"\[[A-Z_]+\]", payload):
+            if value in replacements:
+                payload = payload.replace(value, replacements[value])
 
         for _ in set(re.findall(r"(?i)\[RANDNUM(?:\d+)?\]", payload)):
             payload = payload.replace(_, str(randomInt()))
@@ -986,8 +989,7 @@ class Agent(object):
                     limitedQuery = limitedQuery.replace(" (SELECT TOP %s" % startTopNums, " (SELECT TOP %d" % num)
                     forgeNotIn = False
                 else:
-                    topNum = re.search(r"TOP\s+([\d]+)\s+", limitedQuery, re.I).group(1)
-                    limitedQuery = limitedQuery.replace("TOP %s " % topNum, "")
+                    limitedQuery = re.sub(r"\bTOP\s+\d+\s*", "", limitedQuery, flags=re.I)
 
             if forgeNotIn:
                 limitedQuery = limitedQuery.replace("SELECT ", (limitStr % 1), 1)

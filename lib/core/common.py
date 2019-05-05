@@ -11,6 +11,7 @@ import collections
 import contextlib
 import copy
 import distutils
+import functools
 import getpass
 import hashlib
 import inspect
@@ -46,13 +47,17 @@ from extra.beep.beep import beep
 from extra.cloak.cloak import decloak
 from extra.safe2bin.safe2bin import safecharencode
 from lib.core.bigarray import BigArray
+from lib.core.compat import cmp
+from lib.core.compat import round
 from lib.core.compat import xrange
 from lib.core.convert import base64pickle
 from lib.core.convert import base64unpickle
-from lib.core.convert import hexdecode
+from lib.core.convert import decodeBase64
+from lib.core.convert import decodeHex
+from lib.core.convert import getBytes
+from lib.core.convert import getText
 from lib.core.convert import htmlunescape
 from lib.core.convert import stdoutencode
-from lib.core.convert import utf8encode
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -123,7 +128,6 @@ from lib.core.settings import HOST_ALIASES
 from lib.core.settings import HTTP_CHUNKED_SPLIT_KEYWORDS
 from lib.core.settings import IGNORE_SAVE_OPTIONS
 from lib.core.settings import INFERENCE_UNKNOWN_CHAR
-from lib.core.settings import INVALID_UNICODE_PRIVATE_AREA
 from lib.core.settings import IP_ADDRESS_REGEX
 from lib.core.settings import ISSUES_PAGE
 from lib.core.settings import IS_WIN
@@ -152,7 +156,6 @@ from lib.core.settings import REFLECTED_REPLACEMENT_REGEX
 from lib.core.settings import REFLECTED_REPLACEMENT_TIMEOUT
 from lib.core.settings import REFLECTED_VALUE_MARKER
 from lib.core.settings import REFLECTIVE_MISS_THRESHOLD
-from lib.core.settings import SAFE_HEX_MARKER
 from lib.core.settings import SENSITIVE_DATA_REGEX
 from lib.core.settings import SENSITIVE_OPTIONS
 from lib.core.settings import STDIN_PIPE_DASH
@@ -177,7 +180,10 @@ from thirdparty.magic import magic
 from thirdparty.odict import OrderedDict
 from thirdparty.six.moves import configparser as _configparser
 from thirdparty.six.moves import http_client as _http_client
+from thirdparty.six.moves import input as _input
+from thirdparty.six.moves import reload_module as _reload_module
 from thirdparty.six.moves import urllib as _urllib
+from thirdparty.six.moves import zip as _zip
 from thirdparty.termcolor.termcolor import colored
 
 class UnicodeRawConfigParser(_configparser.RawConfigParser):
@@ -608,7 +614,7 @@ def paramToDict(place, parameters=None):
                 if parameter in (conf.base64Parameter or []):
                     try:
                         oldValue = value
-                        value = value.decode("base64")
+                        value = decodeBase64(value, binary=False)
                         parameters = re.sub(r"\b%s\b" % re.escape(oldValue), value, parameters)
                     except:
                         errMsg = "parameter '%s' does not contain " % parameter
@@ -881,42 +887,42 @@ def singleTimeLogMessage(message, level=logging.INFO, flag=None):
         kb.singleLogFlags.add(flag)
         logger.log(level, message)
 
-def boldifyMessage(message):
+def boldifyMessage(message, istty=None):
     """
     Sets ANSI bold marking on entire message if parts found in predefined BOLD_PATTERNS
 
-    >>> boldifyMessage("Hello World")
+    >>> boldifyMessage("Hello World", istty=True)
     'Hello World'
 
-    >>> boldifyMessage("GET parameter id is not injectable")
+    >>> boldifyMessage("GET parameter id is not injectable", istty=True)
     '\\x1b[1mGET parameter id is not injectable\\x1b[0m'
     """
 
     retVal = message
 
     if any(_ in message for _ in BOLD_PATTERNS):
-        retVal = setColor(message, bold=True)
+        retVal = setColor(message, bold=True, istty=istty)
 
     return retVal
 
-def setColor(message, color=None, bold=False, level=None):
+def setColor(message, color=None, bold=False, level=None, istty=None):
     """
     Sets ANSI color codes
 
-    >>> setColor("Hello World", "red")
+    >>> setColor("Hello World", color="red", istty=True)
     '\\x1b[31mHello World\\x1b[0m'
     """
 
     retVal = message
     level = level or extractRegexResult(r"\[(?P<result>%s)\]" % '|'.join(_[0] for _ in getPublicTypeMembers(LOGGING_LEVELS)), message)
 
-    if message and getattr(LOGGER_HANDLER, "is_tty", False):  # colorizing handler
+    if message and getattr(LOGGER_HANDLER, "is_tty", False) or istty:  # colorizing handler
         if bold or color:
             retVal = colored(message, color=color, on_color=None, attrs=("bold",) if bold else None)
         elif level:
             try:
                 level = getattr(logging, level, None)
-            except UnicodeError:
+            except:
                 level = None
             retVal = LOGGER_HANDLER.colorize(message, level)
 
@@ -942,24 +948,17 @@ def dataToStdout(data, forceOutput=False, bold=False, content_type=None, status=
     Writes text to the stdout (console) stream
     """
 
-    message = ""
-
     if not kb.get("threadException"):
         if forceOutput or not (getCurrentThreadData().disableStdOut or kb.get("wizardMode")):
             multiThreadMode = isMultiThreadMode()
             if multiThreadMode:
                 logging._acquireLock()
 
-            if isinstance(data, six.text_type):
-                message = stdoutencode(data)
-            else:
-                message = data
-
             try:
                 if conf.get("api"):
-                    sys.stdout.write(clearColors(message), status, content_type)
+                    sys.stdout.write(stdoutencode(clearColors(data)), status, content_type)
                 else:
-                    sys.stdout.write(setColor(message, bold=bold))
+                    sys.stdout.write(stdoutencode(setColor(data, bold=bold)))
 
                 sys.stdout.flush()
             except IOError:
@@ -1069,7 +1068,7 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
             elif default:
                 options = getUnicode(default, UNICODE_ENCODING)
             else:
-                options = unicode()
+                options = six.text_type()
 
             dataToStdout("%s%s\n" % (message, options), forceOutput=not kb.wizardMode, bold=True)
 
@@ -1087,7 +1086,7 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
                 dataToStdout("%s" % message, forceOutput=not kb.wizardMode, bold=True)
                 kb.prependFlag = False
 
-                retVal = raw_input().strip() or default
+                retVal = _input().strip() or default
                 retVal = getUnicode(retVal, encoding=sys.stdin.encoding) if retVal else retVal
             except:
                 try:
@@ -1115,7 +1114,7 @@ def randomRange(start=0, stop=1000, seed=None):
 
     >>> random.seed(0)
     >>> randomRange(1, 500)
-    423
+    152
     """
 
     if seed is not None:
@@ -1133,7 +1132,7 @@ def randomInt(length=4, seed=None):
 
     >>> random.seed(0)
     >>> randomInt(6)
-    874254
+    963638
     """
 
     if seed is not None:
@@ -1151,7 +1150,7 @@ def randomStr(length=4, lowercase=False, alphabet=None, seed=None):
 
     >>> random.seed(0)
     >>> randomStr(6)
-    'RNvnAv'
+    'FUPGpY'
     """
 
     if seed is not None:
@@ -1174,8 +1173,8 @@ def sanitizeStr(value):
     """
     Sanitizes string value in respect to newline and line-feed characters
 
-    >>> sanitizeStr('foo\\n\\rbar')
-    u'foo bar'
+    >>> sanitizeStr('foo\\n\\rbar') == 'foo bar'
+    True
     """
 
     return getUnicode(value).replace("\n", " ").replace("\r", "")
@@ -1362,7 +1361,8 @@ def weAreFrozen():
     """
     Returns whether we are frozen via py2exe.
     This will affect how we find out where we are located.
-    Reference: http://www.py2exe.org/index.cgi/WhereAmI
+
+    # Reference: http://www.py2exe.org/index.cgi/WhereAmI
     """
 
     return hasattr(sys, "frozen")
@@ -1599,7 +1599,7 @@ def expandAsteriskForColumns(expression):
         db, conf.tbl = _.split('.', 1) if '.' in _ else (None, _)
 
         if db is None:
-            if expression != conf.query:
+            if expression != conf.sqlQuery:
                 conf.db = db
             else:
                 expression = re.sub(r"([^\w])%s" % re.escape(conf.tbl), "\g<1>%s.%s" % (conf.db, conf.tbl), expression)
@@ -1687,7 +1687,7 @@ def parseUnionPage(page):
             entry = entry.split(kb.chars.delimiter)
 
             if conf.hexConvert:
-                entry = applyFunctionRecursively(entry, decodeHexValue)
+                entry = applyFunctionRecursively(entry, decodeDbmsHexValue)
 
             if kb.safeCharEncode:
                 entry = applyFunctionRecursively(entry, safecharencode)
@@ -1765,7 +1765,7 @@ def getFileType(filePath):
     """
 
     try:
-        desc = magic.from_file(filePath) or ""
+        desc = getUnicode(magic.from_file(filePath) or "")
     except:
         return "unknown"
 
@@ -1857,7 +1857,7 @@ def safeFilepathEncode(filepath):
 
     retVal = filepath
 
-    if filepath and isinstance(filepath, six.text_type):
+    if filepath and six.PY2 and isinstance(filepath, six.text_type):
         retVal = filepath.encode(sys.getfilesystemencoding() or UNICODE_ENCODING)
 
     return retVal
@@ -1884,7 +1884,7 @@ def safeStringFormat(format_, params):
     Avoids problems with inappropriate string format strings
 
     >>> safeStringFormat('SELECT foo FROM %s LIMIT %d', ('bar', '1'))
-    u'SELECT foo FROM bar LIMIT 1'
+    'SELECT foo FROM bar LIMIT 1'
     """
 
     if format_.count(PAYLOAD_DELIMITER) == 2:
@@ -1930,6 +1930,9 @@ def safeStringFormat(format_, params):
                         count += 1
                 else:
                     break
+
+    retVal = getText(retVal)
+
     return retVal
 
 def getFilteredPageContent(page, onlyText=True, split=" "):
@@ -1937,8 +1940,8 @@ def getFilteredPageContent(page, onlyText=True, split=" "):
     Returns filtered page content without script, style and/or comments
     or all HTML tags
 
-    >>> getFilteredPageContent(u'<html><title>foobar</title><body>test</body></html>')
-    u'foobar test'
+    >>> getFilteredPageContent(u'<html><title>foobar</title><body>test</body></html>') == "foobar test"
+    True
     """
 
     retVal = page
@@ -1955,8 +1958,8 @@ def getPageWordSet(page):
     """
     Returns word set used in page content
 
-    >>> sorted(getPageWordSet(u'<html><title>foobar</title><body>test</body></html>'))
-    [u'foobar', u'test']
+    >>> sorted(getPageWordSet(u'<html><title>foobar</title><body>test</body></html>')) == [u'foobar', u'test']
+    True
     """
 
     retVal = set()
@@ -2095,8 +2098,8 @@ def shellExec(cmd):
     """
     Executes arbitrary shell command
 
-    >>> shellExec('echo 1').strip()
-    '1'
+    >>> shellExec('echo 1').strip() == b'1'
+    True
     """
 
     try:
@@ -2219,7 +2222,8 @@ def average(values):
 def stdev(values):
     """
     Computes standard deviation of a list of numbers.
-    Reference: http://www.goldb.org/corestats.html
+
+    # Reference: http://www.goldb.org/corestats.html
 
     >>> stdev([0.9, 0.9, 0.9, 1.0, 0.8, 0.9])
     0.06324555320336757
@@ -2284,7 +2288,7 @@ def getFileItems(filename, commentPrefix='#', unicoded=True, lowercase=False, un
 
     try:
         with openFile(filename, 'r', errors="ignore") if unicoded else open(filename, 'r') as f:
-            for line in (f.readlines() if unicoded else f.xreadlines()):  # xreadlines doesn't return unicode strings when codec.open() is used
+            for line in f:
                 if commentPrefix:
                     if line.find(commentPrefix) != -1:
                         line = line[:line.find(commentPrefix)]
@@ -2418,12 +2422,10 @@ def getUnicode(value, encoding=None, noneToNull=False):
     """
     Return the unicode representation of the supplied value:
 
-    >>> getUnicode(u'test')
-    u'test'
-    >>> getUnicode('test')
-    u'test'
-    >>> getUnicode(1)
-    u'1'
+    >>> getUnicode('test') == u'test'
+    True
+    >>> getUnicode(1) == u'1'
+    True
     """
 
     if noneToNull and value is None:
@@ -2434,11 +2436,11 @@ def getUnicode(value, encoding=None, noneToNull=False):
     elif isinstance(value, six.binary_type):
         # Heuristics (if encoding not explicitly specified)
         candidates = filterNone((encoding, kb.get("pageEncoding") if kb.get("originalPage") else None, conf.get("encoding"), UNICODE_ENCODING, sys.getfilesystemencoding()))
-        if all(_ in value for _ in ('<', '>')):
+        if all(_ in value for _ in (b'<', b'>')):
             pass
-        elif any(_ in value for _ in (":\\", '/', '.')) and '\n' not in value:
+        elif any(_ in value for _ in (b":\\", b'/', b'.')) and b'\n' not in value:
             candidates = filterNone((encoding, sys.getfilesystemencoding(), kb.get("pageEncoding") if kb.get("originalPage") else None, UNICODE_ENCODING, conf.get("encoding")))
-        elif conf.get("encoding") and '\n' not in value:
+        elif conf.get("encoding") and b'\n' not in value:
             candidates = filterNone((encoding, conf.get("encoding"), kb.get("pageEncoding") if kb.get("originalPage") else None, sys.getfilesystemencoding(), UNICODE_ENCODING))
 
         for candidate in candidates:
@@ -2460,34 +2462,11 @@ def getUnicode(value, encoding=None, noneToNull=False):
         except UnicodeDecodeError:
             return six.text_type(str(value), errors="ignore")  # encoding ignored for non-basestring instances
 
-def getBytes(value, encoding=UNICODE_ENCODING, errors="strict"):
-    """
-    Returns byte representation of provided Unicode value
-
-    >>> getBytes(getUnicode("foo\x01\x83\xffbar")) == "foo\x01\x83\xffbar"
-    True
-    """
-
-    retVal = value
-
-    if isinstance(value, six.text_type):
-        if INVALID_UNICODE_PRIVATE_AREA:
-            for char in xrange(0xF0000, 0xF00FF + 1):
-                value = value.replace(unichr(char), "%s%02x" % (SAFE_HEX_MARKER, char - 0xF0000))
-
-            retVal = value.encode(encoding, errors)
-
-            retVal = re.sub(r"%s([0-9a-f]{2})" % SAFE_HEX_MARKER, lambda _: _.group(1).decode("hex"), retVal)
-        else:
-            retVal = value.encode(encoding, errors)
-            retVal = re.sub(r"\\x([0-9a-f]{2})", lambda _: _.group(1).decode("hex"), retVal)
-
-    return retVal
-
 def longestCommonPrefix(*sequences):
     """
     Returns longest common prefix occuring in given sequences
-    Reference: http://boredzo.org/blog/archives/2007-01-06/longest-common-prefix-in-python-2
+
+    # Reference: http://boredzo.org/blog/archives/2007-01-06/longest-common-prefix-in-python-2
 
     >>> longestCommonPrefix('foobar', 'fobar')
     'fo'
@@ -2511,7 +2490,13 @@ def longestCommonPrefix(*sequences):
     return sequences[0]
 
 def commonFinderOnly(initial, sequence):
-    return longestCommonPrefix(*filter(lambda _: _.startswith(initial), sequence))
+    """
+    Returns parts of sequence which start with the given initial string
+
+    >>> commonFinderOnly("abcd", ["abcdefg", "foobar", "abcde"])
+    ['abcdefg', 'abcde']
+    """
+    return longestCommonPrefix([_ for _ in sequence if _.startswith(initial)])
 
 def pushValue(value):
     """
@@ -2629,8 +2614,8 @@ def extractErrorMessage(page):
     """
     Returns reported error message from page if it founds one
 
-    >>> extractErrorMessage(u'<html><title>Test</title>\\n<b>Warning</b>: oci_parse() [function.oci-parse]: ORA-01756: quoted string not properly terminated<br><p>Only a test page</p></html>')
-    u'oci_parse() [function.oci-parse]: ORA-01756: quoted string not properly terminated'
+    >>> extractErrorMessage(u'<html><title>Test</title>\\n<b>Warning</b>: oci_parse() [function.oci-parse]: ORA-01756: quoted string not properly terminated<br><p>Only a test page</p></html>') == u'oci_parse() [function.oci-parse]: ORA-01756: quoted string not properly terminated'
+    True
     """
 
     retVal = None
@@ -2703,8 +2688,10 @@ def urldecode(value, encoding=None, unsafe="%%&=;+%s" % CUSTOM_INJECTION_MARK_CH
     """
     URL decodes given value
 
-    >>> urldecode('AND%201%3E%282%2B3%29%23', convall=True)
-    u'AND 1>(2+3)#'
+    >>> urldecode('AND%201%3E%282%2B3%29%23', convall=True) == 'AND 1>(2+3)#'
+    True
+    >>> urldecode('AND%201%3E%282%2B3%29%23', convall=False) == 'AND 1>(2%2B3)#'
+    True
     """
 
     result = value
@@ -2719,17 +2706,19 @@ def urldecode(value, encoding=None, unsafe="%%&=;+%s" % CUSTOM_INJECTION_MARK_CH
             if convall:
                 result = _urllib.parse.unquote_plus(value) if spaceplus else _urllib.parse.unquote(value)
             else:
-                def _(match):
-                    charset = reduce(lambda x, y: x.replace(y, ""), unsafe, string.printable)
-                    char = chr(ord(match.group(1).decode("hex")))
-                    return char if char in charset else match.group(0)
                 result = value
+                charset = set(string.printable) - set(unsafe)
+
+                def _(match):
+                    char = decodeHex(match.group(1), binary=False)
+                    return char if char in charset else match.group(0)
+
                 if spaceplus:
                     result = result.replace('+', ' ')  # plus sign has a special meaning in URL encoded data (hence the usage of _urllib.parse.unquote_plus in convall case)
+
                 result = re.sub(r"%([0-9a-fA-F]{2})", _, result)
 
-    if isinstance(result, str):
-        result = unicode(result, encoding or UNICODE_ENCODING, "replace")
+            result = getUnicode(result, encoding or UNICODE_ENCODING)
 
     return result
 
@@ -2764,7 +2753,7 @@ def urlencode(value, safe="%&=-_", convall=False, limit=False, spaceplus=False):
             value = re.sub(r"%(?![0-9a-fA-F]{2})", "%25", value)
 
         while True:
-            result = _urllib.parse.quote(utf8encode(value), safe)
+            result = _urllib.parse.quote(getBytes(value), safe)
 
             if limit and len(result) > URLENCODE_CHAR_LIMIT:
                 if count >= len(URLENCODE_FAILSAFE_CHARS):
@@ -2793,13 +2782,13 @@ def runningAsAdmin():
     if PLATFORM in ("posix", "mac"):
         _ = os.geteuid()
 
-        isAdmin = isinstance(_, (int, float, long)) and _ == 0
+        isAdmin = isinstance(_, (float, six.integer_types)) and _ == 0
     elif IS_WIN:
         import ctypes
 
         _ = ctypes.windll.shell32.IsUserAnAdmin()
 
-        isAdmin = isinstance(_, (int, float, long)) and _ == 1
+        isAdmin = isinstance(_, (float, six.integer_types)) and _ == 1
     else:
         errMsg = "sqlmap is not able to check if you are running it "
         errMsg += "as an administrator account on this platform. "
@@ -2879,6 +2868,9 @@ def extractRegexResult(regex, content, flags=0):
     retVal = None
 
     if regex and content and "?P<result>" in regex:
+        if isinstance(content, six.binary_type) and isinstance(regex, six.text_type):
+            regex = getBytes(regex)
+
         match = re.search(regex, content, flags)
 
         if match:
@@ -2890,8 +2882,8 @@ def extractTextTagContent(page):
     """
     Returns list containing content from "textual" tags
 
-    >>> extractTextTagContent(u'<html><head><title>Title</title></head><body><pre>foobar</pre><a href="#link">Link</a></body></html>')
-    [u'Title', u'foobar']
+    >>> extractTextTagContent('<html><head><title>Title</title></head><body><pre>foobar</pre><a href="#link">Link</a></body></html>')
+    ['Title', 'foobar']
     """
 
     page = page or ""
@@ -2908,8 +2900,8 @@ def trimAlphaNum(value):
     """
     Trims alpha numeric characters from start and ending of a given value
 
-    >>> trimAlphaNum(u'AND 1>(2+3)-- foobar')
-    u' 1>(2+3)-- '
+    >>> trimAlphaNum('AND 1>(2+3)-- foobar')
+    ' 1>(2+3)-- '
     """
 
     while value and value[-1].isalnum():
@@ -3000,13 +2992,15 @@ def findDynamicContent(firstPage, secondPage):
                 prefix = prefix[-DYNAMICITY_BOUNDARY_LENGTH:]
                 suffix = suffix[:DYNAMICITY_BOUNDARY_LENGTH]
 
-                infix = max(re.search(r"(?s)%s(.+)%s" % (re.escape(prefix), re.escape(suffix)), _) for _ in (firstPage, secondPage)).group(1)
-
-                if infix[0].isalnum():
-                    prefix = trimAlphaNum(prefix)
-
-                if infix[-1].isalnum():
-                    suffix = trimAlphaNum(suffix)
+                for _ in (firstPage, secondPage):
+                    match = re.search(r"(?s)%s(.+)%s" % (re.escape(prefix), re.escape(suffix)), _)
+                    if match:
+                        infix = match.group(1)
+                        if infix[0].isalnum():
+                            prefix = trimAlphaNum(prefix)
+                        if infix[-1].isalnum():
+                            suffix = trimAlphaNum(suffix)
+                        break
 
             kb.dynamicMarkings.append((prefix if prefix else None, suffix if suffix else None))
 
@@ -3040,8 +3034,8 @@ def filterStringValue(value, charRegex, replacement=""):
     Returns string value consisting only of chars satisfying supplied
     regular expression (note: it has to be in form [...])
 
-    >>> filterStringValue(u'wzydeadbeef0123#', r'[0-9a-f]')
-    u'deadbeef0123'
+    >>> filterStringValue('wzydeadbeef0123#', r'[0-9a-f]')
+    'deadbeef0123'
     """
 
     retVal = value
@@ -3055,8 +3049,8 @@ def filterControlChars(value, replacement=' '):
     """
     Returns string value with control chars being supstituted with replacement character
 
-    >>> filterControlChars(u'AND 1>(2+3)\\n--')
-    u'AND 1>(2+3) --'
+    >>> filterControlChars('AND 1>(2+3)\\n--')
+    'AND 1>(2+3) --'
     """
 
     return filterStringValue(value, PRINTABLE_CHAR_REGEX, replacement)
@@ -3278,11 +3272,13 @@ def arrayizeValue(value):
     """
     Makes a list out of value if it is not already a list or tuple itself
 
-    >>> arrayizeValue(u'1')
-    [u'1']
+    >>> arrayizeValue('1')
+    ['1']
     """
 
-    if not isListLike(value):
+    if isinstance(value, collections.KeysView):
+        value = [_ for _ in value]
+    elif not isListLike(value):
         value = [value]
 
     return value
@@ -3291,8 +3287,10 @@ def unArrayizeValue(value):
     """
     Makes a value out of iterable if it is a list or tuple itself
 
-    >>> unArrayizeValue([u'1'])
-    u'1'
+    >>> unArrayizeValue(['1'])
+    '1'
+    >>> unArrayizeValue(['1', '2'])
+    '1'
     """
 
     if isListLike(value):
@@ -3301,8 +3299,8 @@ def unArrayizeValue(value):
         elif len(value) == 1 and not isListLike(value[0]):
             value = value[0]
         else:
-            _ = filter(lambda _: _ is not None, (_ for _ in flattenValue(value)))
-            value = _[0] if len(_) > 0 else None
+            value = [_ for _ in flattenValue(value) if _ is not None]
+            value = value[0] if len(value) > 0 else None
 
     return value
 
@@ -3310,8 +3308,8 @@ def flattenValue(value):
     """
     Returns an iterator representing flat representation of a given value
 
-    >>> [_ for _ in flattenValue([[u'1'], [[u'2'], u'3']])]
-    [u'1', u'2', u'3']
+    >>> [_ for _ in flattenValue([['1'], [['2'], '3']])]
+    ['1', '2', '3']
     """
 
     for i in iter(value):
@@ -3327,7 +3325,7 @@ def isListLike(value):
 
     >>> isListLike([1, 2, 3])
     True
-    >>> isListLike(u'2')
+    >>> isListLike('2')
     False
     """
 
@@ -3370,7 +3368,7 @@ def filterListValue(value, regex):
     """
 
     if isinstance(value, list) and regex:
-        retVal = filter(lambda _: re.search(regex, _, re.I), value)
+        retVal = [_ for _ in value if re.search(regex, _, re.I)]
     else:
         retVal = value
 
@@ -3385,7 +3383,7 @@ def showHttpErrorCodes():
         warnMsg = "HTTP error codes detected during run:\n"
         warnMsg += ", ".join("%d (%s) - %d times" % (code, _http_client.responses[code] if code in _http_client.responses else '?', count) for code, count in kb.httpErrorCodes.items())
         logger.warn(warnMsg)
-        if any((str(_).startswith('4') or str(_).startswith('5')) and _ != _http_client.INTERNAL_SERVER_ERROR and _ != kb.originalCode for _ in kb.httpErrorCodes.keys()):
+        if any((str(_).startswith('4') or str(_).startswith('5')) and _ != _http_client.INTERNAL_SERVER_ERROR and _ != kb.originalCode for _ in kb.httpErrorCodes):
             msg = "too many 4xx and/or 5xx HTTP error codes "
             msg += "could mean that some kind of protection is involved (e.g. WAF)"
             logger.debug(msg)
@@ -3413,10 +3411,10 @@ def decodeIntToUnicode(value):
     """
     Decodes inferenced integer value to an unicode character
 
-    >>> decodeIntToUnicode(35)
-    u'#'
-    >>> decodeIntToUnicode(64)
-    u'@'
+    >>> decodeIntToUnicode(35) == '#'
+    True
+    >>> decodeIntToUnicode(64) == '@'
+    True
     """
     retVal = value
 
@@ -3426,7 +3424,7 @@ def decodeIntToUnicode(value):
                 _ = "%x" % value
                 if len(_) % 2 == 1:
                     _ = "0%s" % _
-                raw = hexdecode(_)
+                raw = decodeHex(_)
 
                 if Backend.isDbms(DBMS.MYSQL):
                     # Note: https://github.com/sqlmapproject/sqlmap/issues/1531
@@ -3434,7 +3432,7 @@ def decodeIntToUnicode(value):
                 elif Backend.isDbms(DBMS.MSSQL):
                     retVal = getUnicode(raw, "UTF-16-BE")
                 elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.ORACLE):
-                    retVal = unichr(value)
+                    retVal = six.unichr(value)
                 else:
                     retVal = getUnicode(raw, conf.encoding)
             else:
@@ -3447,7 +3445,8 @@ def decodeIntToUnicode(value):
 def md5File(filename):
     """
     Calculates MD5 digest of a file
-    Reference: http://stackoverflow.com/a/3431838
+
+    # Reference: http://stackoverflow.com/a/3431838
     """
 
     checkFile(filename)
@@ -3526,7 +3525,7 @@ def getLatestRevision():
     """
     Retrieves latest revision from the offical repository
 
-    >>> from lib.core.settings import VERSION; getLatestRevision() == VERSION
+    >>> (getLatestRevision() or " ")[0].isdigit()
     True
     """
 
@@ -3534,7 +3533,7 @@ def getLatestRevision():
     req = _urllib.request.Request(url="https://raw.githubusercontent.com/sqlmapproject/sqlmap/master/lib/core/settings.py")
 
     try:
-        content = _urllib.request.urlopen(req).read()
+        content = getUnicode(_urllib.request.urlopen(req).read())
         retVal = extractRegexResult(r"VERSION\s*=\s*[\"'](?P<result>[\d.]+)", content)
     except:
         pass
@@ -3574,7 +3573,7 @@ def createGithubIssue(errMsg, excMsg):
         choice = None
 
     if choice:
-        ex = None
+        _excMsg = None
         errMsg = errMsg[errMsg.find("\n"):]
 
         req = _urllib.request.Request(url="https://api.github.com/search/issues?q=%s" % _urllib.parse.quote("repo:sqlmapproject/sqlmap Unhandled exception (#%s)" % key))
@@ -3595,12 +3594,13 @@ def createGithubIssue(errMsg, excMsg):
             pass
 
         data = {"title": "Unhandled exception (#%s)" % key, "body": "```%s\n```\n```\n%s```" % (errMsg, excMsg)}
-        req = _urllib.request.Request(url="https://api.github.com/repos/sqlmapproject/sqlmap/issues", data=json.dumps(data), headers={"Authorization": "token %s" % GITHUB_REPORT_OAUTH_TOKEN.decode("base64")})
+        req = _urllib.request.Request(url="https://api.github.com/repos/sqlmapproject/sqlmap/issues", data=json.dumps(data), headers={"Authorization": "token %s" % decodeBase64(GITHUB_REPORT_OAUTH_TOKEN, binary=False)})
 
         try:
             content = _urllib.request.urlopen(req).read()
         except Exception as ex:
             content = None
+            _excMsg = getSafeExString(ex)
 
         issueUrl = re.search(r"https://github.com/sqlmapproject/sqlmap/issues/\d+", content or "")
         if issueUrl:
@@ -3614,8 +3614,8 @@ def createGithubIssue(errMsg, excMsg):
                 pass
         else:
             warnMsg = "something went wrong while creating a Github issue"
-            if ex:
-                warnMsg += " ('%s')" % getSafeExString(ex)
+            if _excMsg:
+                warnMsg += " ('%s')" % _excMsg
             if "Unauthorized" in warnMsg:
                 warnMsg += ". Please update to the latest revision"
             logger.warn(warnMsg)
@@ -3624,8 +3624,8 @@ def maskSensitiveData(msg):
     """
     Masks sensitive data in the supplied message
 
-    >>> maskSensitiveData('python sqlmap.py -u "http://www.test.com/vuln.php?id=1" --banner')
-    u'python sqlmap.py -u *********************************** --banner'
+    >>> maskSensitiveData('python sqlmap.py -u "http://www.test.com/vuln.php?id=1" --banner') == 'python sqlmap.py -u *********************************** --banner'
+    True
     """
 
     retVal = getUnicode(msg)
@@ -3811,18 +3811,20 @@ def removeReflectiveValues(content, payload, suppressWarning=False):
 def normalizeUnicode(value):
     """
     Does an ASCII normalization of unicode strings
-    Reference: http://www.peterbe.com/plog/unicode-to-ascii
 
-    >>> normalizeUnicode(u'\u0161u\u0107uraj')
-    'sucuraj'
+    # Reference: http://www.peterbe.com/plog/unicode-to-ascii
+
+    >>> normalizeUnicode(u'\u0161u\u0107uraj') == u'sucuraj'
+    True
     """
 
-    return unicodedata.normalize("NFKD", value).encode("ascii", "ignore") if isinstance(value, six.text_type) else value
+    return getUnicode(unicodedata.normalize("NFKD", value).encode("ascii", "ignore")) if isinstance(value, six.text_type) else value
 
 def safeSQLIdentificatorNaming(name, isTable=False):
     """
     Returns a safe representation of SQL identificator name (internal data format)
-    Reference: http://stackoverflow.com/questions/954884/what-special-characters-are-allowed-in-t-sql-column-retVal
+
+    # Reference: http://stackoverflow.com/questions/954884/what-special-characters-are-allowed-in-t-sql-column-retVal
     """
 
     retVal = name
@@ -4008,12 +4010,13 @@ def expandMnemonics(mnemonics, parser, args):
 def safeCSValue(value):
     """
     Returns value safe for CSV dumping
-    Reference: http://tools.ietf.org/html/rfc4180
 
-    >>> safeCSValue(u'foo, bar')
-    u'"foo, bar"'
-    >>> safeCSValue(u'foobar')
-    u'foobar'
+    # Reference: http://tools.ietf.org/html/rfc4180
+
+    >>> safeCSValue('foo, bar')
+    '"foo, bar"'
+    >>> safeCSValue('foobar')
+    'foobar'
     """
 
     retVal = value
@@ -4036,7 +4039,7 @@ def filterPairValues(values):
     retVal = []
 
     if not isNoneValue(values) and hasattr(values, '__iter__'):
-        retVal = filter(lambda x: isinstance(x, (tuple, list, set)) and len(x) == 2, values)
+        retVal = [value for value in values if isinstance(value, (tuple, list, set)) and len(value) == 2]
 
     return retVal
 
@@ -4046,9 +4049,9 @@ def randomizeParameterValue(value):
 
     >>> random.seed(0)
     >>> randomizeParameterValue('foobar')
-    'rnvnav'
+    'fupgpy'
     >>> randomizeParameterValue('17')
-    '83'
+    '36'
     """
 
     retVal = value
@@ -4106,25 +4109,25 @@ def asciifyUrl(url, forceQuote=False):
 
     See also RFC 3987.
 
-    Reference: http://blog.elsdoerfer.name/2008/12/12/opening-iris-in-python/
+    # Reference: http://blog.elsdoerfer.name/2008/12/12/opening-iris-in-python/
 
-    >>> asciifyUrl(u'http://www.\u0161u\u0107uraj.com')
-    u'http://www.xn--uuraj-gxa24d.com'
+    >>> asciifyUrl(u'http://www.\\u0161u\\u0107uraj.com')
+    'http://www.xn--uuraj-gxa24d.com'
     """
 
     parts = _urllib.parse.urlsplit(url)
     if not parts.scheme or not parts.netloc:
         # apparently not an url
-        return url
+        return getText(url)
 
     if all(char in string.printable for char in url):
-        return url
+        return getText(url)
 
     # idna-encode domain
     try:
         hostname = parts.hostname.encode("idna")
     except LookupError:
-        hostname = parts.hostname.encode(UNICODE_ENCODING)
+        hostname = parts.hostname.encode("punycode")
 
     # UTF8-quote the other parts. We check each part individually if
     # if needs to be quoted - that should catch some additional user
@@ -4136,7 +4139,7 @@ def asciifyUrl(url, forceQuote=False):
         #     _urllib.parse.quote(s.replace('%', '')) != s.replace('%', '')
         # which would trigger on all %-characters, e.g. "&".
         if getUnicode(s).encode("ascii", "replace") != s or forceQuote:
-            return _urllib.parse.quote(s.encode(UNICODE_ENCODING) if isinstance(s, six.text_type) else s, safe=safe)
+            s = _urllib.parse.quote(getBytes(s), safe=safe)
         return s
 
     username = quote(parts.username, '')
@@ -4145,7 +4148,7 @@ def asciifyUrl(url, forceQuote=False):
     query = quote(parts.query, safe="&=")
 
     # put everything back together
-    netloc = hostname
+    netloc = getText(hostname)
     if username or password:
         netloc = '@' + netloc
         if password:
@@ -4160,7 +4163,7 @@ def asciifyUrl(url, forceQuote=False):
     if port:
         netloc += ':' + str(port)
 
-    return _urllib.parse.urlunsplit([parts.scheme, netloc, path, query, parts.fragment]) or url
+    return getText(_urllib.parse.urlunsplit([parts.scheme, netloc, path, query, parts.fragment]) or url)
 
 def isAdminFromPrivileges(privileges):
     """
@@ -4193,9 +4196,9 @@ def isAdminFromPrivileges(privileges):
 
 def findPageForms(content, url, raise_=False, addToTargets=False):
     """
-    Parses given page content for possible forms
+    Parses given page content for possible forms (Note: still not implemented for Python3)
 
-    >>> findPageForms('<html><form action="/input.php" method="POST"><input type="text" name="id" value="1"><input type="submit" value="Submit"></form></html>', '')
+    >> findPageForms('<html><form action="/input.php" method="POST"><input type="text" name="id" value="1"><input type="submit" value="Submit"></form></html>', '')
     set([(u'/input.php', 'POST', u'id=1', None, None)])
     """
 
@@ -4374,7 +4377,7 @@ def checkSystemEncoding():
             warnMsg = "temporary switching to charset 'cp1256'"
             logger.warn(warnMsg)
 
-            reload(sys)
+            _reload_module(sys)
             sys.setdefaultencoding("cp1256")
 
 def evaluateCode(code, variables=None):
@@ -4397,12 +4400,8 @@ def serializeObject(object_):
     """
     Serializes given object
 
-    >>> serializeObject([1, 2, 3, ('a', 'b')])
-    'gAJdcQEoSwFLAksDVQFhVQFihnECZS4='
-    >>> serializeObject(None)
-    'gAJOLg=='
-    >>> serializeObject('foobar')
-    'gAJVBmZvb2JhcnEBLg=='
+    >>> type(serializeObject([1, 2, 3, ('a', 'b')])) == six.binary_type
+    True
     """
 
     return base64pickle(object_)
@@ -4458,14 +4457,14 @@ def applyFunctionRecursively(value, function):
 
     return retVal
 
-def decodeHexValue(value, raw=False):
+def decodeDbmsHexValue(value, raw=False):
     """
     Returns value decoded from DBMS specific hexadecimal representation
 
-    >>> decodeHexValue('3132332031')
-    u'123 1'
-    >>> decodeHexValue(['0x31', '0x32'])
-    [u'1', u'2']
+    >>> decodeDbmsHexValue('3132332031') == u'123 1'
+    True
+    >>> decodeDbmsHexValue(['0x31', '0x32']) == [u'1', u'2']
+    True
     """
 
     retVal = value
@@ -4474,10 +4473,10 @@ def decodeHexValue(value, raw=False):
         retVal = value
         if value and isinstance(value, six.string_types):
             if len(value) % 2 != 0:
-                retVal = "%s?" % hexdecode(value[:-1]) if len(value) > 1 else value
+                retVal = b"%s?" % decodeHex(value[:-1]) if len(value) > 1 else value
                 singleTimeWarnMessage("there was a problem decoding value '%s' from expected hexadecimal form" % value)
             else:
-                retVal = hexdecode(value)
+                retVal = decodeHex(value)
 
             if not kb.binaryField and not raw:
                 if Backend.isDbms(DBMS.MSSQL) and value.startswith("0x"):
@@ -4617,7 +4616,7 @@ def decloakToTemp(filename):
 
     content = decloak(filename)
 
-    _ = utf8encode(os.path.split(filename[:-1])[-1])
+    _ = getBytes(os.path.split(filename[:-1])[-1])
 
     prefix, suffix = os.path.splitext(_)
     prefix = prefix.split(os.extsep)[0]
@@ -4642,20 +4641,23 @@ def prioritySortColumns(columns):
     def _(column):
         return column and "id" in column.lower()
 
-    return sorted(sorted(columns, key=len), lambda x, y: -1 if _(x) and not _(y) else 1 if not _(x) and _(y) else 0)
+    if six.PY2:
+        return sorted(sorted(columns, key=len), lambda x, y: -1 if _(x) and not _(y) else 1 if not _(x) and _(y) else 0)
+    else:
+        return sorted(sorted(columns, key=len), key=functools.cmp_to_key(lambda x, y: -1 if _(x) and not _(y) else 1 if not _(x) and _(y) else 0))
 
 def getRequestHeader(request, name):
     """
     Solving an issue with an urllib2 Request header case sensitivity
 
-    Reference: http://bugs.python.org/issue2275
+    # Reference: http://bugs.python.org/issue2275
     """
 
     retVal = None
 
     if request and request.headers and name:
         _ = name.upper()
-        retVal = max(value if _ == key.upper() else None for key, value in request.header_items())
+        retVal = max(value if _ == key.upper() else "" for key, value in request.header_items()) or None
 
     return retVal
 
@@ -4713,7 +4715,7 @@ def splitFields(fields, delimiter=','):
     commas.extend(zeroDepthSearch(fields, ','))
     commas = sorted(commas)
 
-    return [fields[x + 1:y] for (x, y) in zip(commas, commas[1:])]
+    return [fields[x + 1:y] for (x, y) in _zip(commas, commas[1:])]
 
 def pollProcess(process, suppress_errors=False):
     """
@@ -4779,7 +4781,7 @@ def parseRequestFile(reqFile, checkParams=True):
                 for match in re.finditer(BURP_XML_HISTORY_REGEX, content, re.I | re.S):
                     port, request = match.groups()
                     try:
-                        request = request.decode("base64")
+                        request = decodeBase64(request, binary=False)
                     except binascii.Error:
                         continue
                     _ = re.search(r"%s:.+" % re.escape(HTTP_HEADER.HOST), request)
@@ -4923,8 +4925,8 @@ def getSafeExString(ex, encoding=None):
     Safe way how to get the proper exception represtation as a string
     (Note: errors to be avoided: 1) "%s" % Exception(u'\u0161') and 2) "%s" % str(Exception(u'\u0161'))
 
-    >>> getSafeExString(SqlmapBaseException('foobar'))
-    u'foobar'
+    >>> getSafeExString(SqlmapBaseException('foobar')) == 'foobar'
+    True
     """
 
     retVal = None
@@ -4949,12 +4951,12 @@ def safeVariableNaming(value):
     """
     Returns escaped safe-representation of a given variable name that can be used in Python evaluated code
 
-    >>> safeVariableNaming("class.id")
-    'EVAL_636c6173732e6964'
+    >>> safeVariableNaming("class.id") == "EVAL_636c6173732e6964"
+    True
     """
 
     if value in keyword.kwlist or re.search(r"\A[^a-zA-Z]|[^\w]", value):
-        value = "%s%s" % (EVALCODE_ENCODED_PREFIX, value.encode(UNICODE_ENCODING).encode("hex"))
+        value = "%s%s" % (EVALCODE_ENCODED_PREFIX, getUnicode(binascii.hexlify(getBytes(value))))
 
     return value
 
@@ -4962,12 +4964,12 @@ def unsafeVariableNaming(value):
     """
     Returns unescaped safe-representation of a given variable name
 
-    >>> unsafeVariableNaming("EVAL_636c6173732e6964")
-    u'class.id'
+    >>> unsafeVariableNaming("EVAL_636c6173732e6964") == "class.id"
+    True
     """
 
     if value.startswith(EVALCODE_ENCODED_PREFIX):
-        value = value[len(EVALCODE_ENCODED_PREFIX):].decode("hex").decode(UNICODE_ENCODING)
+        value = decodeHex(value[len(EVALCODE_ENCODED_PREFIX):], binary=False)
 
     return value
 
@@ -4994,7 +4996,7 @@ def chunkSplitPostData(data):
 
     >>> random.seed(0)
     >>> chunkSplitPostData("SELECT username,password FROM users")
-    '5;UAqFz\\r\\nSELEC\\r\\n8;sDK4F\\r\\nT userna\\r\\n3;UMp48\\r\\nme,\\r\\n8;3tT3Q\\r\\npassword\\r\\n4;gAL47\\r\\n FRO\\r\\n5;1qXIa\\r\\nM use\\r\\n2;yZPaE\\r\\nrs\\r\\n0\\r\\n\\r\\n'
+    '5;4Xe90\\r\\nSELEC\\r\\n3;irWlc\\r\\nT u\\r\\n1;eT4zO\\r\\ns\\r\\n5;YB4hM\\r\\nernam\\r\\n9;2pUD8\\r\\ne,passwor\\r\\n3;mp07y\\r\\nd F\\r\\n5;8RKXi\\r\\nROM u\\r\\n4;MvMhO\\r\\nsers\\r\\n0\\r\\n\\r\\n'
     """
 
     length = len(data)

@@ -9,6 +9,7 @@ import binascii
 
 from lib.core.common import Backend
 from lib.core.compat import xrange
+from lib.core.convert import getBytes
 from lib.core.data import logger
 from lib.core.exception import SqlmapUnsupportedFeatureException
 from lib.request import inject
@@ -67,7 +68,7 @@ class Takeover(GenericTakeover):
             raise SqlmapUnsupportedFeatureException(errMsg)
 
         shellcodeChar = ""
-        hexStr = binascii.hexlify(self.shellcodeString[:-1])
+        hexStr = binascii.hexlify(getBytes(self.shellcodeString[:-1]))
 
         for hexPair in xrange(0, len(hexStr), 2):
             shellcodeChar += "CHAR(0x%s)+" % hexStr[hexPair:hexPair + 2]

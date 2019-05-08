@@ -39,7 +39,6 @@ from lib.core.common import getHeader
 from lib.core.common import getHostHeader
 from lib.core.common import getRequestHeader
 from lib.core.common import getSafeExString
-from lib.core.common import getUnicode
 from lib.core.common import isMultiThreadMode
 from lib.core.common import logHTTPTraffic
 from lib.core.common import pushValue
@@ -60,6 +59,7 @@ from lib.core.common import urlencode
 from lib.core.compat import patchHeaders
 from lib.core.compat import xrange
 from lib.core.convert import getBytes
+from lib.core.convert import getUnicode
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -416,9 +416,10 @@ class Connect(object):
 
             for key, value in list(headers.items()):
                 del headers[key]
-                for char in (r"\r", r"\n"):
-                    value = re.sub(r"(%s)([^ \t])" % char, r"\g<1>\t\g<2>", value)
-                headers[getBytes(key)] = getBytes(value.strip("\r\n"))
+                if isinstance(value, six.string_types):
+                    for char in (r"\r", r"\n"):
+                        value = re.sub(r"(%s)([^ \t])" % char, r"\g<1>\t\g<2>", value)
+                    headers[getBytes(key) if six.PY2 else key] = getBytes(value.strip("\r\n"))  # Note: Python3 has_header() expects non-bytes value
 
             if six.PY2:
                 url = getBytes(url)  # Note: Python3 requires text while Python2 has problems when mixing text with binary POST
@@ -454,7 +455,6 @@ class Connect(object):
                 logger.log(CUSTOM_LOGGING.TRAFFIC_OUT, requestMsg)
             else:
                 if method and method not in (HTTPMETHOD.GET, HTTPMETHOD.POST):
-                    method = getBytes(method)
                     req = MethodRequest(url, post, headers)
                     req.set_method(method)
                 elif url is not None:
@@ -612,7 +612,7 @@ class Connect(object):
                 page = getUnicode(page)
 
             code = ex.code
-            status = getattr(ex, "reason", None) or getSafeExString(ex).split(": ", 1)[-1]
+            status = getUnicode(getattr(ex, "reason", None) or getSafeExString(ex).split(": ", 1)[-1])
 
             kb.originalCode = kb.originalCode or code
             threadData.lastHTTPError = (threadData.lastRequestUID, code, status)
@@ -674,7 +674,6 @@ class Connect(object):
         except (_urllib.error.URLError, socket.error, socket.timeout, _http_client.HTTPException, struct.error, binascii.Error, ProxyError, SqlmapCompressionException, WebSocketException, TypeError, ValueError, OverflowError):
             tbMsg = traceback.format_exc()
 
-            print(tbMsg)
             if checking:
                 return None, None, None
             elif "no host given" in tbMsg:
@@ -803,7 +802,7 @@ class Connect(object):
                 responseMsg += "[#%d] (%s %s):\r\n" % (threadData.lastRequestUID, code, status)
 
             if responseHeaders:
-                logHeaders = getUnicode("".join(responseHeaders.headers).strip() if six.PY2 else responseHeaders.__bytes__())
+                logHeaders = getUnicode("".join(responseHeaders.headers).strip())
 
             logHTTPTraffic(requestMsg, "%s%s\r\n\r\n%s" % (responseMsg, logHeaders, (page or "")[:MAX_CONNECTION_CHUNK_SIZE]), start, time.time())
 

@@ -45,11 +45,11 @@ try:
     from lib.core.common import filterNone
     from lib.core.common import getDaysFromLastUpdate
     from lib.core.common import getSafeExString
-    from lib.core.common import getUnicode
     from lib.core.common import maskSensitiveData
     from lib.core.common import openFile
     from lib.core.common import setPaths
     from lib.core.common import weAreFrozen
+    from lib.core.convert import getUnicode
     from lib.core.data import cmdLineOptions
     from lib.core.data import conf
     from lib.core.data import kb
@@ -63,6 +63,7 @@ try:
     from lib.core.option import initOptions
     from lib.core.option import init
     from lib.core.patch import dirtyPatches
+    from lib.core.patch import resolveCrossReferences
     from lib.core.settings import GIT_PAGE
     from lib.core.settings import IS_WIN
     from lib.core.settings import LAST_UPDATE_NAGGING_DAYS
@@ -71,7 +72,7 @@ try:
     from lib.core.settings import UNICODE_ENCODING
     from lib.core.settings import VERSION
     from lib.parse.cmdline import cmdLineParser
-    from thirdparty.six import PY2
+    from thirdparty import six
 except KeyboardInterrupt:
     errMsg = "user aborted"
 
@@ -127,6 +128,7 @@ def main():
 
     try:
         dirtyPatches()
+        resolveCrossReferences()
         checkEnvironment()
         setPaths(modulePath())
         banner()
@@ -168,7 +170,7 @@ def main():
                 os._exitcode = 1 - (liveTest() or 0)
             else:
                 from lib.controller.controller import start
-                if conf.profile and PY2:
+                if conf.profile and six.PY2:
                     from lib.core.profiling import profile
                     globals()["start"] = start
                     profile()
@@ -376,7 +378,7 @@ def main():
                     except OSError:
                         pass
 
-            if not filterNone(filepath for filepath in glob.glob(os.path.join(kb.tempDir, '*')) if not any(filepath.endswith(_) for _ in ('.lock', '.exe', '_'))):
+            if not filterNone(filepath for filepath in glob.glob(os.path.join(kb.tempDir, '*')) if not any(filepath.endswith(_) for _ in (".lock", ".exe", ".so", '_'))):  # ignore junk files
                 try:
                     shutil.rmtree(kb.tempDir, ignore_errors=True)
                 except OSError:

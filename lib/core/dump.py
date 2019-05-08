@@ -18,7 +18,6 @@ from lib.core.common import checkFile
 from lib.core.common import dataToDumpFile
 from lib.core.common import dataToStdout
 from lib.core.common import getSafeExString
-from lib.core.common import getUnicode
 from lib.core.common import isListLike
 from lib.core.common import isMultiThreadMode
 from lib.core.common import normalizeUnicode
@@ -29,6 +28,7 @@ from lib.core.common import safeCSValue
 from lib.core.common import unsafeSQLIdentificatorNaming
 from lib.core.compat import xrange
 from lib.core.convert import getBytes
+from lib.core.convert import getUnicode
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -614,7 +614,7 @@ class Dump(object):
                     if len(value) > MIN_BINARY_DISK_DUMP_SIZE and r'\x' in value:
                         try:
                             mimetype = magic.from_buffer(value, mime=True)
-                            if any(mimetype.startswith(_) for _ in ("application", "image")):
+                            if any(mimetype.startswith(_) for _ in (b"application", b"image")):
                                 if not os.path.isdir(dumpDbPath):
                                     os.makedirs(dumpDbPath)
 

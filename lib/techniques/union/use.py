@@ -24,7 +24,6 @@ from lib.core.common import flattenValue
 from lib.core.common import safeStringFormat
 from lib.core.common import getConsoleWidth
 from lib.core.common import getPartRun
-from lib.core.common import getUnicode
 from lib.core.common import hashDBRetrieve
 from lib.core.common import hashDBWrite
 from lib.core.common import incrementCounter
@@ -42,6 +41,7 @@ from lib.core.common import wasLastResponseDBMSError
 from lib.core.compat import xrange
 from lib.core.convert import decodeBase64
 from lib.core.convert import getBytes
+from lib.core.convert import getUnicode
 from lib.core.convert import htmlunescape
 from lib.core.data import conf
 from lib.core.data import kb
@@ -352,7 +352,7 @@ def unionUse(expression, unpack=True, dump=False):
                                                     key = re.sub(r"[^A-Za-z0-9]", "", item).lower()
                                                     if key not in filtered or re.search(r"[^A-Za-z0-9]", item):
                                                         filtered[key] = item
-                                                items = filtered.values()
+                                                items = list(filtered.values())
                                             items = [items]
                                         index = None
                                         for index in xrange(1 + len(threadData.shared.buffered)):

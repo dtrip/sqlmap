@@ -17,13 +17,6 @@ import tempfile
 import threading
 import time
 
-import lib.controller.checks
-import lib.core.common
-import lib.core.threads
-import lib.core.convert
-import lib.request.connect
-import lib.utils.search
-
 from lib.controller.checks import checkConnection
 from lib.core.common import Backend
 from lib.core.common import boldifyMessage
@@ -32,7 +25,7 @@ from lib.core.common import dataToStdout
 from lib.core.common import decodeStringEscape
 from lib.core.common import getPublicTypeMembers
 from lib.core.common import getSafeExString
-from lib.core.common import getUnicode
+from lib.core.common import fetchRandomAgent
 from lib.core.common import filterNone
 from lib.core.common import findLocalPort
 from lib.core.common import findPageForms
@@ -61,6 +54,7 @@ from lib.core.common import singleTimeWarnMessage
 from lib.core.common import urldecode
 from lib.core.compat import round
 from lib.core.compat import xrange
+from lib.core.convert import getUnicode
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -144,7 +138,6 @@ from lib.request.httpshandler import HTTPSHandler
 from lib.request.pkihandler import HTTPSPKIAuthHandler
 from lib.request.rangehandler import HTTPRangeHandler
 from lib.request.redirecthandler import SmartRedirectHandler
-from lib.request.templates import getPageTemplate
 from lib.utils.har import HTTPCollectorFactory
 from lib.utils.crawler import crawl
 from lib.utils.deps import checkDependencies
@@ -968,7 +961,7 @@ def _setDNSCache():
 
 def _setSocketPreConnect():
     """
-    Makes a pre-connect version of socket.connect
+    Makes a pre-connect version of socket.create_connection
     """
 
     if conf.disablePrecon:
@@ -979,17 +972,9 @@ def _setSocketPreConnect():
             try:
                 for key in socket._ready:
                     if len(socket._ready[key]) < SOCKET_PRE_CONNECT_QUEUE_SIZE:
-                        family, type, proto, address = key
-                        s = socket.socket(family, type, proto)
-                        s._connect(address)
-                        try:
-                            if type == socket.SOCK_STREAM:
-                                # Reference: https://www.techrepublic.com/article/tcp-ip-options-for-high-performance-data-transmission/
-                                s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                        except:
-                            pass
+                        s = socket.create_connection(*key[0], **dict(key[1]))
                         with kb.locks.socket:
-                            socket._ready[key].append((s._sock, time.time()))
+                            socket._ready[key].append((s, time.time()))
             except KeyboardInterrupt:
                 break
             except:
@@ -997,18 +982,18 @@ def _setSocketPreConnect():
             finally:
                 time.sleep(0.01)
 
-    def connect(self, address):
-        found = False
+    def create_connection(*args, **kwargs):
+        retVal = None
 
-        key = (self.family, self.type, self.proto, address)
+        key = (tuple(args), frozenset(kwargs.items()))
         with kb.locks.socket:
             if key not in socket._ready:
                 socket._ready[key] = []
+
             while len(socket._ready[key]) > 0:
                 candidate, created = socket._ready[key].pop(0)
                 if (time.time() - created) < PRECONNECT_CANDIDATE_TIMEOUT:
-                    self._sock = candidate
-                    found = True
+                    retVal = candidate
                     break
                 else:
                     try:
@@ -1017,13 +1002,15 @@ def _setSocketPreConnect():
                     except socket.error:
                         pass
 
-        if not found:
-            self._connect(address)
+        if not retVal:
+            retVal = socket._create_connection(*args, **kwargs)
 
-    if not hasattr(socket.socket, "_connect"):
+        return retVal
+
+    if not hasattr(socket.socket, "_create_connection"):
         socket._ready = {}
-        socket.socket._connect = socket.socket.connect
-        socket.socket.connect = connect
+        socket._create_connection = socket.create_connection
+        socket.create_connection = create_connection
 
         thread = threading.Thread(target=_thread)
         setDaemon(thread)
@@ -1407,22 +1394,7 @@ def _setHTTPUserAgent():
             conf.httpHeaders.append((HTTP_HEADER.USER_AGENT, DEFAULT_USER_AGENT))
 
     else:
-        if not kb.userAgents:
-            debugMsg = "loading random HTTP User-Agent header(s) from "
-            debugMsg += "file '%s'" % paths.USER_AGENTS
-            logger.debug(debugMsg)
-
-            try:
-                kb.userAgents = getFileItems(paths.USER_AGENTS)
-            except IOError:
-                warnMsg = "unable to read HTTP User-Agent header "
-                warnMsg += "file '%s'" % paths.USER_AGENTS
-                logger.warn(warnMsg)
-
-                conf.httpHeaders.append((HTTP_HEADER.USER_AGENT, DEFAULT_USER_AGENT))
-                return
-
-        userAgent = random.sample(kb.userAgents or [DEFAULT_USER_AGENT], 1)[0]
+        userAgent = fetchRandomAgent()
 
         infoMsg = "fetched random HTTP User-Agent header value '%s' from " % userAgent
         infoMsg += "file '%s'" % paths.USER_AGENTS
@@ -1541,6 +1513,9 @@ def _createHomeDirectories():
 
             paths["SQLMAP_%s_PATH" % context.upper()] = tempDir
 
+def _pympTempLeakPatch(tempDir):  # Cross-referenced function
+    raise NotImplementedError
+
 def _createTemporaryDirectory():
     """
     Creates temporary directory for this run.
@@ -1591,6 +1566,9 @@ def _createTemporaryDirectory():
             errMsg = "there has been a problem while setting "
             errMsg += "temporary directory location ('%s')" % getSafeExString(ex)
             raise SqlmapSystemException(errMsg)
+
+    if six.PY3:
+        _pympTempLeakPatch(kb.tempDir)
 
 def _cleanupOptions():
     """
@@ -2009,6 +1987,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.serverHeader = None
     kb.singleLogFlags = set()
     kb.skipSeqMatcher = False
+    kb.smokeMode = False
     kb.reduceTests = None
     kb.tlsSNI = {}
     kb.stickyDBMS = False
@@ -2361,7 +2340,7 @@ def _checkTor():
     except SqlmapConnectionException:
         page = None
 
-    if not page or 'Congratulations' not in page:
+    if not page or "Congratulations" not in page:
         errMsg = "it appears that Tor is not properly set. Please try using options '--tor-type' and/or '--tor-port'"
         raise SqlmapConnectionException(errMsg)
     else:
@@ -2621,15 +2600,6 @@ def _basicOptionValidation():
             errMsg = "cookies file '%s' does not exist" % conf.loadCookies
             raise SqlmapFilePathException(errMsg)
 
-def _resolveCrossReferences():
-    lib.core.threads.readInput = readInput
-    lib.core.common.getPageTemplate = getPageTemplate
-    lib.core.convert.singleTimeWarnMessage = singleTimeWarnMessage
-    lib.request.connect.setHTTPHandlers = _setHTTPHandlers
-    lib.utils.search.setHTTPHandlers = _setHTTPHandlers
-    lib.controller.checks.setVerbosity = setVerbosity
-    lib.controller.checks.setWafFunctions = _setWafFunctions
-
 def initOptions(inputOptions=AttribDict(), overrideOptions=False):
     _setConfAttributes()
     _setKnowledgeBaseAttributes()
@@ -2663,7 +2633,6 @@ def init():
     _setWafFunctions()
     _setTrafficOutputFP()
     _setupHTTPCollector()
-    _resolveCrossReferences()
     _setHttpChunked()
     _checkWebSocket()
 

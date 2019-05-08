@@ -13,7 +13,6 @@ from lib.core.common import Backend
 from lib.core.common import clearConsoleLine
 from lib.core.common import getLimitRange
 from lib.core.common import getSafeExString
-from lib.core.common import getUnicode
 from lib.core.common import isInferenceAvailable
 from lib.core.common import isListLike
 from lib.core.common import isNoneValue
@@ -26,6 +25,7 @@ from lib.core.common import singleTimeLogMessage
 from lib.core.common import singleTimeWarnMessage
 from lib.core.common import unArrayizeValue
 from lib.core.common import unsafeSQLIdentificatorNaming
+from lib.core.convert import getUnicode
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -93,9 +93,9 @@ class Entries:
             self.getTables()
 
             if len(kb.data.cachedTables) > 0:
-                tblList = kb.data.cachedTables.values()
+                tblList = list(kb.data.cachedTables.values())
 
-                if isinstance(tblList[0], (set, tuple, list)):
+                if isListLike(tblList[0]):
                     tblList = tblList[0]
             elif not conf.search:
                 errMsg = "unable to retrieve the tables "

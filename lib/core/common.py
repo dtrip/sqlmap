@@ -56,12 +56,14 @@ from lib.core.convert import decodeBase64
 from lib.core.convert import decodeHex
 from lib.core.convert import getBytes
 from lib.core.convert import getText
+from lib.core.convert import getUnicode
 from lib.core.convert import htmlunescape
 from lib.core.convert import stdoutencode
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
 from lib.core.data import paths
+from lib.core.datatype import OrderedSet
 from lib.core.decorators import cachedmethod
 from lib.core.defaults import defaults
 from lib.core.dicts import DBMS_DICT
@@ -723,8 +725,8 @@ def paramToDict(place, parameters=None):
             if value and not value.isdigit():
                 for encoding in ("hex", "base64"):
                     try:
-                        decoded = value.decode(encoding)
-                        if len(decoded) > MIN_ENCODED_LEN_CHECK and all(_ in string.printable for _ in decoded):
+                        decoded = codecs.decode(value, encoding)
+                        if len(decoded) > MIN_ENCODED_LEN_CHECK and all(_ in getBytes(string.printable) for _ in decoded):
                             warnMsg = "provided parameter '%s' " % parameter
                             warnMsg += "appears to be '%s' encoded" % encoding
                             logger.warn(warnMsg)
@@ -842,7 +844,15 @@ def getManualDirectories():
     return directories
 
 def getAutoDirectories():
-    retVal = set()
+    """
+    >>> pushValue(kb.absFilePaths)
+    >>> kb.absFilePaths = ["C:\\inetpub\\wwwroot\\index.asp", "/var/www/html"]
+    >>> getAutoDirectories()
+    ['C:/inetpub/wwwroot', '/var/www/html']
+    >>> kb.absFilePaths = popValue()
+    """
+
+    retVal = OrderedSet()
 
     if kb.absFilePaths:
         infoMsg = "retrieved web server absolute paths: "
@@ -1369,7 +1379,16 @@ def weAreFrozen():
 
 def parseTargetDirect():
     """
-    Parse target dbms and set some attributes into the configuration singleton.
+    Parse target dbms and set some attributes into the configuration singleton
+
+    >>> pushValue(conf.direct)
+    >>> conf.direct = "mysql://root:testpass@127.0.0.1:3306/testdb"
+    >>> parseTargetDirect()
+    >>> conf.dbmsDb
+    'testdb'
+    >>> conf.dbmsPass
+    'testpass'
+    >>> conf.direct = popValue()
     """
 
     if not conf.direct:
@@ -1410,6 +1429,9 @@ def parseTargetDirect():
 
             break
 
+    if kb.smokeMode:
+        return
+
     if not details:
         errMsg = "invalid target details, valid syntax is for instance "
         errMsg += "'mysql://USER:PASSWORD@DBMS_IP:DBMS_PORT/DATABASE_NAME' "
@@ -1419,6 +1441,8 @@ def parseTargetDirect():
     for dbmsName, data in DBMS_DICT.items():
         if dbmsName == conf.dbms or conf.dbms.lower() in data[0]:
             try:
+                conf.dbms = dbmsName
+
                 if dbmsName in (DBMS.ACCESS, DBMS.SQLITE, DBMS.FIREBIRD):
                     if remote:
                         warnMsg = "direct connection over the network for "
@@ -1474,7 +1498,16 @@ def parseTargetDirect():
 
 def parseTargetUrl():
     """
-    Parse target URL and set some attributes into the configuration singleton.
+    Parse target URL and set some attributes into the configuration singleton
+
+    >>> pushValue(conf.url)
+    >>> conf.url = "https://www.test.com/?id=1"
+    >>> parseTargetUrl()
+    >>> conf.hostname
+    'www.test.com'
+    >>> conf.scheme
+    'https'
+    >>> conf.url = popValue()
     """
 
     if not conf.url:
@@ -1825,11 +1858,13 @@ def directoryPath(filepath):
 
     >>> directoryPath('/var/log/apache.log')
     '/var/log'
+    >>> directoryPath('/var/log')
+    '/var/log'
     """
 
     retVal = filepath
 
-    if filepath:
+    if filepath and os.path.splitext(filepath)[-1]:
         retVal = ntpath.dirname(filepath) if isWindowsDriveLetterPath(filepath) else posixpath.dirname(filepath)
 
     return retVal
@@ -2258,7 +2293,7 @@ def initCommonOutputs():
     key = None
 
     with openFile(paths.COMMON_OUTPUTS, 'r') as f:
-        for line in f.readlines():  # xreadlines doesn't return unicode strings when codec.open() is used
+        for line in f:
             if line.find('#') != -1:
                 line = line[:line.find('#')]
 
@@ -2417,50 +2452,6 @@ def getPartRun(alias=True):
         return commonPartsDict[retVal][1] if isinstance(commonPartsDict.get(retVal), tuple) else retVal
     else:
         return retVal
-
-def getUnicode(value, encoding=None, noneToNull=False):
-    """
-    Return the unicode representation of the supplied value:
-
-    >>> getUnicode('test') == u'test'
-    True
-    >>> getUnicode(1) == u'1'
-    True
-    """
-
-    if noneToNull and value is None:
-        return NULL
-
-    if isinstance(value, six.text_type):
-        return value
-    elif isinstance(value, six.binary_type):
-        # Heuristics (if encoding not explicitly specified)
-        candidates = filterNone((encoding, kb.get("pageEncoding") if kb.get("originalPage") else None, conf.get("encoding"), UNICODE_ENCODING, sys.getfilesystemencoding()))
-        if all(_ in value for _ in (b'<', b'>')):
-            pass
-        elif any(_ in value for _ in (b":\\", b'/', b'.')) and b'\n' not in value:
-            candidates = filterNone((encoding, sys.getfilesystemencoding(), kb.get("pageEncoding") if kb.get("originalPage") else None, UNICODE_ENCODING, conf.get("encoding")))
-        elif conf.get("encoding") and b'\n' not in value:
-            candidates = filterNone((encoding, conf.get("encoding"), kb.get("pageEncoding") if kb.get("originalPage") else None, sys.getfilesystemencoding(), UNICODE_ENCODING))
-
-        for candidate in candidates:
-            try:
-                return six.text_type(value, candidate)
-            except UnicodeDecodeError:
-                pass
-
-        try:
-            return six.text_type(value, encoding or (kb.get("pageEncoding") if kb.get("originalPage") else None) or UNICODE_ENCODING)
-        except UnicodeDecodeError:
-            return six.text_type(value, UNICODE_ENCODING, errors="reversible")
-    elif isListLike(value):
-        value = list(getUnicode(_, encoding, noneToNull) for _ in value)
-        return value
-    else:
-        try:
-            return six.text_type(value)
-        except UnicodeDecodeError:
-            return six.text_type(str(value), errors="ignore")  # encoding ignored for non-basestring instances
 
 def longestCommonPrefix(*sequences):
     """
@@ -3072,8 +3063,7 @@ def filterNone(values):
 
 def isDBMSVersionAtLeast(version):
     """
-    Checks if the recognized DBMS version is at least the version
-    specified
+    Checks if the recognized DBMS version is at least the version specified
     """
 
     retVal = None
@@ -3108,6 +3098,12 @@ def isDBMSVersionAtLeast(version):
 def parseSqliteTableSchema(value):
     """
     Parses table column names and types from specified SQLite table schema
+
+    >>> kb.data.cachedColumns = {}
+    >>> parseSqliteTableSchema("CREATE TABLE users\\n\\t\\tid INTEGER\\n\\t\\tname TEXT\\n);")
+    True
+    >>> repr(kb.data.cachedColumns).count(',') == 1
+    True
     """
 
     retVal = False
@@ -3134,8 +3130,13 @@ def getTechniqueData(technique=None):
 
 def isTechniqueAvailable(technique):
     """
-    Returns True if there is injection data which sqlmap could use for
-    technique specified
+    Returns True if there is injection data which sqlmap could use for technique specified
+
+    >>> pushValue(kb.injection.data)
+    >>> kb.injection.data[PAYLOAD.TECHNIQUE.ERROR] = [test for test in getSortedInjectionTests() if "error" in test["title"].lower()][0]
+    >>> isTechniqueAvailable(PAYLOAD.TECHNIQUE.ERROR)
+    True
+    >>> kb.injection.data = popValue()
     """
 
     if conf.tech and isinstance(conf.tech, list) and technique not in conf.tech:
@@ -3146,6 +3147,12 @@ def isTechniqueAvailable(technique):
 def isStackingAvailable():
     """
     Returns True whether techniques using stacking are available
+
+    >>> pushValue(kb.injection.data)
+    >>> kb.injection.data[PAYLOAD.TECHNIQUE.STACKED] = [test for test in getSortedInjectionTests() if "stacked" in test["title"].lower()][0]
+    >>> isStackingAvailable()
+    True
+    >>> kb.injection.data = popValue()
     """
 
     retVal = False
@@ -3164,6 +3171,12 @@ def isStackingAvailable():
 def isInferenceAvailable():
     """
     Returns True whether techniques using inference technique are available
+
+    >>> pushValue(kb.injection.data)
+    >>> kb.injection.data[PAYLOAD.TECHNIQUE.BOOLEAN] = getSortedInjectionTests()[0]
+    >>> isInferenceAvailable()
+    True
+    >>> kb.injection.data = popValue()
     """
 
     return any(isTechniqueAvailable(_) for _ in (PAYLOAD.TECHNIQUE.BOOLEAN, PAYLOAD.TECHNIQUE.STACKED, PAYLOAD.TECHNIQUE.TIME))
@@ -3333,8 +3346,13 @@ def isListLike(value):
 
 def getSortedInjectionTests():
     """
-    Returns prioritized test list by eventually detected DBMS from error
-    messages
+    Returns prioritized test list by eventually detected DBMS from error messages
+
+    >>> pushValue(kb.forcedDbms)
+    >>> kb.forcedDbms = DBMS.SQLITE
+    >>> [test for test in getSortedInjectionTests() if hasattr(test, "details") and hasattr(test.details, "dbms")][0].details.dbms == kb.forcedDbms
+    True
+    >>> kb.forcedDbms = popValue()
     """
 
     retVal = copy.deepcopy(conf.tests)
@@ -3360,8 +3378,7 @@ def getSortedInjectionTests():
 
 def filterListValue(value, regex):
     """
-    Returns list with items that have parts satisfying given regular
-    expression
+    Returns list with items that have parts satisfying given regular expression
 
     >>> filterListValue(['users', 'admins', 'logs'], r'(users|admins)')
     ['users', 'admins']
@@ -3391,6 +3408,9 @@ def showHttpErrorCodes():
 def openFile(filename, mode='r', encoding=UNICODE_ENCODING, errors="reversible", buffering=1):  # "buffering=1" means line buffered (Reference: http://stackoverflow.com/a/3168436)
     """
     Returns file handle of a given filename
+
+    >>> "openFile" in openFile(__file__).read()
+    True
     """
 
     if filename == STDIN_PIPE_DASH:
@@ -3442,22 +3462,6 @@ def decodeIntToUnicode(value):
 
     return retVal
 
-def md5File(filename):
-    """
-    Calculates MD5 digest of a file
-
-    # Reference: http://stackoverflow.com/a/3431838
-    """
-
-    checkFile(filename)
-
-    digest = hashlib.md5()
-    with open(filename, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), ""):
-            digest.update(chunk)
-
-    return digest.hexdigest()
-
 def checkIntegrity():
     """
     Checks integrity of code files during the unhandled exceptions
@@ -3484,6 +3488,9 @@ def checkIntegrity():
 def getDaysFromLastUpdate():
     """
     Get total number of days from last update
+
+    >>> getDaysFromLastUpdate() >= 0
+    True
     """
 
     if not paths:
@@ -3494,6 +3501,9 @@ def getDaysFromLastUpdate():
 def unhandledExceptionMessage():
     """
     Returns detailed message about occurred unhandled exception
+
+    >>> all(_ in unhandledExceptionMessage() for _ in ("unhandled exception occurred", "Operating system", "Command line"))
+    True
     """
 
     errMsg = "unhandled exception occurred in %s. It is recommended to retry your " % VERSION_STRING
@@ -3524,9 +3534,6 @@ def unhandledExceptionMessage():
 def getLatestRevision():
     """
     Retrieves latest revision from the offical repository
-
-    >>> (getLatestRevision() or " ")[0].isdigit()
-    True
     """
 
     retVal = None
@@ -3539,6 +3546,28 @@ def getLatestRevision():
         pass
 
     return retVal
+
+def fetchRandomAgent():
+    """
+    Returns random HTTP User-Agent header value
+
+    >>> '(' in fetchRandomAgent()
+    True
+    """
+
+    if not kb.userAgents:
+        debugMsg = "loading random HTTP User-Agent header(s) from "
+        debugMsg += "file '%s'" % paths.USER_AGENTS
+        logger.debug(debugMsg)
+
+        try:
+            kb.userAgents = getFileItems(paths.USER_AGENTS)
+        except IOError:
+            errMsg = "unable to read HTTP User-Agent header "
+            errMsg += "file '%s'" % paths.USER_AGENTS
+            raise SqlmapSystemException(errMsg)
+
+    return random.sample(kb.userAgents, 1)[0]
 
 def createGithubIssue(errMsg, excMsg):
     """
@@ -3559,7 +3588,7 @@ def createGithubIssue(errMsg, excMsg):
     _ = re.sub(r"(Unicode[^:]*Error:).+", r"\g<1>", _)
     _ = re.sub(r"= _", "= ", _)
 
-    key = hashlib.md5(_).hexdigest()[:8]
+    key = hashlib.md5(getBytes(_)).hexdigest()[:8]
 
     if key in issues:
         return
@@ -3593,11 +3622,12 @@ def createGithubIssue(errMsg, excMsg):
         except:
             pass
 
+
         data = {"title": "Unhandled exception (#%s)" % key, "body": "```%s\n```\n```\n%s```" % (errMsg, excMsg)}
-        req = _urllib.request.Request(url="https://api.github.com/repos/sqlmapproject/sqlmap/issues", data=json.dumps(data), headers={"Authorization": "token %s" % decodeBase64(GITHUB_REPORT_OAUTH_TOKEN, binary=False)})
+        req = _urllib.request.Request(url="https://api.github.com/repos/sqlmapproject/sqlmap/issues", data=getBytes(json.dumps(data)), headers={HTTP_HEADER.AUTHORIZATION: "token %s" % decodeBase64(GITHUB_REPORT_OAUTH_TOKEN, binary=False), HTTP_HEADER.USER_AGENT: fetchRandomAgent()})
 
         try:
-            content = _urllib.request.urlopen(req).read()
+            content = getText(_urllib.request.urlopen(req).read())
         except Exception as ex:
             content = None
             _excMsg = getSafeExString(ex)
@@ -3631,6 +3661,9 @@ def maskSensitiveData(msg):
     retVal = getUnicode(msg)
 
     for item in filterNone(conf.get(_) for _ in SENSITIVE_OPTIONS):
+        if isListLike(item):
+            item = listToStrValue(item)
+
         regex = SENSITIVE_DATA_REGEX % re.sub(r"(\W)", r"\\\1", getUnicode(item))
         while extractRegexResult(regex, retVal):
             value = extractRegexResult(regex, retVal)
@@ -4198,13 +4231,13 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
     """
     Parses given page content for possible forms (Note: still not implemented for Python3)
 
-    >> findPageForms('<html><form action="/input.php" method="POST"><input type="text" name="id" value="1"><input type="submit" value="Submit"></form></html>', '')
-    set([(u'/input.php', 'POST', u'id=1', None, None)])
+    >>> findPageForms('<html><form action="/input.php" method="POST"><input type="text" name="id" value="1"><input type="submit" value="Submit"></form></html>', 'http://www.site.com') == set([('http://www.site.com/input.php', 'POST', 'id=1', None, None)])
+    True
     """
 
-    class _(io.BytesIO):
+    class _(six.StringIO):
         def __init__(self, content, url):
-            io.BytesIO.__init__(self, getBytes(content, kb.pageEncoding))
+            six.StringIO.__init__(self, content)
             self._url = url
 
         def geturl(self):
@@ -4269,7 +4302,7 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
             else:
                 url = urldecode(request.get_full_url(), kb.pageEncoding)
                 method = request.get_method()
-                data = request.get_data() if request.has_data() else None
+                data = request.data
                 data = urldecode(data, kb.pageEncoding, spaceplus=False)
 
                 if not data and method and method.upper() == HTTPMETHOD.POST:
@@ -4612,19 +4645,21 @@ def resetCookieJar(cookieJar):
 def decloakToTemp(filename):
     """
     Decloaks content of a given file to a temporary file with similar name and extension
+
+    >>> _ = decloakToTemp(os.path.join(paths.SQLMAP_SHELL_PATH, "stagers", "stager.asp_"))
+    >>> openFile(_, "rb", encoding=None).read().startswith(b'<%')
+    True
+    >>> os.remove(_)
     """
 
     content = decloak(filename)
 
-    _ = getBytes(os.path.split(filename[:-1])[-1])
-
-    prefix, suffix = os.path.splitext(_)
-    prefix = prefix.split(os.extsep)[0]
-
+    parts = getBytes(os.path.split(filename[:-1])[-1]).split(b'.')
+    prefix, suffix = parts[0], b".%s" % parts[-1]
     handle, filename = tempfile.mkstemp(prefix=prefix, suffix=suffix)
     os.close(handle)
 
-    with open(filename, "w+b") as f:
+    with openFile(filename, "w+b", encoding=None) as f:
         f.write(content)
 
     return filename
@@ -4657,7 +4692,7 @@ def getRequestHeader(request, name):
 
     if request and request.headers and name:
         _ = name.upper()
-        retVal = max(value if _ == key.upper() else "" for key, value in request.header_items()) or None
+        retVal = max(value if _ == key.upper() else type(value)() for key, value in request.header_items()) or None
 
     return retVal
 

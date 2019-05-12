@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -1635,7 +1635,7 @@ def expandAsteriskForColumns(expression):
             if expression != conf.sqlQuery:
                 conf.db = db
             else:
-                expression = re.sub(r"([^\w])%s" % re.escape(conf.tbl), "\g<1>%s.%s" % (conf.db, conf.tbl), expression)
+                expression = re.sub(r"([^\w])%s" % re.escape(conf.tbl), r"\g<1>%s.%s" % (conf.db, conf.tbl), expression)
         else:
             conf.db = db
 
@@ -1795,12 +1795,26 @@ def getFileType(filePath):
 
     >>> getFileType(__file__)
     'text'
+    >>> getFileType(sys.executable)
+    'binary'
     """
 
     try:
-        desc = getUnicode(magic.from_file(filePath) or "")
+        desc = magic.from_file(filePath) or magic.MAGIC_UNKNOWN_FILETYPE
     except:
-        return "unknown"
+        desc = magic.MAGIC_UNKNOWN_FILETYPE
+    finally:
+        desc = getText(desc)
+
+    if desc == magic.MAGIC_UNKNOWN_FILETYPE:
+        content = openFile(filePath, "rb", encoding=None).read()
+
+        try:
+            content.decode()
+        except:
+            pass
+        else:
+            desc = "ascii"
 
     return "text" if any(_ in desc.lower() for _ in ("ascii", "text")) else "binary"
 
@@ -2000,14 +2014,17 @@ def getPageWordSet(page):
     retVal = set()
 
     # only if the page's charset has been successfully identified
-    if isinstance(page, six.text_type):
+    if isinstance(page, six.string_types):
         retVal = set(_.group(0) for _ in re.finditer(r"\w+", getFilteredPageContent(page)))
 
     return retVal
 
-def showStaticWords(firstPage, secondPage):
+def showStaticWords(firstPage, secondPage, minLength=3):
     """
     Prints words appearing in two different response pages
+
+    >>> showStaticWords("this is a test", "this is another test")
+    ['this']
     """
 
     infoMsg = "finding static words in longest matching part of dynamic page content"
@@ -2026,18 +2043,19 @@ def showStaticWords(firstPage, secondPage):
         commonWords = None
 
     if commonWords:
-        commonWords = list(commonWords)
-        commonWords.sort(lambda a, b: cmp(a.lower(), b.lower()))
+        commonWords = [_ for _ in commonWords if len(_) >= minLength]
+        commonWords.sort(key=functools.cmp_to_key(lambda a, b: cmp(a.lower(), b.lower())))
 
         for word in commonWords:
-            if len(word) > 2:
-                infoMsg += "'%s', " % word
+            infoMsg += "'%s', " % word
 
         infoMsg = infoMsg.rstrip(", ")
     else:
         infoMsg += "None"
 
     logger.info(infoMsg)
+
+    return commonWords
 
 def isWindowsDriveLetterPath(filepath):
     """
@@ -2053,8 +2071,8 @@ def isWindowsDriveLetterPath(filepath):
 
 def posixToNtSlashes(filepath):
     """
-    Replaces all occurrences of Posix slashes (/) in provided
-    filepath with NT ones (\)
+    Replaces all occurrences of Posix slashes in provided
+    filepath with NT backslashes
 
     >>> posixToNtSlashes('C:/Windows')
     'C:\\\\Windows'
@@ -2064,8 +2082,8 @@ def posixToNtSlashes(filepath):
 
 def ntToPosixSlashes(filepath):
     """
-    Replaces all occurrences of NT slashes (\) in provided
-    filepath with Posix ones (/)
+    Replaces all occurrences of NT backslashes in provided
+    filepath with Posix slashes
 
     >>> ntToPosixSlashes('C:\\Windows')
     'C:/Windows'
@@ -2247,8 +2265,8 @@ def average(values):
     """
     Computes the arithmetic mean of a list of numbers.
 
-    >>> average([0.9, 0.9, 0.9, 1.0, 0.8, 0.9])
-    0.9
+    >>> "%.1f" % average([0.9, 0.9, 0.9, 1.0, 0.8, 0.9])
+    '0.9'
     """
 
     return (1.0 * sum(values) / len(values)) if values else None
@@ -2260,8 +2278,8 @@ def stdev(values):
 
     # Reference: http://www.goldb.org/corestats.html
 
-    >>> stdev([0.9, 0.9, 0.9, 1.0, 0.8, 0.9])
-    0.06324555320336757
+    >>> "%.3f" % stdev([0.9, 0.9, 0.9, 1.0, 0.8, 0.9])
+    '0.063'
     """
 
     if not values or len(values) < 2:
@@ -2580,18 +2598,17 @@ def adjustTimeDelay(lastQueryDuration, lowerStdLimit):
     Provides tip for adjusting time delay in time-based data retrieval
     """
 
-    candidate = 1 + int(round(lowerStdLimit))
+    candidate = (1 if not isHeavyQueryBased() else 2) + int(round(lowerStdLimit))
 
-    if candidate:
-        kb.delayCandidates = [candidate] + kb.delayCandidates[:-1]
+    kb.delayCandidates = [candidate] + kb.delayCandidates[:-1]
 
-        if all((_ == candidate for _ in kb.delayCandidates)) and candidate < conf.timeSec:
-            if lastQueryDuration / (1.0 * conf.timeSec / candidate) > MIN_VALID_DELAYED_RESPONSE:  # Note: to prevent problems with fast responses for heavy-queries like RANDOMBLOB
-                conf.timeSec = candidate
+    if all((_ == candidate for _ in kb.delayCandidates)) and candidate < conf.timeSec:
+        if lastQueryDuration / (1.0 * conf.timeSec / candidate) > MIN_VALID_DELAYED_RESPONSE:  # Note: to prevent problems with fast responses for heavy-queries like RANDOMBLOB
+            conf.timeSec = candidate
 
-                infoMsg = "adjusting time delay to "
-                infoMsg += "%d second%s due to good response times" % (conf.timeSec, 's' if conf.timeSec > 1 else '')
-                logger.info(infoMsg)
+            infoMsg = "adjusting time delay to "
+            infoMsg += "%d second%s due to good response times" % (conf.timeSec, 's' if conf.timeSec > 1 else '')
+            logger.info(infoMsg)
 
 def getLastRequestHTTPError():
     """
@@ -2954,7 +2971,7 @@ def findDynamicContent(firstPage, secondPage):
     infoMsg = "searching for dynamic content"
     singleTimeLogMessage(infoMsg)
 
-    blocks = SequenceMatcher(None, firstPage, secondPage).get_matching_blocks()
+    blocks = list(SequenceMatcher(None, firstPage, secondPage).get_matching_blocks())
     kb.dynamicMarkings = []
 
     # Removing too small matching blocks
@@ -3144,6 +3161,31 @@ def isTechniqueAvailable(technique):
     else:
         return getTechniqueData(technique) is not None
 
+def isHeavyQueryBased(technique=None):
+    """
+    Returns True whether current (kb.)technique is heavy-query based
+
+    >>> pushValue(kb.injection.data)
+    >>> pushValue(kb.technique)
+    >>> kb.technique = PAYLOAD.TECHNIQUE.STACKED
+    >>> kb.injection.data[kb.technique] = [test for test in getSortedInjectionTests() if "heavy" in test["title"].lower()][0]
+    >>> isHeavyQueryBased()
+    True
+    >>> kb.technique = popValue()
+    >>> kb.injection.data = popValue()
+    """
+
+    retVal = False
+
+    technique = technique or kb.technique
+
+    if isTechniqueAvailable(technique):
+        data = getTechniqueData(technique)
+        if data and "heavy query" in data["title"].lower():
+            retVal = True
+
+    return retVal
+
 def isStackingAvailable():
     """
     Returns True whether techniques using stacking are available
@@ -3304,6 +3346,10 @@ def unArrayizeValue(value):
     '1'
     >>> unArrayizeValue(['1', '2'])
     '1'
+    >>> unArrayizeValue([['a', 'b'], 'c'])
+    'a'
+    >>> unArrayizeValue(_ for _ in xrange(10))
+    0
     """
 
     if isListLike(value):
@@ -3314,6 +3360,8 @@ def unArrayizeValue(value):
         else:
             value = [_ for _ in flattenValue(value) if _ is not None]
             value = value[0] if len(value) > 0 else None
+    elif inspect.isgenerator(value):
+        value = unArrayizeValue([_ for _ in value])
 
     return value
 
@@ -3605,7 +3653,7 @@ def createGithubIssue(errMsg, excMsg):
         _excMsg = None
         errMsg = errMsg[errMsg.find("\n"):]
 
-        req = _urllib.request.Request(url="https://api.github.com/search/issues?q=%s" % _urllib.parse.quote("repo:sqlmapproject/sqlmap Unhandled exception (#%s)" % key))
+        req = _urllib.request.Request(url="https://api.github.com/search/issues?q=%s" % _urllib.parse.quote("repo:sqlmapproject/sqlmap Unhandled exception (#%s)" % key), headers={HTTP_HEADER.USER_AGENT: fetchRandomAgent()})
 
         try:
             content = _urllib.request.urlopen(req).read()
@@ -3621,7 +3669,6 @@ def createGithubIssue(errMsg, excMsg):
                 return
         except:
             pass
-
 
         data = {"title": "Unhandled exception (#%s)" % key, "body": "```%s\n```\n```\n%s```" % (errMsg, excMsg)}
         req = _urllib.request.Request(url="https://api.github.com/repos/sqlmapproject/sqlmap/issues", data=getBytes(json.dumps(data)), headers={HTTP_HEADER.AUTHORIZATION: "token %s" % decodeBase64(GITHUB_REPORT_OAUTH_TOKEN, binary=False), HTTP_HEADER.USER_AGENT: fetchRandomAgent()})
@@ -3673,8 +3720,9 @@ def maskSensitiveData(msg):
     for match in re.finditer(r"(?i)[ -]-(u|url|data|cookie|auth-\w+|proxy)( |=)(.*?)(?= -?-[a-z]|\Z)", retVal):
         retVal = retVal.replace(match.group(3), '*' * len(match.group(3)))
 
-    # Fail-safe substitution
+    # Fail-safe substitutions
     retVal = re.sub(r"(?i)(Command line:.+)\b(https?://[^ ]+)", lambda match: "%s%s" % (match.group(1), '*' * len(match.group(2))), retVal)
+    retVal = re.sub(r"(?i)(\b\w:[\\/]+Users[\\/]+|[\\/]+home[\\/]+)([^\\/]+)", lambda match: "%s%s" % (match.group(1), '*' * len(match.group(2))), retVal)
 
     if getpass.getuser():
         retVal = re.sub(r"(?i)\b%s\b" % re.escape(getpass.getuser()), '*' * len(getpass.getuser()), retVal)
@@ -4654,8 +4702,8 @@ def decloakToTemp(filename):
 
     content = decloak(filename)
 
-    parts = getBytes(os.path.split(filename[:-1])[-1]).split(b'.')
-    prefix, suffix = parts[0], b".%s" % parts[-1]
+    parts = os.path.split(filename[:-1])[-1].split('.')
+    prefix, suffix = parts[0], '.' + parts[-1]
     handle, filename = tempfile.mkstemp(prefix=prefix, suffix=suffix)
     os.close(handle)
 
@@ -4676,10 +4724,7 @@ def prioritySortColumns(columns):
     def _(column):
         return column and "id" in column.lower()
 
-    if six.PY2:
-        return sorted(sorted(columns, key=len), lambda x, y: -1 if _(x) and not _(y) else 1 if not _(x) and _(y) else 0)
-    else:
-        return sorted(sorted(columns, key=len), key=functools.cmp_to_key(lambda x, y: -1 if _(x) and not _(y) else 1 if not _(x) and _(y) else 0))
+    return sorted(sorted(columns, key=len), key=functools.cmp_to_key(lambda x, y: -1 if _(x) and not _(y) else 1 if not _(x) and _(y) else 0))
 
 def getRequestHeader(request, name):
     """
@@ -4692,7 +4737,7 @@ def getRequestHeader(request, name):
 
     if request and request.headers and name:
         _ = name.upper()
-        retVal = max(value if _ == key.upper() else type(value)() for key, value in request.header_items()) or None
+        retVal = max(getBytes(value if _ == key.upper() else "") for key, value in request.header_items()) or None
 
     return retVal
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -27,6 +27,7 @@ try:
     import re
     import shutil
     import sys
+    import tempfile
     import threading
     import time
     import traceback
@@ -284,6 +285,14 @@ def main():
             logger.critical(errMsg)
             raise SystemExit
 
+        elif any(_ in excMsg for _ in ("tempfile.mkdtemp", "tempfile.mkstemp")):
+            errMsg = "unable to write to the temporary directory '%s'. " % tempfile.gettempdir()
+            errMsg += "Please make sure that your disk is not full and "
+            errMsg += "that you have sufficient write permissions to "
+            errMsg += "create temporary files and/or directories"
+            logger.critical(errMsg)
+            raise SystemExit
+
         elif all(_ in excMsg for _ in ("twophase", "sqlalchemy")):
             errMsg = "please update the 'sqlalchemy' package (>= 1.1.11) "
             errMsg += "(Reference: https://qiita.com/tkprof/items/7d7b2d00df9c5f16fffe)"
@@ -298,7 +307,7 @@ def main():
 
         elif "must be pinned buffer, not bytearray" in excMsg:
             errMsg = "error occurred at Python interpreter which "
-            errMsg += "is fixed in 2.7.x. Please update accordingly "
+            errMsg += "is fixed in 2.7. Please update accordingly "
             errMsg += "(Reference: https://bugs.python.org/issue8104)"
             logger.critical(errMsg)
             raise SystemExit
@@ -388,8 +397,12 @@ def main():
             conf.hashDB.flush(True)
 
         if conf.get("harFile"):
-            with openFile(conf.harFile, "w+b") as f:
-                json.dump(conf.httpCollector.obtain(), fp=f, indent=4, separators=(',', ': '))
+            try:
+                with openFile(conf.harFile, "w+b") as f:
+                    json.dump(conf.httpCollector.obtain(), fp=f, indent=4, separators=(',', ': '))
+            except SqlmapBaseException as ex:
+                errMsg = getSafeExString(ex)
+                logger.critical(errMsg)
 
         if conf.get("api"):
             conf.databaseCursor.disconnect()

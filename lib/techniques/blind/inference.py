@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -379,7 +379,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
                                 charTbl = xrange(maxChar + 1, (maxChar + 1) << shiftTable.pop())
                                 originalTbl = xrange(charTbl)
                                 maxChar = maxValue = charTbl[-1]
-                                minChar = minValue = charTbl[0]
+                                minValue = charTbl[0]
                             else:
                                 return None
                         else:
@@ -391,7 +391,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
                                         kb.originalTimeDelay = conf.timeSec
 
                                     threadData.validationRun = 0
-                                    if retried < MAX_REVALIDATION_STEPS:
+                                    if (retried or 0) < MAX_REVALIDATION_STEPS:
                                         errMsg = "invalid character detected. retrying.."
                                         logger.error(errMsg)
 

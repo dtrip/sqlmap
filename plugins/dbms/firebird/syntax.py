@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -25,7 +25,7 @@ class Syntax(GenericSyntax):
         """
 
         def escaper(value):
-            return "||".join("ASCII_CHAR(%d)" %_ for _ in getOrds(value))
+            return "||".join("ASCII_CHAR(%d)" % _ for _ in getOrds(value))
 
         retVal = expression
 

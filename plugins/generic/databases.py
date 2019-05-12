@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -637,6 +637,7 @@ class Databases:
 
                     for columnData in values:
                         if not isNoneValue(columnData):
+                            columnData = [unArrayizeValue(_) for _ in columnData]
                             name = safeSQLIdentificatorNaming(columnData[0])
 
                             if name:

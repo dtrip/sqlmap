@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -21,6 +21,7 @@ import traceback
 from extra.beep.beep import beep
 from extra.vulnserver import vulnserver
 from lib.controller.controller import start
+from lib.core.common import clearColors
 from lib.core.common import clearConsoleLine
 from lib.core.common import dataToStdout
 from lib.core.common import randomStr
@@ -77,10 +78,13 @@ def vulnTest():
         ("--technique=B --hex --fresh-queries --threads=4 --sql-query='SELECT 987654321'", ("length of query output", ": '987654321'",)),
         ("--technique=T --fresh-queries --sql-query='SELECT 1234'", (": '1234'",)),
     ):
-        output = shellExec("%s %s -u http://%s:%d/?id=1 --batch %s" % (sys.executable, os.path.join(os.path.dirname(__file__), "..", "..", "sqlmap.py"), address, port, options))
+        cmd = "%s %s -u http://%s:%d/?id=1 --batch %s" % (sys.executable, os.path.join(os.path.dirname(__file__), "..", "..", "sqlmap.py"), address, port, options)
+        output = shellExec(cmd)
         output = getUnicode(output)
 
         if not all(check in output for check in checks):
+            dataToStdout("---\n\n$ %s\n" % cmd)
+            dataToStdout("%s---\n" % clearColors(output))
             retVal = False
 
         count += 1
@@ -410,7 +414,7 @@ def replaceVars(item, vars_):
     retVal = item
 
     if item and vars_:
-        for var in re.findall("\$\{([^}]+)\}", item):
+        for var in re.findall(r"\$\{([^}]+)\}", item):
             if var in vars_:
                 retVal = retVal.replace("${%s}" % var, vars_[var])
 

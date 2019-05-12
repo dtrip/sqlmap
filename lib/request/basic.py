@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -243,7 +243,11 @@ def checkCharEncoding(encoding, warn=True):
 def getHeuristicCharEncoding(page):
     """
     Returns page encoding charset detected by usage of heuristics
-    Reference: http://chardet.feedparser.org/docs/
+
+    Reference: https://chardet.readthedocs.io/en/latest/usage.html
+
+    >>> getHeuristicCharEncoding(b"<html></html>")
+    'ascii'
     """
 
     key = hash(page)
@@ -259,6 +263,9 @@ def getHeuristicCharEncoding(page):
 def decodePage(page, contentEncoding, contentType):
     """
     Decode compressed/charset HTTP response
+
+    >>> getText(decodePage(b"<html>foo&amp;bar</html>", None, "text/html; charset=utf-8"))
+    '<html>foo&bar</html>'
     """
 
     if not page or (conf.nullConnection and len(page) < 2):
@@ -323,7 +330,7 @@ def decodePage(page, contentEncoding, contentType):
         # e.g. &#x9;&#195;&#235;&#224;&#226;&#224;
         if b"&#" in page:
             page = re.sub(b"&#x([0-9a-f]{1,2});", lambda _: decodeHex(_.group(1) if len(_.group(1)) == 2 else "0%s" % _.group(1)), page)
-            page = re.sub(b"&#(\d{1,3});", lambda _: six.int2byte(int(_.group(1))) if int(_.group(1)) < 256 else _.group(0), page)
+            page = re.sub(b"&#(\\d{1,3});", lambda _: six.int2byte(int(_.group(1))) if int(_.group(1)) < 256 else _.group(0), page)
 
         # e.g. %20%28%29
         if b"%" in page:

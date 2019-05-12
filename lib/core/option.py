@@ -1,10 +1,11 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
+import functools
 import glob
 import inspect
 import logging
@@ -52,6 +53,7 @@ from lib.core.common import setOptimize
 from lib.core.common import setPaths
 from lib.core.common import singleTimeWarnMessage
 from lib.core.common import urldecode
+from lib.core.compat import cmp
 from lib.core.compat import round
 from lib.core.compat import xrange
 from lib.core.convert import getUnicode
@@ -468,7 +470,7 @@ def _findPageForms():
         for i in xrange(len(targets)):
             try:
                 target = targets[i]
-                page, _, _ = Request.getPage(url=target.strip(), crawling=True, raise404=False)
+                page, _, _ = Request.getPage(url=target.strip(), cookie=conf.cookie, crawling=True, raise404=False)
                 findPageForms(page, target, False, True)
 
                 if conf.verbose in (1, 2):
@@ -822,7 +824,7 @@ def _setTamperingFunctions():
             logger.warning(warnMsg)
 
         if resolve_priorities and priorities:
-            priorities.sort(reverse=True)
+            priorities.sort(key=functools.cmp_to_key(lambda a, b: cmp(a[0], b[0])), reverse=True)
             kb.tamperFunctions = []
 
             for _, function in priorities:
@@ -1497,15 +1499,7 @@ def _createHomeDirectories():
                 warnMsg = "using '%s' as the %s directory" % (directory, context)
                 logger.warn(warnMsg)
         except (OSError, IOError) as ex:
-            try:
-                tempDir = tempfile.mkdtemp(prefix="sqlmap%s" % context)
-            except Exception as _:
-                errMsg = "unable to write to the temporary directory ('%s'). " % _
-                errMsg += "Please make sure that your disk is not full and "
-                errMsg += "that you have sufficient write permissions to "
-                errMsg += "create temporary files and/or directories"
-                raise SqlmapSystemException(errMsg)
-
+            tempDir = tempfile.mkdtemp(prefix="sqlmap%s" % context)
             warnMsg = "unable to %s %s directory " % ("create" if not os.path.isdir(directory) else "write to the", context)
             warnMsg += "'%s' (%s). " % (directory, getUnicode(ex))
             warnMsg += "Using temporary directory '%s' instead" % getUnicode(tempDir)

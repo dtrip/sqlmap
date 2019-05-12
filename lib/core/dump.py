@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -18,6 +18,7 @@ from lib.core.common import checkFile
 from lib.core.common import dataToDumpFile
 from lib.core.common import dataToStdout
 from lib.core.common import getSafeExString
+from lib.core.common import getText
 from lib.core.common import isListLike
 from lib.core.common import isMultiThreadMode
 from lib.core.common import normalizeUnicode
@@ -429,15 +430,7 @@ class Dump(object):
                         try:
                             os.makedirs(dumpDbPath)
                         except Exception as ex:
-                            try:
-                                tempDir = tempfile.mkdtemp(prefix="sqlmapdb")
-                            except IOError as _:
-                                errMsg = "unable to write to the temporary directory ('%s'). " % _
-                                errMsg += "Please make sure that your disk is not full and "
-                                errMsg += "that you have sufficient write permissions to "
-                                errMsg += "create temporary files and/or directories"
-                                raise SqlmapSystemException(errMsg)
-
+                            tempDir = tempfile.mkdtemp(prefix="sqlmapdb")
                             warnMsg = "unable to create dump directory "
                             warnMsg += "'%s' (%s). " % (dumpDbPath, getSafeExString(ex))
                             warnMsg += "Using temporary directory '%s' instead" % tempDir
@@ -613,8 +606,8 @@ class Dump(object):
 
                     if len(value) > MIN_BINARY_DISK_DUMP_SIZE and r'\x' in value:
                         try:
-                            mimetype = magic.from_buffer(value, mime=True)
-                            if any(mimetype.startswith(_) for _ in (b"application", b"image")):
+                            mimetype = getText(magic.from_buffer(value, mime=True))
+                            if any(mimetype.startswith(_) for _ in ("application", "image")):
                                 if not os.path.isdir(dumpDbPath):
                                     os.makedirs(dumpDbPath)
 

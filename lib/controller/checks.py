@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -527,7 +527,7 @@ def checkSqlInjection(place, parameter, value):
                                             continue
                                     elif kb.heuristicPage and not any((conf.string, conf.notString, conf.regexp, conf.code, kb.nullConnection)):
                                         _ = comparison(kb.heuristicPage, None, getRatioValue=True)
-                                        if _ > kb.matchRatio:
+                                        if (_ or 0) > (kb.matchRatio or 0):
                                             kb.matchRatio = _
                                             logger.debug("adjusting match ratio for current parameter to %.3f" % kb.matchRatio)
 
@@ -537,7 +537,7 @@ def checkSqlInjection(place, parameter, value):
 
                                     injectable = True
 
-                                elif threadData.lastComparisonRatio > UPPER_RATIO_BOUND and not any((conf.string, conf.notString, conf.regexp, conf.code, kb.nullConnection)):
+                                elif (threadData.lastComparisonRatio or 0) > UPPER_RATIO_BOUND and not any((conf.string, conf.notString, conf.regexp, conf.code, kb.nullConnection)):
                                     originalSet = set(getFilteredPageContent(kb.pageTemplate, True, "\n").split("\n"))
                                     trueSet = set(getFilteredPageContent(truePage, True, "\n").split("\n"))
                                     falseSet = set(getFilteredPageContent(falsePage, True, "\n").split("\n"))
@@ -1614,7 +1614,7 @@ def checkConnection(suppressOutput=False):
                 conf.url = re.sub(r"https?://", "https://", conf.url)
                 match = re.search(r":(\d+)", threadData.lastRedirectURL[1])
                 port = match.group(1) if match else 443
-                conf.url = re.sub(r":\d+(/|\Z)", ":%s\g<1>" % port, conf.url)
+                conf.url = re.sub(r":\d+(/|\Z)", r":%s\g<1>" % port, conf.url)
 
     except SqlmapConnectionException as ex:
         if conf.ipv6:

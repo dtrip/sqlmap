@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 """
 Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
@@ -673,6 +673,9 @@ class Connect(object):
 
         except (_urllib.error.URLError, socket.error, socket.timeout, _http_client.HTTPException, struct.error, binascii.Error, ProxyError, SqlmapCompressionException, WebSocketException, TypeError, ValueError, OverflowError):
             tbMsg = traceback.format_exc()
+
+            if conf.debug:
+                dataToStdout(tbMsg)
 
             if checking:
                 return None, None, None

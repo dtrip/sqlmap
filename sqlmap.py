@@ -258,7 +258,7 @@ def main():
             logger.critical(errMsg)
             raise SystemExit
 
-        elif all(_ in excMsg for _ in ("No such file", "_'", "self.get_prog_name()")):
+        elif all(_ in excMsg for _ in ("No such file", "_'")):
             errMsg = "corrupted installation detected ('%s'). " % excMsg.strip().split('\n')[-1]
             errMsg += "You should retrieve the latest development version from official GitHub "
             errMsg += "repository at '%s'" % GIT_PAGE
@@ -277,6 +277,11 @@ def main():
 
         elif "Violation of BIDI" in excMsg:
             errMsg = "invalid URL (violation of Bidi IDNA rule - RFC 5893)"
+            logger.critical(errMsg)
+            raise SystemExit
+
+        elif "Invalid IPv6 URL" in excMsg:
+            errMsg = "invalid URL ('%s')" % excMsg.strip().split('\n')[-1]
             logger.critical(errMsg)
             raise SystemExit
 

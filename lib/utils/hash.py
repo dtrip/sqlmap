@@ -56,6 +56,7 @@ from lib.core.common import getSafeExString
 from lib.core.common import hashDBRetrieve
 from lib.core.common import hashDBWrite
 from lib.core.common import normalizeUnicode
+from lib.core.common import openFile
 from lib.core.common import paths
 from lib.core.common import readInput
 from lib.core.common import singleTimeLogMessage
@@ -577,9 +578,9 @@ def storeHashesToFile(attack_dict):
             if hash_ and hash_ != NULL and hashRecognition(hash_):
                 item = None
                 if user and not user.startswith(DUMMY_USER_PREFIX):
-                    item = "%s:%s\n" % (user.encode(UNICODE_ENCODING), hash_.encode(UNICODE_ENCODING))
+                    item = "%s:%s\n" % (user, hash_)
                 else:
-                    item = "%s\n" % hash_.encode(UNICODE_ENCODING)
+                    item = "%s\n" % hash_
 
                 if item and item not in items:
                     items.add(item)
@@ -597,7 +598,7 @@ def storeHashesToFile(attack_dict):
         infoMsg = "writing hashes to a temporary file '%s' " % filename
         logger.info(infoMsg)
 
-        with open(filename, "w+") as f:
+        with openFile(filename, "w+") as f:
             for item in items:
                 f.write(item)
 

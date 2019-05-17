@@ -36,6 +36,7 @@ from lib.core.common import popValue
 from lib.core.common import pushValue
 from lib.core.common import randomStr
 from lib.core.common import readInput
+from lib.core.common import removePostHintPrefix
 from lib.core.common import safeCSValue
 from lib.core.common import showHttpErrorCodes
 from lib.core.common import urlencode
@@ -453,6 +454,9 @@ def start():
                     skip = (place == PLACE.USER_AGENT and conf.level < 3)
                     skip |= (place == PLACE.REFERER and conf.level < 3)
 
+                    # --param-filter
+                    skip |= (len(conf.paramFilter) > 0 and place.upper() not in conf.paramFilter)
+
                     # Test Host header only if
                     # --level >= 5
                     skip |= (place == PLACE.HOST and conf.level < 5)
@@ -497,7 +501,7 @@ def start():
                             infoMsg = "skipping previously processed %s parameter '%s'" % (paramType, parameter)
                             logger.info(infoMsg)
 
-                        elif parameter in conf.testParameter:
+                        elif any(_ in conf.testParameter for _ in (parameter, removePostHintPrefix(parameter))):
                             pass
 
                         elif parameter in conf.rParam:

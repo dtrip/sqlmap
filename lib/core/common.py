@@ -82,8 +82,9 @@ from lib.core.enums import LOGGING_LEVELS
 from lib.core.enums import MKSTEMP_PREFIX
 from lib.core.enums import OPTION_TYPE
 from lib.core.enums import OS
-from lib.core.enums import PLACE
 from lib.core.enums import PAYLOAD
+from lib.core.enums import PLACE
+from lib.core.enums import POST_HINT
 from lib.core.enums import REFLECTIVE_COUNTER
 from lib.core.enums import SORT_ORDER
 from lib.core.exception import SqlmapBaseException
@@ -180,6 +181,7 @@ from thirdparty.clientform.clientform import ParseError
 from thirdparty.colorama.initialise import init as coloramainit
 from thirdparty.magic import magic
 from thirdparty.odict import OrderedDict
+from thirdparty.six import unichr as _unichr
 from thirdparty.six.moves import configparser as _configparser
 from thirdparty.six.moves import http_client as _http_client
 from thirdparty.six.moves import input as _input
@@ -2122,16 +2124,11 @@ def getConsoleWidth(default=80):
         width = int(os.getenv("COLUMNS"))
     else:
         try:
-            try:
-                FNULL = open(os.devnull, 'w')
-            except IOError:
-                FNULL = None
-            process = subprocess.Popen("stty size", shell=True, stdout=subprocess.PIPE, stderr=FNULL or subprocess.PIPE)
-            stdout, _ = process.communicate()
-            items = stdout.split()
+            output = shellExec("stty size")
+            match = re.search(r"\A\d+ (\d+)", output)
 
-            if len(items) == 2 and items[1].isdigit():
-                width = int(items[1])
+            if match:
+                width = int(match.group(1))
         except (OSError, MemoryError):
             pass
 
@@ -2151,14 +2148,20 @@ def shellExec(cmd):
     """
     Executes arbitrary shell command
 
-    >>> shellExec('echo 1').strip() == b'1'
+    >>> shellExec('echo 1').strip() == '1'
     True
     """
 
+    retVal = ""
+
     try:
-        return subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0] or ""
+        retVal = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0] or ""
     except Exception as ex:
-        return six.text_type(ex)
+        retVal = getSafeExString(ex)
+    finally:
+        retVal = getText(retVal)
+
+    return retVal
 
 def clearConsoleLine(forceOutput=False):
     """
@@ -2423,7 +2426,7 @@ def goGoodSamaritan(prevValue, originalCharset):
         # Split the original charset into common chars (commonCharset)
         # and other chars (otherCharset)
         for ordChar in originalCharset:
-            if chr(ordChar) not in predictionSet:
+            if _unichr(ordChar) not in predictionSet:
                 otherCharset.append(ordChar)
             else:
                 commonCharset.append(ordChar)
@@ -3500,11 +3503,11 @@ def decodeIntToUnicode(value):
                 elif Backend.isDbms(DBMS.MSSQL):
                     retVal = getUnicode(raw, "UTF-16-BE")
                 elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.ORACLE):
-                    retVal = six.unichr(value)
+                    retVal = _unichr(value)
                 else:
                     retVal = getUnicode(raw, conf.encoding)
             else:
-                retVal = getUnicode(chr(value))
+                retVal = _unichr(value)
         except:
             retVal = INFERENCE_UNKNOWN_CHAR
 
@@ -3522,7 +3525,7 @@ def checkIntegrity():
 
     retVal = True
 
-    baseTime = os.path.getmtime(paths.SQLMAP_SETTINGS_PATH)
+    baseTime = os.path.getmtime(paths.SQLMAP_SETTINGS_PATH) + 3600  # First hour free parking :)
     for root, dirnames, filenames in os.walk(paths.SQLMAP_ROOT_PATH):
         for filename in filenames:
             if re.search(r"(\.py|\.xml|_)\Z", filename):
@@ -3889,7 +3892,7 @@ def removeReflectiveValues(content, payload, suppressWarning=False):
 
     return retVal
 
-def normalizeUnicode(value):
+def normalizeUnicode(value, charset=string.printable[:string.printable.find(' ') + 1]):
     """
     Does an ASCII normalization of unicode strings
 
@@ -3897,9 +3900,17 @@ def normalizeUnicode(value):
 
     >>> normalizeUnicode(u'\u0161u\u0107uraj') == u'sucuraj'
     True
+    >>> normalizeUnicode(getUnicode(decodeHex("666f6f00626172"))) == u'foobar'
+    True
     """
 
-    return getUnicode(unicodedata.normalize("NFKD", value).encode("ascii", "ignore")) if isinstance(value, six.text_type) else value
+    retVal = value
+
+    if isinstance(value, six.text_type):
+        retVal = unicodedata.normalize("NFKD", value)
+        retVal = "".join(_ for _ in retVal if _ in charset)
+
+    return retVal
 
 def safeSQLIdentificatorNaming(name, isTable=False):
     """
@@ -4544,7 +4555,11 @@ def decodeDbmsHexValue(value, raw=False):
 
     >>> decodeDbmsHexValue('3132332031') == u'123 1'
     True
+    >>> decodeDbmsHexValue('313233203') == u'123 ?'
+    True
     >>> decodeDbmsHexValue(['0x31', '0x32']) == [u'1', u'2']
+    True
+    >>> decodeDbmsHexValue('5.1.41') == u'5.1.41'
     True
     """
 
@@ -4554,7 +4569,7 @@ def decodeDbmsHexValue(value, raw=False):
         retVal = value
         if value and isinstance(value, six.string_types):
             if len(value) % 2 != 0:
-                retVal = b"%s?" % decodeHex(value[:-1]) if len(value) > 1 else value
+                retVal = (decodeHex(value[:-1]) + b'?') if len(value) > 1 else value
                 singleTimeWarnMessage("there was a problem decoding value '%s' from expected hexadecimal form" % value)
             else:
                 retVal = decodeHex(value)
@@ -4565,11 +4580,13 @@ def decodeDbmsHexValue(value, raw=False):
                         retVal = retVal.decode("utf-16-le")
                     except UnicodeDecodeError:
                         pass
+
                 elif Backend.getIdentifiedDbms() in (DBMS.HSQLDB, DBMS.H2):
                     try:
                         retVal = retVal.decode("utf-16-be")
                     except UnicodeDecodeError:
                         pass
+
                 if not isinstance(retVal, six.text_type):
                     retVal = getUnicode(retVal, conf.encoding or UNICODE_ENCODING)
 
@@ -5069,6 +5086,18 @@ def firstNotNone(*args):
             break
 
     return retVal
+
+def removePostHintPrefix(value):
+    """
+    Remove POST hint prefix from a given value (name)
+
+    >>> removePostHintPrefix("JSON id")
+    'id'
+    >>> removePostHintPrefix("id")
+    'id'
+    """
+
+    return re.sub(r"\A(%s) " % '|'.join(re.escape(__) for __ in getPublicTypeMembers(POST_HINT, onlyValues=True)), "", value)
 
 def chunkSplitPostData(data):
     """

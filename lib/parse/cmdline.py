@@ -261,6 +261,9 @@ def cmdLineParser(argv=None):
         injection.add_option("--param-exclude", dest="paramExclude",
                              help="Regexp to exclude parameters from testing (e.g. \"ses\")")
 
+        injection.add_option("--param-filter", dest="paramFilter",
+                             help="Select testable parameter(s) by place (e.g. \"POST\")")
+
         injection.add_option("--dbms", dest="dbms",
                              help="Force back-end DBMS to provided value")
 
@@ -814,8 +817,8 @@ def cmdLineParser(argv=None):
                 command = None
 
                 try:
+                    # Note: in Python2 command should not be converted to Unicode before passing to shlex (Reference: https://bugs.python.org/issue1170)
                     command = _input("sqlmap-shell> ").strip()
-                    command = getUnicode(command, encoding=sys.stdin.encoding)
                 except (KeyboardInterrupt, EOFError):
                     print()
                     raise SqlmapShellQuitException
@@ -900,7 +903,7 @@ def cmdLineParser(argv=None):
         try:
             (args, _) = parser.parse_args(argv)
         except UnicodeEncodeError as ex:
-            dataToStdout("\n[!] %s\n" % ex.object.encode("unicode-escape"))
+            dataToStdout("\n[!] %s\n" % getUnicode(ex.object.encode("unicode-escape")))
             raise SystemExit
         except SystemExit:
             if "-h" in argv and not advancedHelp:

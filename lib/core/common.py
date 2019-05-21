@@ -57,8 +57,8 @@ from lib.core.convert import decodeHex
 from lib.core.convert import getBytes
 from lib.core.convert import getText
 from lib.core.convert import getUnicode
-from lib.core.convert import htmlunescape
-from lib.core.convert import stdoutencode
+from lib.core.convert import htmlUnescape
+from lib.core.convert import stdoutEncode
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
@@ -679,7 +679,7 @@ def paramToDict(place, parameters=None):
                                 walk(deserialized)
 
                                 if candidates:
-                                    message = "it appears that provided value for %s parameter '%s' " % (place, parameter)
+                                    message = "it appears that provided value for %sparameter '%s' " % ("%s " % place if place != parameter else "", parameter)
                                     message += "is JSON deserializable. Do you want to inject inside? [y/N] "
 
                                     if readInput(message, default='N', boolean=True):
@@ -692,7 +692,7 @@ def paramToDict(place, parameters=None):
                                 pass
 
                             _ = re.sub(regex, r"\g<1>%s\g<%d>" % (kb.customInjectionMark, len(match.groups())), testableParameters[parameter])
-                            message = "it appears that provided value for %s parameter '%s' " % (place, parameter)
+                            message = "it appears that provided value for %sparameter '%s' " % ("%s " % place if place != parameter else "", parameter)
                             message += "has boundaries. Do you want to inject inside? ('%s') [y/N] " % getUnicode(_)
 
                             if readInput(message, default='N', boolean=True):
@@ -968,9 +968,9 @@ def dataToStdout(data, forceOutput=False, bold=False, content_type=None, status=
 
             try:
                 if conf.get("api"):
-                    sys.stdout.write(stdoutencode(clearColors(data)), status, content_type)
+                    sys.stdout.write(stdoutEncode(clearColors(data)), status, content_type)
                 else:
-                    sys.stdout.write(stdoutencode(setColor(data, bold=bold)))
+                    sys.stdout.write(stdoutEncode(setColor(data, bold=bold)))
 
                 sys.stdout.flush()
             except IOError:
@@ -1808,7 +1808,7 @@ def getFileType(filePath):
     finally:
         desc = getText(desc)
 
-    if desc == magic.MAGIC_UNKNOWN_FILETYPE:
+    if desc == getText(magic.MAGIC_UNKNOWN_FILETYPE):
         content = openFile(filePath, "rb", encoding=None).read()
 
         try:
@@ -2001,7 +2001,7 @@ def getFilteredPageContent(page, onlyText=True, split=" "):
     if isinstance(page, six.text_type):
         retVal = re.sub(r"(?si)<script.+?</script>|<!--.+?-->|<style.+?</style>%s" % (r"|<[^>]+>|\t|\n|\r" if onlyText else ""), split, page)
         retVal = re.sub(r"%s{2,}" % split, split, retVal)
-        retVal = htmlunescape(retVal.strip().strip(split))
+        retVal = htmlUnescape(retVal.strip().strip(split))
 
     return retVal
 
@@ -2636,7 +2636,7 @@ def extractErrorMessage(page):
             match = re.search(regex, page, re.IGNORECASE)
 
             if match:
-                retVal = htmlunescape(match.group("result")).replace("<br>", "\n").strip()
+                retVal = htmlUnescape(match.group("result")).replace("<br>", "\n").strip()
                 break
 
     return retVal
@@ -3821,7 +3821,10 @@ def removeReflectiveValues(content, payload, suppressWarning=False):
             if regex != payload:
                 if all(part.lower() in content.lower() for part in filterNone(regex.split(REFLECTED_REPLACEMENT_REGEX))[1:]):  # fast optimization check
                     parts = regex.split(REFLECTED_REPLACEMENT_REGEX)
-                    retVal = content.replace(payload, REFLECTED_VALUE_MARKER)  # dummy approach
+
+                    # Note: naive approach
+                    retVal = content.replace(payload, REFLECTED_VALUE_MARKER)
+                    retVal = retVal.replace(re.sub(r"\A\w+", "", payload), REFLECTED_VALUE_MARKER)
 
                     if len(parts) > REFLECTED_MAX_REGEX_PARTS:  # preventing CPU hogs
                         regex = _("%s%s%s" % (REFLECTED_REPLACEMENT_REGEX.join(parts[:REFLECTED_MAX_REGEX_PARTS // 2]), REFLECTED_REPLACEMENT_REGEX, REFLECTED_REPLACEMENT_REGEX.join(parts[-REFLECTED_MAX_REGEX_PARTS // 2:])))

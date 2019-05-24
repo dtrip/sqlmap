@@ -20,6 +20,7 @@ import sys
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.settings import INVALID_UNICODE_PRIVATE_AREA
+from lib.core.settings import IS_TTY
 from lib.core.settings import IS_WIN
 from lib.core.settings import NULL
 from lib.core.settings import PICKLE_PROTOCOL
@@ -101,11 +102,29 @@ def filterNone(values):  # Cross-referenced function
 def isListLike(value):  # Cross-referenced function
     raise NotImplementedError
 
+def shellExec(cmd):  # Cross-referenced function
+    raise NotImplementedError
+
 def stdoutEncode(value):
     value = value or ""
 
+    if IS_WIN and IS_TTY and kb.get("codePage", -1) is None:
+        output = shellExec("chcp")
+        match = re.search(r": (\d{3,})", output or "")
+
+        if match:
+            try:
+                candidate = "cp%s" % match.group(1)
+                codecs.lookup(candidate)
+            except LookupError:
+                pass
+            else:
+                kb.codePage = candidate
+
+        kb.codePage = kb.codePage or ""
+
     if isinstance(value, six.text_type) and PYVERSION < "3.6":
-        encoding = sys.stdout.encoding or UNICODE_ENCODING
+        encoding = kb.get("codePage") or sys.stdout.encoding or UNICODE_ENCODING
 
         while True:
             try:

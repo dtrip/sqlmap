@@ -32,7 +32,7 @@ class Replication(object):
             errMsg += "file '%s' ('%s')" % (self.filepath, getSafeExString(ex))
             raise SqlmapConnectionException(errMsg)
 
-    class DataType:
+    class DataType(object):
         """
         Using this class we define auxiliary objects
         used for representing sqlite data types.
@@ -47,7 +47,7 @@ class Replication(object):
         def __repr__(self):
             return "<DataType: %s>" % self
 
-    class Table:
+    class Table(object):
         """
         This class defines methods used to manipulate table objects.
         """
@@ -79,9 +79,9 @@ class Replication(object):
                 errMsg = "wrong number of columns used in replicating insert"
                 raise SqlmapValueException(errMsg)
 
-        def execute(self, sql, parameters=[]):
+        def execute(self, sql, parameters=None):
             try:
-                self.parent.cursor.execute(sql, parameters)
+                self.parent.cursor.execute(sql, parameters or [])
             except sqlite3.OperationalError as ex:
                 errMsg = "problem occurred ('%s') while accessing sqlite database " % getSafeExString(ex, UNICODE_ENCODING)
                 errMsg += "located at '%s'. Please make sure that " % self.parent.dbpath

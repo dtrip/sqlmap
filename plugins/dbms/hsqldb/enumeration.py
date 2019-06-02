@@ -29,7 +29,7 @@ class Enumeration(GenericEnumeration):
 
         return kb.data.banner
 
-    def getPrivileges(self, *args):
+    def getPrivileges(self, *args, **kwargs):
         warnMsg = "on HSQLDB it is not possible to enumerate the user privileges"
         logger.warn(warnMsg)
 
@@ -41,3 +41,9 @@ class Enumeration(GenericEnumeration):
 
     def getCurrentDb(self):
         return HSQLDB_DEFAULT_SCHEMA
+
+    def getStatements(self):
+        warnMsg = "on HSQLDB it is not possible to enumerate the SQL statements"
+        logger.warn(warnMsg)
+
+        return []

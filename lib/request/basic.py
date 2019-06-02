@@ -19,7 +19,6 @@ from lib.core.common import extractRegexResult
 from lib.core.common import filterNone
 from lib.core.common import getPublicTypeMembers
 from lib.core.common import getSafeExString
-from lib.core.common import getText
 from lib.core.common import isListLike
 from lib.core.common import randomStr
 from lib.core.common import readInput
@@ -29,6 +28,7 @@ from lib.core.common import singleTimeWarnMessage
 from lib.core.common import unArrayizeValue
 from lib.core.convert import decodeHex
 from lib.core.convert import getBytes
+from lib.core.convert import getText
 from lib.core.convert import getUnicode
 from lib.core.data import conf
 from lib.core.data import kb
@@ -41,6 +41,7 @@ from lib.core.exception import SqlmapCompressionException
 from lib.core.settings import BLOCKED_IP_REGEX
 from lib.core.settings import DEFAULT_COOKIE_DELIMITER
 from lib.core.settings import EVENTVALIDATION_REGEX
+from lib.core.settings import IDENTYWAF_PARSE_LIMIT
 from lib.core.settings import MAX_CONNECTION_TOTAL_SIZE
 from lib.core.settings import META_CHARSET_REGEX
 from lib.core.settings import PARSE_HEADERS_LIMIT
@@ -51,8 +52,10 @@ from lib.parse.html import htmlParser
 from lib.utils.htmlentities import htmlEntities
 from thirdparty import six
 from thirdparty.chardet import detect
+from thirdparty.identywaf import identYwaf
 from thirdparty.odict import OrderedDict
 from thirdparty.six import unichr as _unichr
+from thirdparty.six.moves import http_client as _http_client
 
 def forgeHeaders(items=None, base=None):
     """
@@ -365,7 +368,7 @@ def decodePage(page, contentEncoding, contentType):
 
     return page
 
-def processResponse(page, responseHeaders, status=None):
+def processResponse(page, responseHeaders, code=None, status=None):
     kb.processResponseCounter += 1
 
     page = page or ""
@@ -382,6 +385,17 @@ def processResponse(page, responseHeaders, status=None):
 
         if msg:
             logger.warning("parsed DBMS error message: '%s'" % msg.rstrip('.'))
+
+    if kb.processResponseCounter < IDENTYWAF_PARSE_LIMIT:
+        rawResponse = "%s %s %s\n%s\n%s" % (_http_client.HTTPConnection._http_vsn_str, code or "", status or "", getUnicode("".join(responseHeaders.headers if responseHeaders else [])), page)
+
+        identYwaf.non_blind.clear()
+        if identYwaf.non_blind_check(rawResponse, silent=True):
+            for waf in identYwaf.non_blind:
+                if waf not in kb.identifiedWafs:
+                    kb.identifiedWafs.add(waf)
+                    errMsg = "WAF/IPS identified as '%s'" % identYwaf.format_name(waf)
+                    singleTimeLogMessage(errMsg, logging.CRITICAL)
 
     if kb.originalPage is None:
         for regex in (EVENTVALIDATION_REGEX, VIEWSTATE_REGEX):

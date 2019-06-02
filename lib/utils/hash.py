@@ -55,6 +55,7 @@ from lib.core.common import getPublicTypeMembers
 from lib.core.common import getSafeExString
 from lib.core.common import hashDBRetrieve
 from lib.core.common import hashDBWrite
+from lib.core.common import isZipFile
 from lib.core.common import normalizeUnicode
 from lib.core.common import openFile
 from lib.core.common import paths
@@ -81,9 +82,11 @@ from lib.core.settings import COMMON_PASSWORD_SUFFIXES
 from lib.core.settings import COMMON_USER_COLUMNS
 from lib.core.settings import DEV_EMAIL_ADDRESS
 from lib.core.settings import DUMMY_USER_PREFIX
+from lib.core.settings import HASH_BINARY_COLUMNS_REGEX
 from lib.core.settings import HASH_EMPTY_PASSWORD_MARKER
 from lib.core.settings import HASH_MOD_ITEM_DISPLAY
 from lib.core.settings import HASH_RECOGNITION_QUIT_THRESHOLD
+from lib.core.settings import INVALID_UNICODE_CHAR_FORMAT
 from lib.core.settings import IS_WIN
 from lib.core.settings import ITOA64
 from lib.core.settings import NULL
@@ -633,11 +636,24 @@ def attackDumpedTable():
         col_user = ''
         col_passwords = set()
         attack_dict = {}
+        binary_fields = OrderedSet()
+        replacements = {}
 
-        for column in sorted(columns, key=lambda _: len(_), reverse=True):
+        for column in sorted(columns, key=len, reverse=True):
             if column and column.lower() in COMMON_USER_COLUMNS:
                 col_user = column
                 break
+
+        for column in columns:
+            if column != "__infos__" and table[column]["values"]:
+                if all(INVALID_UNICODE_CHAR_FORMAT.split('%')[0] in (value or "") for value in table[column]["values"]):
+                    binary_fields.add(column)
+
+        if binary_fields:
+            _ = ','.join(binary_fields)
+            warnMsg = "potential binary fields detected ('%s'). In case of any problems you are " % _
+            warnMsg += "advised to rerun table dump with '--fresh-queries --binary-fields=\"%s\"'" % _
+            logger.warn(warnMsg)
 
         for i in xrange(count):
             if not found and i > HASH_RECOGNITION_QUIT_THRESHOLD:
@@ -651,6 +667,11 @@ def attackDumpedTable():
                     continue
 
                 value = table[column]["values"][i]
+
+                if column in binary_fields and re.search(HASH_BINARY_COLUMNS_REGEX, column) is not None:
+                    previous = value
+                    value = encodeHex(getBytes(value), binary=False)
+                    replacements[value] = previous
 
                 if hashRecognition(value):
                     found = True
@@ -685,7 +706,8 @@ def attackDumpedTable():
 
             for (_, hash_, password) in results:
                 if hash_:
-                    lut[hash_.lower()] = password
+                    key = hash_ if hash_ not in replacements else replacements[hash_]
+                    lut[key.lower()] = password
 
             debugMsg = "post-processing table dump"
             logger.debug(debugMsg)
@@ -1003,7 +1025,7 @@ def dictionaryAttack(attack_dict):
                     for dictPath in dictPaths:
                         checkFile(dictPath)
 
-                        if os.path.splitext(dictPath)[1].lower() == ".zip":
+                        if isZipFile(dictPath):
                             _ = zipfile.ZipFile(dictPath, 'r')
                             if len(_.namelist()) == 0:
                                 errMsg = "no file(s) inside '%s'" % dictPath
@@ -1160,7 +1182,7 @@ def dictionaryAttack(attack_dict):
                             warnMsg += "not supported on this platform"
                             singleTimeWarnMessage(warnMsg)
 
-                            class Value():
+                            class Value(object):
                                 pass
 
                             retVal = _queue.Queue()

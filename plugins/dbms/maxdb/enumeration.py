@@ -49,7 +49,7 @@ class Enumeration(GenericEnumeration):
         retVal = pivotDumpTable("(%s) AS %s" % (query, kb.aliasName), ['%s.schemaname' % kb.aliasName], blind=True)
 
         if retVal:
-            kb.data.cachedDbs = six.itervalues(retVal[0]).next()
+            kb.data.cachedDbs = next(six.itervalues(retVal[0]))
 
         if kb.data.cachedDbs:
             kb.data.cachedDbs.sort()
@@ -217,7 +217,7 @@ class Enumeration(GenericEnumeration):
 
         return kb.data.cachedColumns
 
-    def getPrivileges(self, *args):
+    def getPrivileges(self, *args, **kwargs):
         warnMsg = "on SAP MaxDB it is not possible to enumerate the user privileges"
         logger.warn(warnMsg)
 
@@ -230,3 +230,9 @@ class Enumeration(GenericEnumeration):
     def getHostname(self):
         warnMsg = "on SAP MaxDB it is not possible to enumerate the hostname"
         logger.warn(warnMsg)
+
+    def getStatements(self):
+        warnMsg = "on SAP MaxDB it is not possible to enumerate the SQL statements"
+        logger.warn(warnMsg)
+
+        return []

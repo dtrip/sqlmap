@@ -18,7 +18,6 @@ from lib.core.common import checkFile
 from lib.core.common import dataToDumpFile
 from lib.core.common import dataToStdout
 from lib.core.common import getSafeExString
-from lib.core.common import getText
 from lib.core.common import isListLike
 from lib.core.common import isMultiThreadMode
 from lib.core.common import normalizeUnicode
@@ -29,6 +28,7 @@ from lib.core.common import safeCSValue
 from lib.core.common import unsafeSQLIdentificatorNaming
 from lib.core.compat import xrange
 from lib.core.convert import getBytes
+from lib.core.convert import getText
 from lib.core.convert import getUnicode
 from lib.core.data import conf
 from lib.core.data import kb
@@ -187,6 +187,9 @@ class Dump(object):
 
     def users(self, users):
         self.lister("database management system users", users, content_type=CONTENT_TYPE.USERS)
+
+    def statements(self, statements):
+        self.lister("SQL statements", statements, content_type=CONTENT_TYPE.STATEMENTS)
 
     def userSettings(self, header, userSettings, subHeader, content_type=None):
         self._areAdmins = set()
@@ -465,8 +468,7 @@ class Dump(object):
                                 shutil.copyfile(dumpFileName, candidate)
                             except IOError:
                                 pass
-                            finally:
-                                break
+                            break
                         else:
                             count += 1
 

@@ -7,13 +7,11 @@ See the file 'LICENSE' for copying permission
 
 import copy
 import logging
-import os
 import random
 import re
 import socket
 import subprocess
 import sys
-import tempfile
 import time
 
 from extra.beep.beep import beep
@@ -33,7 +31,6 @@ from lib.core.common import hashDBRetrieve
 from lib.core.common import hashDBWrite
 from lib.core.common import intersect
 from lib.core.common import listToStrValue
-from lib.core.common import openFile
 from lib.core.common import parseFilePaths
 from lib.core.common import popValue
 from lib.core.common import pushValue
@@ -44,18 +41,15 @@ from lib.core.common import showStaticWords
 from lib.core.common import singleTimeLogMessage
 from lib.core.common import singleTimeWarnMessage
 from lib.core.common import unArrayizeValue
-from lib.core.common import urlencode
 from lib.core.common import wasLastResponseDBMSError
 from lib.core.common import wasLastResponseHTTPError
 from lib.core.compat import xrange
 from lib.core.convert import getUnicode
-from lib.core.defaults import defaults
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
 from lib.core.datatype import AttribDict
 from lib.core.datatype import InjectionDict
-from lib.core.decorators import cachedmethod
 from lib.core.decorators import stackedmethod
 from lib.core.dicts import FROM_DUMMY_TABLE
 from lib.core.enums import DBMS
@@ -63,7 +57,6 @@ from lib.core.enums import HASHDB_KEYS
 from lib.core.enums import HEURISTIC_TEST
 from lib.core.enums import HTTP_HEADER
 from lib.core.enums import HTTPMETHOD
-from lib.core.enums import MKSTEMP_PREFIX
 from lib.core.enums import NOTE
 from lib.core.enums import NULLCONNECTION
 from lib.core.enums import PAYLOAD
@@ -81,7 +74,6 @@ from lib.core.settings import CANDIDATE_SENTENCE_MIN_LENGTH
 from lib.core.settings import CHECK_INTERNET_ADDRESS
 from lib.core.settings import CHECK_INTERNET_VALUE
 from lib.core.settings import DEFAULT_GET_POST_DELIMITER
-from lib.core.settings import DEV_EMAIL_ADDRESS
 from lib.core.settings import DUMMY_NON_SQLI_CHECK_APPENDIX
 from lib.core.settings import FI_ERROR_REGEX
 from lib.core.settings import FORMAT_EXCEPTION_STRINGS
@@ -252,18 +244,18 @@ def checkSqlInjection(place, parameter, value):
             # Skip tests if title, vector or DBMS is not included by the
             # given test filter
             if conf.testFilter and not any(conf.testFilter in str(item) or re.search(conf.testFilter, str(item), re.I) for item in (test.title, test.vector, payloadDbms)):
-                    debugMsg = "skipping test '%s' because its " % title
-                    debugMsg += "name/vector/DBMS is not included by the given filter"
-                    logger.debug(debugMsg)
-                    continue
+                debugMsg = "skipping test '%s' because its " % title
+                debugMsg += "name/vector/DBMS is not included by the given filter"
+                logger.debug(debugMsg)
+                continue
 
             # Skip tests if title, vector or DBMS is included by the
             # given skip filter
             if conf.testSkip and any(conf.testSkip in str(item) or re.search(conf.testSkip, str(item), re.I) for item in (test.title, test.vector, payloadDbms)):
-                    debugMsg = "skipping test '%s' because its " % title
-                    debugMsg += "name/vector/DBMS is included by the given skip filter"
-                    logger.debug(debugMsg)
-                    continue
+                debugMsg = "skipping test '%s' because its " % title
+                debugMsg += "name/vector/DBMS is included by the given skip filter"
+                logger.debug(debugMsg)
+                continue
 
             if payloadDbms is not None:
                 # Skip DBMS-specific test if it does not match the user's
@@ -520,7 +512,7 @@ def checkSqlInjection(place, parameter, value):
 
                                     if ratio == 1.0:
                                         continue
-                                except MemoryError:
+                                except (MemoryError, OverflowError):
                                     pass
 
                             kb.prevFalsePage = falsePage
@@ -569,7 +561,7 @@ def checkSqlInjection(place, parameter, value):
                                         candidates = trueSet - falseSet - errorSet
 
                                         if candidates:
-                                            candidates = sorted(candidates, key=lambda _: len(_))
+                                            candidates = sorted(candidates, key=len)
                                             for candidate in candidates:
                                                 if re.match(r"\A[\w.,! ]+\Z", candidate) and ' ' in candidate and candidate.strip() and len(candidate) > CANDIDATE_SENTENCE_MIN_LENGTH:
                                                     conf.string = candidate
@@ -603,7 +595,7 @@ def checkSqlInjection(place, parameter, value):
                                         candidates = filterNone(_.strip() if _.strip() in trueRawResponse and _.strip() not in falseRawResponse else None for _ in (trueSet - falseSet - errorSet))
 
                                         if candidates:
-                                            candidates = sorted(candidates, key=lambda _: len(_))
+                                            candidates = sorted(candidates, key=len)
                                             for candidate in candidates:
                                                 if re.match(r"\A\w+\Z", candidate):
                                                     break
@@ -617,7 +609,7 @@ def checkSqlInjection(place, parameter, value):
                                             candidates = filterNone(_.strip() if _.strip() in falseRawResponse and _.strip() not in trueRawResponse else None for _ in (falseSet - trueSet))
 
                                             if candidates:
-                                                candidates = sorted(candidates, key=lambda _: len(_))
+                                                candidates = sorted(candidates, key=len)
                                                 for candidate in candidates:
                                                     if re.match(r"\A\w+\Z", candidate):
                                                         break
@@ -1392,7 +1384,7 @@ def checkWaf():
     conf.timeout = IDS_WAF_CHECK_TIMEOUT
 
     try:
-        retVal = (Request.queryPage(place=place, value=value, getRatioValue=True, noteResponseTime=False, silent=True, disableTampering=True)[1] or 0) < IDS_WAF_CHECK_RATIO
+        retVal = (Request.queryPage(place=place, value=value, getRatioValue=True, noteResponseTime=False, silent=True, raise404=False, disableTampering=True)[1] or 0) < IDS_WAF_CHECK_RATIO
     except SqlmapConnectionException:
         retVal = True
     finally:
@@ -1402,116 +1394,24 @@ def checkWaf():
         kb.resendPostOnRedirect = popValue()
         kb.redirectChoice = popValue()
 
-    if retVal:
-        warnMsg = "heuristics detected that the target "
-        warnMsg += "is protected by some kind of WAF/IPS"
-        logger.critical(warnMsg)
-
-        if not conf.identifyWaf:
-            message = "do you want sqlmap to try to detect backend "
-            message += "WAF/IPS? [y/N] "
-
-            if readInput(message, default='N', boolean=True):
-                conf.identifyWaf = True
-
-        if conf.timeout == defaults.timeout:
-            logger.warning("dropping timeout to %d seconds (i.e. '--timeout=%d')" % (IDS_WAF_CHECK_TIMEOUT, IDS_WAF_CHECK_TIMEOUT))
-            conf.timeout = IDS_WAF_CHECK_TIMEOUT
-
     hashDBWrite(HASHDB_KEYS.CHECK_WAF_RESULT, retVal, True)
 
-    return retVal
-
-@stackedmethod
-def identifyWaf():
-    if not conf.identifyWaf:
-        return None
-
-    if not kb.wafFunctions:
-        setWafFunctions()
-
-    kb.testMode = True
-
-    infoMsg = "using WAF scripts to detect "
-    infoMsg += "backend WAF/IPS protection"
-    logger.info(infoMsg)
-
-    @cachedmethod
-    def _(*args, **kwargs):
-        page, headers, code = None, None, None
-        try:
-            pushValue(kb.redirectChoice)
-            pushValue(kb.resendPostOnRedirect)
-
-            kb.redirectChoice = REDIRECTION.YES
-            kb.resendPostOnRedirect = True
-
-            if kwargs.get("get"):
-                kwargs["get"] = urlencode(kwargs["get"])
-            kwargs["raise404"] = False
-            kwargs["silent"] = True
-            kwargs["finalCode"] = True
-
-            page, headers, code = Request.getPage(*args, **kwargs)
-        except Exception:
-            pass
-        finally:
-            kb.resendPostOnRedirect = popValue()
-            kb.redirectChoice = popValue()
-
-        return page or "", headers or {}, code
-
-    retVal = []
-
-    for function, product in kb.wafFunctions:
-        if retVal and "unknown" in product.lower():
-            continue
-
-        try:
-            logger.debug("checking for WAF/IPS product '%s'" % product)
-            found = function(_)
-        except Exception as ex:
-            errMsg = "exception occurred while running "
-            errMsg += "WAF script for '%s' ('%s')" % (product, getSafeExString(ex))
-            logger.critical(errMsg)
-
-            found = False
-
-        if found:
-            errMsg = "WAF/IPS identified as '%s'" % product
-            logger.critical(errMsg)
-
-            retVal.append(product)
-
     if retVal:
-        if kb.wafSpecificResponse and "You don't have permission to access" not in kb.wafSpecificResponse and len(retVal) == 1 and "unknown" in retVal[0].lower():
-            handle, filename = tempfile.mkstemp(prefix=MKSTEMP_PREFIX.SPECIFIC_RESPONSE)
-            os.close(handle)
-            with openFile(filename, "w+b") as f:
-                f.write(kb.wafSpecificResponse)
-
-            message = "WAF/IPS specific response can be found in '%s'. " % filename
-            message += "If you know the details on used protection please "
-            message += "report it along with specific response "
-            message += "to '%s'" % DEV_EMAIL_ADDRESS
-            logger.warn(message)
+        if not kb.identifiedWafs:
+            warnMsg = "heuristics detected that the target "
+            warnMsg += "is protected by some kind of WAF/IPS"
+            logger.critical(warnMsg)
 
         message = "are you sure that you want to "
-        message += "continue with further target testing? [y/N] "
-        choice = readInput(message, default='N', boolean=True)
-
-        if not conf.tamper:
-            warnMsg = "please consider usage of tamper scripts (option '--tamper')"
-            singleTimeWarnMessage(warnMsg)
+        message += "continue with further target testing? [Y/n] "
+        choice = readInput(message, default='Y', boolean=True)
 
         if not choice:
             raise SqlmapUserQuitException
-    else:
-        warnMsg = "WAF/IPS product hasn't been identified"
-        logger.warn(warnMsg)
-
-    kb.testType = None
-    kb.testMode = False
+        else:
+            if not conf.tamper:
+                warnMsg = "please consider usage of tamper scripts (option '--tamper')"
+                singleTimeWarnMessage(warnMsg)
 
     return retVal
 
@@ -1665,7 +1565,4 @@ def checkInternet():
     return CHECK_INTERNET_VALUE in (content or "")
 
 def setVerbosity():  # Cross-referenced function
-    raise NotImplementedError
-
-def setWafFunctions():  # Cross-referenced function
     raise NotImplementedError

@@ -17,7 +17,7 @@ from optparse import OptionGroup
 from optparse import OptionParser
 from optparse import SUPPRESS_HELP
 
-from lib.core.common import checkDeprecatedOptions
+from lib.core.common import checkObsoleteOptions
 from lib.core.common import checkSystemEncoding
 from lib.core.common import dataToStdout
 from lib.core.common import expandMnemonics
@@ -417,6 +417,9 @@ def cmdLineParser(argv=None):
         enumeration.add_option("--comments", dest="getComments", action="store_true",
                                help="Check for DBMS comments during enumeration")
 
+        enumeration.add_option("--statements", dest="getStatements", action="store_true",
+                               help="Retrieve SQL statements being run on DBMS")
+
         enumeration.add_option("-D", dest="db",
                                help="DBMS database to enumerate")
 
@@ -721,9 +724,6 @@ def cmdLineParser(argv=None):
         parser.add_option("--force-pivoting", dest="forcePivoting", action="store_true",
                           help=SUPPRESS_HELP)
 
-        parser.add_option("--force-threads", dest="forceThreads", action="store_true",
-                          help=SUPPRESS_HELP)
-
         parser.add_option("--smoke-test", dest="smokeTest", action="store_true",
                           help=SUPPRESS_HELP)
 
@@ -792,7 +792,7 @@ def cmdLineParser(argv=None):
             _.append(getUnicode(arg, encoding=sys.stdin.encoding))
 
         argv = _
-        checkDeprecatedOptions(argv)
+        checkObsoleteOptions(argv)
 
         prompt = "--sqlmap-shell" in argv
 

@@ -68,7 +68,7 @@ from lib.core.decorators import cachedmethod
 from lib.core.defaults import defaults
 from lib.core.dicts import DBMS_DICT
 from lib.core.dicts import DEFAULT_DOC_ROOTS
-from lib.core.dicts import DEPRECATED_OPTIONS
+from lib.core.dicts import OBSOLETE_OPTIONS
 from lib.core.dicts import SQL_STATEMENTS
 from lib.core.enums import ADJUST_TIME_DELAY
 from lib.core.enums import CONTENT_STATUS
@@ -173,6 +173,7 @@ from lib.core.settings import URLENCODE_CHAR_LIMIT
 from lib.core.settings import URLENCODE_FAILSAFE_CHARS
 from lib.core.settings import USER_AGENT_ALIASES
 from lib.core.settings import VERSION_STRING
+from lib.core.settings import ZIP_HEADER
 from lib.core.settings import WEBSCARAB_SPLITTER
 from lib.core.threads import getCurrentThreadData
 from lib.utils.sqlalchemy import _sqlalchemy
@@ -327,8 +328,7 @@ class Format(object):
         else:
             return infoStr.lstrip()
 
-class Backend:
-    # Set methods
+class Backend(object):
     @staticmethod
     def setDbms(dbms):
         dbms = aliasToDbmsEnum(dbms)
@@ -1215,6 +1215,18 @@ def checkPipedInput():
 
     return not os.isatty(sys.stdin.fileno())
 
+def isZipFile(filename):
+    """
+    Checks if file contains zip compressed content
+
+    >>> isZipFile(paths.WORDLIST)
+    True
+    """
+
+    checkFile(filename)
+
+    return openFile(filename, "rb", encoding=None).read(len(ZIP_HEADER)) == ZIP_HEADER
+
 def checkFile(filename, raiseOnError=True):
     """
     Checks for file existence and readability
@@ -1314,17 +1326,41 @@ def setPaths(rootPath):
     paths.SQLMAP_ROOT_PATH = rootPath
 
     # sqlmap paths
+    paths.SQLMAP_DATA_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "data")
     paths.SQLMAP_EXTRAS_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "extra")
-    paths.SQLMAP_PROCS_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "procs")
-    paths.SQLMAP_SHELL_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "shell")
     paths.SQLMAP_SETTINGS_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "lib", "core", "settings.py")
     paths.SQLMAP_TAMPER_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "tamper")
     paths.SQLMAP_WAF_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "waf")
-    paths.SQLMAP_TXT_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "txt")
-    paths.SQLMAP_UDF_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "udf")
-    paths.SQLMAP_XML_PATH = os.path.join(paths.SQLMAP_ROOT_PATH, "xml")
+
+    paths.SQLMAP_PROCS_PATH = os.path.join(paths.SQLMAP_DATA_PATH, "procs")
+    paths.SQLMAP_SHELL_PATH = os.path.join(paths.SQLMAP_DATA_PATH, "shell")
+    paths.SQLMAP_TXT_PATH = os.path.join(paths.SQLMAP_DATA_PATH, "txt")
+    paths.SQLMAP_UDF_PATH = os.path.join(paths.SQLMAP_DATA_PATH, "udf")
+    paths.SQLMAP_XML_PATH = os.path.join(paths.SQLMAP_DATA_PATH, "xml")
     paths.SQLMAP_XML_BANNER_PATH = os.path.join(paths.SQLMAP_XML_PATH, "banner")
     paths.SQLMAP_XML_PAYLOADS_PATH = os.path.join(paths.SQLMAP_XML_PATH, "payloads")
+
+    # sqlmap files
+    paths.COMMON_COLUMNS = os.path.join(paths.SQLMAP_TXT_PATH, "common-columns.txt")
+    paths.COMMON_TABLES = os.path.join(paths.SQLMAP_TXT_PATH, "common-tables.txt")
+    paths.COMMON_OUTPUTS = os.path.join(paths.SQLMAP_TXT_PATH, 'common-outputs.txt')
+    paths.SQL_KEYWORDS = os.path.join(paths.SQLMAP_TXT_PATH, "keywords.txt")
+    paths.SMALL_DICT = os.path.join(paths.SQLMAP_TXT_PATH, "smalldict.txt")
+    paths.USER_AGENTS = os.path.join(paths.SQLMAP_TXT_PATH, "user-agents.txt")
+    paths.WORDLIST = os.path.join(paths.SQLMAP_TXT_PATH, "wordlist.tx_")
+    paths.ERRORS_XML = os.path.join(paths.SQLMAP_XML_PATH, "errors.xml")
+    paths.BOUNDARIES_XML = os.path.join(paths.SQLMAP_XML_PATH, "boundaries.xml")
+    paths.LIVE_TESTS_XML = os.path.join(paths.SQLMAP_XML_PATH, "livetests.xml")
+    paths.QUERIES_XML = os.path.join(paths.SQLMAP_XML_PATH, "queries.xml")
+    paths.GENERIC_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "generic.xml")
+    paths.MSSQL_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "mssql.xml")
+    paths.MYSQL_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "mysql.xml")
+    paths.ORACLE_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "oracle.xml")
+    paths.PGSQL_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "postgresql.xml")
+
+    for path in paths.values():
+        if any(path.endswith(_) for _ in (".txt", ".xml", ".tx_")):
+            checkFile(path)
 
     if IS_WIN:
         if os.getenv("LOCALAPPDATA"):
@@ -1347,28 +1383,6 @@ def setPaths(rootPath):
     paths.SQL_SHELL_HISTORY = os.path.join(paths.SQLMAP_HISTORY_PATH, "sql.hst")
     paths.SQLMAP_SHELL_HISTORY = os.path.join(paths.SQLMAP_HISTORY_PATH, "sqlmap.hst")
     paths.GITHUB_HISTORY = os.path.join(paths.SQLMAP_HISTORY_PATH, "github.hst")
-
-    # sqlmap files
-    paths.COMMON_COLUMNS = os.path.join(paths.SQLMAP_TXT_PATH, "common-columns.txt")
-    paths.COMMON_TABLES = os.path.join(paths.SQLMAP_TXT_PATH, "common-tables.txt")
-    paths.COMMON_OUTPUTS = os.path.join(paths.SQLMAP_TXT_PATH, 'common-outputs.txt')
-    paths.SQL_KEYWORDS = os.path.join(paths.SQLMAP_TXT_PATH, "keywords.txt")
-    paths.SMALL_DICT = os.path.join(paths.SQLMAP_TXT_PATH, "smalldict.txt")
-    paths.USER_AGENTS = os.path.join(paths.SQLMAP_TXT_PATH, "user-agents.txt")
-    paths.WORDLIST = os.path.join(paths.SQLMAP_TXT_PATH, "wordlist.zip")
-    paths.ERRORS_XML = os.path.join(paths.SQLMAP_XML_PATH, "errors.xml")
-    paths.BOUNDARIES_XML = os.path.join(paths.SQLMAP_XML_PATH, "boundaries.xml")
-    paths.LIVE_TESTS_XML = os.path.join(paths.SQLMAP_XML_PATH, "livetests.xml")
-    paths.QUERIES_XML = os.path.join(paths.SQLMAP_XML_PATH, "queries.xml")
-    paths.GENERIC_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "generic.xml")
-    paths.MSSQL_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "mssql.xml")
-    paths.MYSQL_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "mysql.xml")
-    paths.ORACLE_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "oracle.xml")
-    paths.PGSQL_XML = os.path.join(paths.SQLMAP_XML_BANNER_PATH, "postgresql.xml")
-
-    for path in paths.values():
-        if any(path.endswith(_) for _ in (".txt", ".xml", ".zip")):
-            checkFile(path)
 
 def weAreFrozen():
     """
@@ -1462,7 +1476,7 @@ def parseTargetDirect():
 
                 if dbmsName in (DBMS.MSSQL, DBMS.SYBASE):
                     __import__("_mssql")
-                    import pymssql
+                    pymssql = __import__("pymssql")
 
                     if not hasattr(pymssql, "__version__") or pymssql.__version__ < "1.0.2":
                         errMsg = "'%s' third-party library must be " % data[1]
@@ -2314,22 +2328,21 @@ def initCommonOutputs():
     kb.commonOutputs = {}
     key = None
 
-    with openFile(paths.COMMON_OUTPUTS, 'r') as f:
-        for line in f:
-            if line.find('#') != -1:
-                line = line[:line.find('#')]
+    for line in openFile(paths.COMMON_OUTPUTS, 'r'):
+        if line.find('#') != -1:
+            line = line[:line.find('#')]
 
-            line = line.strip()
+        line = line.strip()
 
-            if len(line) > 1:
-                if line.startswith('[') and line.endswith(']'):
-                    key = line[1:-1]
-                elif key:
-                    if key not in kb.commonOutputs:
-                        kb.commonOutputs[key] = set()
+        if len(line) > 1:
+            if line.startswith('[') and line.endswith(']'):
+                key = line[1:-1]
+            elif key:
+                if key not in kb.commonOutputs:
+                    kb.commonOutputs[key] = set()
 
-                    if line not in kb.commonOutputs[key]:
-                        kb.commonOutputs[key].add(line)
+                if line not in kb.commonOutputs[key]:
+                    kb.commonOutputs[key].add(line)
 
 def getFileItems(filename, commentPrefix='#', unicoded=True, lowercase=False, unique=False):
     """
@@ -2507,9 +2520,10 @@ def commonFinderOnly(initial, sequence):
     Returns parts of sequence which start with the given initial string
 
     >>> commonFinderOnly("abcd", ["abcdefg", "foobar", "abcde"])
-    ['abcdefg', 'abcde']
+    'abcde'
     """
-    return longestCommonPrefix([_ for _ in sequence if _.startswith(initial)])
+
+    return longestCommonPrefix(*[_ for _ in sequence if _.startswith(initial)])
 
 def pushValue(value):
     """
@@ -2626,7 +2640,9 @@ def extractErrorMessage(page):
     """
     Returns reported error message from page if it founds one
 
-    >>> extractErrorMessage(u'<html><title>Test</title>\\n<b>Warning</b>: oci_parse() [function.oci-parse]: ORA-01756: quoted string not properly terminated<br><p>Only a test page</p></html>') == u'oci_parse() [function.oci-parse]: ORA-01756: quoted string not properly terminated'
+    >>> getText(extractErrorMessage(u'<html><title>Test</title>\\n<b>Warning</b>: oci_parse() [function.oci-parse]: ORA-01756: quoted string not properly terminated<br><p>Only a test page</p></html>') )
+    'oci_parse() [function.oci-parse]: ORA-01756: quoted string not properly terminated'
+    >>> extractErrorMessage('Warning: This is only a dummy foobar test') is None
     True
     """
 
@@ -2637,8 +2653,10 @@ def extractErrorMessage(page):
             match = re.search(regex, page, re.IGNORECASE)
 
             if match:
-                retVal = htmlUnescape(match.group("result")).replace("<br>", "\n").strip()
-                break
+                candidate = htmlUnescape(match.group("result")).replace("<br>", "\n").strip()
+                if re.search(r"\b([a-z]+ ){5}", candidate) is None:  # check for legitimate (e.g. Warning:...) text
+                    retVal = candidate
+                    break
 
     return retVal
 
@@ -3527,7 +3545,7 @@ def checkIntegrity():
     retVal = True
 
     baseTime = os.path.getmtime(paths.SQLMAP_SETTINGS_PATH) + 3600  # First hour free parking :)
-    for root, dirnames, filenames in os.walk(paths.SQLMAP_ROOT_PATH):
+    for root, _, filenames in os.walk(paths.SQLMAP_ROOT_PATH):
         for filename in filenames:
             if re.search(r"(\.py|\.xml|_)\Z", filename):
                 filepath = os.path.join(root, filename)
@@ -3902,7 +3920,7 @@ def normalizeUnicode(value, charset=string.printable[:string.printable.find(' ')
 
     # Reference: http://www.peterbe.com/plog/unicode-to-ascii
 
-    >>> normalizeUnicode(u'\u0161u\u0107uraj') == u'sucuraj'
+    >>> normalizeUnicode(u'\\u0161u\\u0107uraj') == u'sucuraj'
     True
     >>> normalizeUnicode(getUnicode(decodeHex("666f6f00626172"))) == u'foobar'
     True
@@ -4077,7 +4095,7 @@ def expandMnemonics(mnemonics, parser, args):
                 debugMsg = "mnemonic '%s' resolved to %s). " % (name, found)
                 logger.debug(debugMsg)
             else:
-                found = sorted(options.keys(), key=lambda x: len(x))[0]
+                found = sorted(options.keys(), key=len)[0]
                 warnMsg = "detected ambiguity (mnemonic '%s' can be resolved to any of: %s). " % (name, ", ".join("'%s'" % key for key in options))
                 warnMsg += "Resolved to shortest of those ('%s')" % found
                 logger.warn(warnMsg)
@@ -4298,9 +4316,9 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
     True
     """
 
-    class _(six.StringIO):
+    class _(six.StringIO, object):
         def __init__(self, content, url):
-            six.StringIO.__init__(self, content)
+            super(_, self).__init__(content)
             self._url = url
 
         def geturl(self):
@@ -4442,17 +4460,17 @@ def getHostHeader(url):
 
     return retVal
 
-def checkDeprecatedOptions(args):
+def checkObsoleteOptions(args):
     """
-    Checks for deprecated options
+    Checks for obsolete options
     """
 
     for _ in args:
         _ = _.split('=')[0].strip()
-        if _ in DEPRECATED_OPTIONS:
-            errMsg = "switch/option '%s' is deprecated" % _
-            if DEPRECATED_OPTIONS[_]:
-                errMsg += " (hint: %s)" % DEPRECATED_OPTIONS[_]
+        if _ in OBSOLETE_OPTIONS:
+            errMsg = "switch/option '%s' is obsolete" % _
+            if OBSOLETE_OPTIONS[_]:
+                errMsg += " (hint: %s)" % OBSOLETE_OPTIONS[_]
             raise SqlmapSyntaxException(errMsg)
 
 def checkSystemEncoding():
@@ -5024,7 +5042,6 @@ def parseRequestFile(reqFile, checkParams=True):
 def getSafeExString(ex, encoding=None):
     """
     Safe way how to get the proper exception represtation as a string
-    (Note: errors to be avoided: 1) "%s" % Exception(u'\u0161') and 2) "%s" % str(Exception(u'\u0161'))
 
     >>> getSafeExString(SqlmapBaseException('foobar')) == 'foobar'
     True

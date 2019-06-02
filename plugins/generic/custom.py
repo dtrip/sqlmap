@@ -26,7 +26,7 @@ from lib.core.shell import autoCompletion
 from lib.request import inject
 from thirdparty.six.moves import input as _input
 
-class Custom:
+class Custom(object):
     """
     This class defines custom enumeration functionalities for plugins.
     """
@@ -54,11 +54,11 @@ class Custom:
 
                 return output
             elif not isStackingAvailable() and not conf.direct:
-                    warnMsg = "execution of non-query SQL statements is only "
-                    warnMsg += "available when stacked queries are supported"
-                    logger.warn(warnMsg)
+                warnMsg = "execution of non-query SQL statements is only "
+                warnMsg += "available when stacked queries are supported"
+                logger.warn(warnMsg)
 
-                    return None
+                return None
             else:
                 if sqlType:
                     debugMsg = "executing %s query: '%s'" % (sqlType if sqlType is not None else "SQL", query)

@@ -236,23 +236,8 @@ class Connect(object):
         the target URL page content
         """
 
-        start = time.time()
-
-        if isinstance(conf.delay, (int, float)) and conf.delay > 0:
-            time.sleep(conf.delay)
-
         if conf.offline:
             return None, None, None
-        elif conf.dummy or conf.murphyRate and randomInt() % conf.murphyRate == 0:
-            if conf.murphyRate:
-                time.sleep(randomInt() % (MAX_MURPHY_SLEEP_TIME + 1))
-
-            return randomStr(int(randomInt()), alphabet=[_unichr(_) for _ in xrange(256)]), None, None if not conf.murphyRate else randomInt(3)
-
-        threadData = getCurrentThreadData()
-        with kb.locks.request:
-            kb.requestCounter += 1
-            threadData.lastRequestUID = kb.requestCounter
 
         url = kwargs.get("url", None) or conf.url
         get = kwargs.get("get", None)
@@ -278,15 +263,36 @@ class Connect(object):
         finalCode = kwargs.get("finalCode", False)
         chunked = kwargs.get("chunked", False) or conf.chunked
 
+        start = time.time()
+
+        if isinstance(conf.delay, (int, float)) and conf.delay > 0:
+            time.sleep(conf.delay)
+
+        threadData = getCurrentThreadData()
+        with kb.locks.request:
+            kb.requestCounter += 1
+            threadData.lastRequestUID = kb.requestCounter
+
+        if conf.dummy or conf.murphyRate and randomInt() % conf.murphyRate == 0:
+            if conf.murphyRate:
+                time.sleep(randomInt() % (MAX_MURPHY_SLEEP_TIME + 1))
+
+            page, headers, code = randomStr(int(randomInt()), alphabet=[_unichr(_) for _ in xrange(256)]), None, None if not conf.murphyRate else randomInt(3)
+
+            threadData.lastPage = page
+            threadData.lastCode = code
+
+            return page, headers, code
+
         if multipart:
             post = multipart
+        else:
+            if not post:
+                chunked = False
 
-        if not post:
-            chunked = False
-
-        elif chunked:
-            post = _urllib.parse.unquote(post)
-            post = chunkSplitPostData(post)
+            elif chunked:
+                post = _urllib.parse.unquote(post)
+                post = chunkSplitPostData(post)
 
         websocket_ = url.lower().startswith("ws")
 
@@ -702,7 +708,7 @@ class Connect(object):
                 warnMsg = "connection reset to the target URL"
             elif "URLError" in tbMsg or "error" in tbMsg:
                 warnMsg = "unable to connect to the target URL"
-                match = re.search(r"Errno \d+\] ([^>]+)", tbMsg)
+                match = re.search(r"Errno \d+\] ([^>\n]+)", tbMsg)
                 if match:
                     warnMsg += " ('%s')" % match.group(1).strip()
             elif "NTLM" in tbMsg:
@@ -789,7 +795,7 @@ class Connect(object):
 
             socket.setdefaulttimeout(conf.timeout)
 
-        processResponse(page, responseHeaders, status)
+        processResponse(page, responseHeaders, code, status)
 
         if not skipLogTraffic:
             if conn and getattr(conn, "redurl", None):
@@ -1076,11 +1082,11 @@ class Connect(object):
             if token:
                 token.value = token.value.strip("'\"")
 
-                for place in (PLACE.GET, PLACE.POST):
-                    if place in conf.parameters:
-                        if place == PLACE.GET and get:
+                for candidate in (PLACE.GET, PLACE.POST):
+                    if candidate in conf.parameters:
+                        if candidate == PLACE.GET and get:
                             get = _adjustParameter(get, token.name, token.value)
-                        elif place == PLACE.POST and post:
+                        elif candidate == PLACE.POST and post:
                             post = _adjustParameter(post, token.name, token.value)
 
                 for i in xrange(len(conf.httpHeaders)):

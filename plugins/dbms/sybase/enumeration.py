@@ -53,7 +53,7 @@ class Enumeration(GenericEnumeration):
 
         return kb.data.cachedUsers
 
-    def getPrivileges(self, *args):
+    def getPrivileges(self, *args, **kwargs):
         warnMsg = "on Sybase it is not possible to fetch "
         warnMsg += "database users privileges, sqlmap will check whether "
         warnMsg += "or not the database users are database administrators"
@@ -103,7 +103,7 @@ class Enumeration(GenericEnumeration):
             retVal = pivotDumpTable("(%s) AS %s" % (query, kb.aliasName), ['%s.name' % kb.aliasName], blind=blind, alias=kb.aliasName)
 
             if retVal:
-                kb.data.cachedDbs = six.itervalues(retVal[0]).next()
+                kb.data.cachedDbs = next(six.itervalues(retVal[0]))
                 break
 
         if kb.data.cachedDbs:
@@ -147,7 +147,7 @@ class Enumeration(GenericEnumeration):
                 retVal = pivotDumpTable("(%s) AS %s" % (query, kb.aliasName), ['%s.name' % kb.aliasName], blind=blind, alias=kb.aliasName)
 
                 if retVal:
-                    for table in six.itervalues(retVal[0]).next():
+                    for table in next(six.itervalues(retVal[0])):
                         if db not in kb.data.cachedTables:
                             kb.data.cachedTables[db] = [table]
                         else:
@@ -316,3 +316,9 @@ class Enumeration(GenericEnumeration):
     def getHostname(self):
         warnMsg = "on Sybase it is not possible to enumerate the hostname"
         logger.warn(warnMsg)
+
+    def getStatements(self):
+        warnMsg = "on Sybase it is not possible to enumerate the SQL statements"
+        logger.warn(warnMsg)
+
+        return []

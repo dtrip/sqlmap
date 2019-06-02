@@ -18,7 +18,7 @@ from lib.core.enums import OS
 from thirdparty.six import unichr as _unichr
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.3.5.128"
+VERSION = "1.3.6.5"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -107,6 +107,9 @@ PRECONNECT_CANDIDATE_TIMEOUT = 10
 
 # Servers known to cause issue with pre-connection mechanism (because of lack of multi-threaded support)
 PRECONNECT_INCOMPATIBLE_SERVERS = ("SimpleHTTP", "BaseHTTP")
+
+# Identify WAF/IPS inside limited number of responses (Note: for optimization purposes)
+IDENTYWAF_PARSE_LIMIT = 10
 
 # Maximum sleep time in "Murphy" (testing) mode
 MAX_MURPHY_SLEEP_TIME = 3
@@ -642,6 +645,9 @@ SLOW_ORDER_COUNT_THRESHOLD = 10000
 # Give up on hash recognition if nothing was found in first given number of rows
 HASH_RECOGNITION_QUIT_THRESHOLD = 10000
 
+# Regular expression used for automatic hex conversion and hash cracking of (RAW) binary column values
+HASH_BINARY_COLUMNS_REGEX = r"(?i)pass|psw|hash"
+
 # Maximum number of redirections to any single URL - this is needed because of the state that cookies introduce
 MAX_SINGLE_URL_REDIRECTIONS = 4
 
@@ -782,6 +788,9 @@ LOBLKSIZE = 2048
 
 # Prefix used to mark special variables (e.g. keywords, having special chars, etc.)
 EVALCODE_ENCODED_PREFIX = "EVAL_"
+
+# Reference: https://en.wikipedia.org/wiki/Zip_(file_format)
+ZIP_HEADER = b"\x50\x4b\x03\x04"
 
 # Reference: http://www.cookiecentral.com/faq/#3.5
 NETSCAPE_FORMAT_HEADER_COOKIES = "# Netscape HTTP Cookie File."

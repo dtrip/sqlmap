@@ -16,6 +16,7 @@ import lib.request.connect
 import lib.utils.search
 import lib.utils.sqlalchemy
 import thirdparty.ansistrm.ansistrm
+import thirdparty.chardet.universaldetector
 
 from lib.request.templates import getPageTemplate
 
@@ -28,7 +29,6 @@ from lib.core.common import shellExec
 from lib.core.convert import stdoutEncode
 from lib.core.option import _setHTTPHandlers
 from lib.core.option import setVerbosity
-from lib.core.option import _setWafFunctions
 from lib.core.settings import IS_WIN
 from thirdparty.six.moves import http_client as _http_client
 
@@ -55,6 +55,9 @@ def dirtyPatches():
         _http_client.LineAndFileWrapper._readline = _http_client.LineAndFileWrapper.readline
         _http_client.LineAndFileWrapper.readline = _
 
+    # to prevent too much "guessing" in case of binary data retrieval
+    thirdparty.chardet.universaldetector.MINIMUM_THRESHOLD = 0.90
+
 def resolveCrossReferences():
     """
     Place for cross-reference resolution
@@ -70,7 +73,6 @@ def resolveCrossReferences():
     lib.request.connect.setHTTPHandlers = _setHTTPHandlers
     lib.utils.search.setHTTPHandlers = _setHTTPHandlers
     lib.controller.checks.setVerbosity = setVerbosity
-    lib.controller.checks.setWafFunctions = _setWafFunctions
     lib.utils.sqlalchemy.getSafeExString = getSafeExString
     thirdparty.ansistrm.ansistrm.stdoutEncode = stdoutEncode
 

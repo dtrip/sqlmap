@@ -838,6 +838,7 @@ def _setPreprocessFunctions():
     if conf.preprocess:
         for script in re.split(PARAMETER_SPLITTING_REGEX, conf.preprocess):
             found = False
+            function = None
 
             script = safeFilepathEncode(script.strip())
 
@@ -903,42 +904,6 @@ def _setPreprocessFunctions():
                     errMsg += "should return a tuple '(page, headers, code)' "
                     errMsg += "(Note: find template script at '%s')" % filename
                     raise SqlmapGenericException(errMsg)
-
-def _setWafFunctions():
-    """
-    Loads WAF/IPS detecting functions from script(s)
-    """
-
-    if conf.identifyWaf:
-        for found in glob.glob(os.path.join(paths.SQLMAP_WAF_PATH, "*.py")):
-            dirname, filename = os.path.split(found)
-            dirname = os.path.abspath(dirname)
-
-            if filename == "__init__.py":
-                continue
-
-            debugMsg = "loading WAF script '%s'" % filename[:-3]
-            logger.debug(debugMsg)
-
-            if dirname not in sys.path:
-                sys.path.insert(0, dirname)
-
-            try:
-                if filename[:-3] in sys.modules:
-                    del sys.modules[filename[:-3]]
-                module = __import__(safeFilepathEncode(filename[:-3]))
-            except ImportError as ex:
-                raise SqlmapSyntaxException("cannot import WAF script '%s' (%s)" % (getUnicode(filename[:-3]), getSafeExString(ex)))
-
-            _ = dict(inspect.getmembers(module))
-            if "detect" not in _:
-                errMsg = "missing function 'detect(get_page)' "
-                errMsg += "in WAF script '%s'" % found
-                raise SqlmapGenericException(errMsg)
-            else:
-                kb.wafFunctions.append((_["detect"], _.get("__product__", filename[:-3])))
-
-        kb.wafFunctions = sorted(kb.wafFunctions, key=lambda _: "generic" in _[1].lower())
 
 def _setThreads():
     if not isinstance(conf.threads, int) or conf.threads <= 0:
@@ -1910,6 +1875,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.followSitemapRecursion = None
     kb.forcedDbms = None
     kb.forcePartialUnion = False
+    kb.forceThreads = None
     kb.forceWhere = None
     kb.futileUnion = None
     kb.heavilyDynamic = False
@@ -1926,6 +1892,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.ignoreCasted = None
     kb.ignoreNotFound = False
     kb.ignoreTimeout = False
+    kb.identifiedWafs = set()
     kb.injection = InjectionDict()
     kb.injections = []
     kb.laggingChecked = False
@@ -2006,7 +1973,6 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.tableExistsChoice = None
     kb.uChar = NULL
     kb.unionDuplicates = False
-    kb.wafSpecificResponse = None
     kb.wizardMode = False
     kb.xpCmdshellAvailable = False
 
@@ -2394,10 +2360,6 @@ def _basicOptionValidation():
         errMsg = "option '-d' is incompatible with option '--dbms'"
         raise SqlmapSyntaxException(errMsg)
 
-    if conf.identifyWaf and conf.skipWaf:
-        errMsg = "switch '--identify-waf' is incompatible with switch '--skip-waf'"
-        raise SqlmapSyntaxException(errMsg)
-
     if conf.titles and conf.nullConnection:
         errMsg = "switch '--titles' is incompatible with switch '--null-connection'"
         raise SqlmapSyntaxException(errMsg)
@@ -2630,7 +2592,6 @@ def init():
     _listTamperingFunctions()
     _setTamperingFunctions()
     _setPreprocessFunctions()
-    _setWafFunctions()
     _setTrafficOutputFP()
     _setupHTTPCollector()
     _setHttpChunked()

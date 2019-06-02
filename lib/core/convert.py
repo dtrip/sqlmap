@@ -13,6 +13,7 @@ except:
 import base64
 import binascii
 import codecs
+import collections
 import json
 import re
 import sys
@@ -24,7 +25,6 @@ from lib.core.settings import IS_TTY
 from lib.core.settings import IS_WIN
 from lib.core.settings import NULL
 from lib.core.settings import PICKLE_PROTOCOL
-from lib.core.settings import PYVERSION
 from lib.core.settings import SAFE_HEX_MARKER
 from lib.core.settings import UNICODE_ENCODING
 from thirdparty import six
@@ -75,11 +75,12 @@ def htmlUnescape(value):
     """
     Returns (basic conversion) HTML unescaped value
 
-    >>> htmlUnescape('a&lt;b')
-    'a<b'
+    >>> htmlUnescape('a&lt;b') == 'a<b'
+    True
     """
 
     retVal = value
+
     if value and isinstance(value, six.string_types):
         replacements = (("&lt;", '<'), ("&gt;", '>'), ("&quot;", '"'), ("&nbsp;", ' '), ("&amp;", '&'), ("&apos;", "'"))
         for code, value in replacements:
@@ -89,6 +90,7 @@ def htmlUnescape(value):
             retVal = re.sub(r"&#x([^ ;]+);", lambda match: _unichr(int(match.group(1), 16)), retVal)
         except ValueError:
             pass
+
     return retVal
 
 def singleTimeWarnMessage(message):  # Cross-referenced function
@@ -97,59 +99,13 @@ def singleTimeWarnMessage(message):  # Cross-referenced function
     sys.stdout.flush()
 
 def filterNone(values):  # Cross-referenced function
-    raise NotImplementedError
+    return [_ for _ in values if _] if isinstance(values, collections.Iterable) else values
 
 def isListLike(value):  # Cross-referenced function
     raise NotImplementedError
 
 def shellExec(cmd):  # Cross-referenced function
     raise NotImplementedError
-
-def stdoutEncode(value):
-    value = value or ""
-
-    if IS_WIN and IS_TTY and kb.get("codePage", -1) is None:
-        output = shellExec("chcp")
-        match = re.search(r": (\d{3,})", output or "")
-
-        if match:
-            try:
-                candidate = "cp%s" % match.group(1)
-                codecs.lookup(candidate)
-            except LookupError:
-                pass
-            else:
-                kb.codePage = candidate
-
-        kb.codePage = kb.codePage or ""
-
-    if isinstance(value, six.text_type) and PYVERSION < "3.6":
-        encoding = kb.get("codePage") or sys.stdout.encoding or UNICODE_ENCODING
-
-        while True:
-            try:
-                retVal = value.encode(encoding)
-                break
-            except UnicodeEncodeError as ex:
-                value = value[:ex.start] + "?" + value[ex.end:]
-
-                if IS_WIN and PYVERSION < "3.6":
-                    warnMsg = "cannot properly display (some) Unicode characters "
-                    warnMsg += "inside Windows OS command prompt "
-                    warnMsg += "(https://bugs.python.org/issue1602). All "
-                    warnMsg += "unhandled occurrences will result in "
-                    warnMsg += "replacement with '?' character. Please, find "
-                    warnMsg += "proper character representation inside "
-                    warnMsg += "corresponding output files. "
-                    singleTimeWarnMessage(warnMsg)
-
-        if six.PY3:
-            retVal = getUnicode(retVal, encoding)
-
-    else:
-        retVal = value
-
-    return retVal
 
 def jsonize(data):
     """
@@ -363,5 +319,53 @@ def getText(value):
             retVal = str(retVal)
         except:
             pass
+
+    return retVal
+
+def stdoutEncode(value):
+    """
+    Returns binary representation of a given Unicode value safe for writing to stdout
+    """
+
+    value = value or ""
+
+    if IS_WIN and IS_TTY and kb.get("codePage", -1) is None:
+        output = shellExec("chcp")
+        match = re.search(r": (\d{3,})", output or "")
+
+        if match:
+            try:
+                candidate = "cp%s" % match.group(1)
+                codecs.lookup(candidate)
+            except LookupError:
+                pass
+            else:
+                kb.codePage = candidate
+
+        kb.codePage = kb.codePage or ""
+
+    if isinstance(value, six.text_type):
+        encoding = kb.get("codePage") or sys.stdout.encoding or UNICODE_ENCODING
+
+        while True:
+            try:
+                retVal = value.encode(encoding)
+                break
+            except UnicodeEncodeError as ex:
+                value = value[:ex.start] + "?" * (ex.end - ex.start) + value[ex.end:]
+
+                warnMsg = "cannot properly display (some) Unicode characters "
+                warnMsg += "inside your terminal ('%s') environment. All " % encoding
+                warnMsg += "unhandled occurrences will result in "
+                warnMsg += "replacement with '?' character. Please, find "
+                warnMsg += "proper character representation inside "
+                warnMsg += "corresponding output files"
+                singleTimeWarnMessage(warnMsg)
+
+        if six.PY3:
+            retVal = getUnicode(retVal, encoding)
+
+    else:
+        retVal = value
 
     return retVal

@@ -5,13 +5,15 @@ Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
+from __future__ import division
+
 import binascii
 import functools
 import math
 import os
 import random
-import uuid
 import sys
+import uuid
 
 class WichmannHill(random.Random):
     """

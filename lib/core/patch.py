@@ -9,27 +9,26 @@ import codecs
 
 import lib.controller.checks
 import lib.core.common
-import lib.core.threads
 import lib.core.convert
 import lib.core.option
+import lib.core.threads
 import lib.request.connect
 import lib.utils.search
 import lib.utils.sqlalchemy
 import thirdparty.ansistrm.ansistrm
 import thirdparty.chardet.universaldetector
 
-from lib.request.templates import getPageTemplate
-
 from lib.core.common import filterNone
 from lib.core.common import getSafeExString
 from lib.core.common import isListLike
-from lib.core.common import singleTimeWarnMessage
 from lib.core.common import readInput
 from lib.core.common import shellExec
+from lib.core.common import singleTimeWarnMessage
 from lib.core.convert import stdoutEncode
 from lib.core.option import _setHTTPHandlers
 from lib.core.option import setVerbosity
 from lib.core.settings import IS_WIN
+from lib.request.templates import getPageTemplate
 from thirdparty.six.moves import http_client as _http_client
 
 def dirtyPatches():

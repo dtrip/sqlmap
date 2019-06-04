@@ -5,6 +5,8 @@ Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
+from __future__ import division
+
 import binascii
 import codecs
 import collections
@@ -71,8 +73,8 @@ from lib.core.dicts import DEFAULT_DOC_ROOTS
 from lib.core.dicts import OBSOLETE_OPTIONS
 from lib.core.dicts import SQL_STATEMENTS
 from lib.core.enums import ADJUST_TIME_DELAY
-from lib.core.enums import CONTENT_STATUS
 from lib.core.enums import CHARSET_TYPE
+from lib.core.enums import CONTENT_STATUS
 from lib.core.enums import DBMS
 from lib.core.enums import EXPECTED
 from lib.core.enums import HEURISTIC_TEST
@@ -90,9 +92,9 @@ from lib.core.enums import SORT_ORDER
 from lib.core.exception import SqlmapBaseException
 from lib.core.exception import SqlmapDataException
 from lib.core.exception import SqlmapGenericException
-from lib.core.exception import SqlmapNoneDataException
 from lib.core.exception import SqlmapInstallationException
 from lib.core.exception import SqlmapMissingDependence
+from lib.core.exception import SqlmapNoneDataException
 from lib.core.exception import SqlmapSilentQuitException
 from lib.core.exception import SqlmapSyntaxException
 from lib.core.exception import SqlmapSystemException
@@ -108,9 +110,9 @@ from lib.core.settings import BRUTE_DOC_ROOT_SUFFIXES
 from lib.core.settings import BRUTE_DOC_ROOT_TARGET_MARK
 from lib.core.settings import BURP_REQUEST_REGEX
 from lib.core.settings import BURP_XML_HISTORY_REGEX
-from lib.core.settings import DBMS_DIRECTORY_DICT
 from lib.core.settings import CRAWL_EXCLUDE_EXTENSIONS
 from lib.core.settings import CUSTOM_INJECTION_MARK_CHAR
+from lib.core.settings import DBMS_DIRECTORY_DICT
 from lib.core.settings import DEFAULT_COOKIE_DELIMITER
 from lib.core.settings import DEFAULT_GET_POST_DELIMITER
 from lib.core.settings import DEFAULT_MSSQL_SCHEMA
@@ -929,7 +931,7 @@ def setColor(message, color=None, bold=False, level=None, istty=None):
     retVal = message
     level = level or extractRegexResult(r"\[(?P<result>%s)\]" % '|'.join(_[0] for _ in getPublicTypeMembers(LOGGING_LEVELS)), message)
 
-    if message and IS_TTY or istty:  # colorizing handler
+    if message and (IS_TTY or istty) and not conf.get("disableColoring"):  # colorizing handler
         if bold or color:
             retVal = colored(message, color=color, on_color=None, attrs=("bold",) if bold else None)
         elif level:
@@ -2530,7 +2532,7 @@ def pushValue(value):
     Push value to the stack (thread dependent)
     """
 
-    _ = None
+    exception = None
     success = False
 
     for i in xrange(PUSH_VALUE_EXCEPTION_RETRY_COUNT):
@@ -2539,13 +2541,13 @@ def pushValue(value):
             success = True
             break
         except Exception as ex:
-            _ = ex
+            exception = ex
 
     if not success:
         getCurrentThreadData().valueStack.append(None)
 
-        if _:
-            raise _
+        if exception:
+            raise exception
 
 def popValue():
     """
@@ -5045,6 +5047,8 @@ def getSafeExString(ex, encoding=None):
 
     >>> getSafeExString(SqlmapBaseException('foobar')) == 'foobar'
     True
+    >>> getSafeExString(OSError(0, 'foobar')) == 'OSError: foobar'
+    True
     """
 
     retVal = None
@@ -5053,10 +5057,11 @@ def getSafeExString(ex, encoding=None):
         retVal = ex.message
     elif getattr(ex, "msg", None):
         retVal = ex.msg
-    elif isinstance(ex, (list, tuple)) and len(ex) > 1 and isinstance(ex[1], six.string_types):
-        retVal = ex[1]
-    elif isinstance(ex, (list, tuple)) and len(ex) > 0 and isinstance(ex[0], six.string_types):
-        retVal = ex[0]
+    elif getattr(ex, "args", None):
+        for candidate in ex.args[::-1]:
+            if isinstance(candidate, six.string_types):
+                retVal = candidate
+                break
 
     if retVal is None:
         retVal = str(ex)

@@ -294,7 +294,7 @@ class Connect(object):
                 post = _urllib.parse.unquote(post)
                 post = chunkSplitPostData(post)
 
-        websocket_ = url.lower().startswith("ws")
+        webSocket = url.lower().startswith("ws")
 
         if not _urllib.parse.urlsplit(url).netloc:
             url = _urllib.parse.urljoin(conf.url, url)
@@ -346,8 +346,8 @@ class Connect(object):
                 pass
 
             elif target:
-                if conf.forceSSL and _urllib.parse.urlparse(url).scheme != "https":
-                    url = re.sub(r"(?i)\Ahttp:", "https:", url)
+                if conf.forceSSL:
+                    url = re.sub(r"(?i)\A(http|ws):", r"\g<1>s:", url)
                     url = re.sub(r"(?i):80/", ":443/", url)
 
                 if PLACE.GET in conf.parameters and not get:
@@ -434,7 +434,7 @@ class Connect(object):
 
             post = getBytes(post)
 
-            if websocket_:
+            if webSocket:
                 ws = websocket.WebSocket()
                 ws.settimeout(timeout)
                 ws.connect(url, header=("%s: %s" % _ for _ in headers.items() if _[0] not in ("Host",)), cookie=cookie)  # WebSocket will add Host field of headers automatically

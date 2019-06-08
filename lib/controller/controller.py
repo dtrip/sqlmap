@@ -429,7 +429,7 @@ def start():
 
             if (len(kb.injections) == 0 or (len(kb.injections) == 1 and kb.injections[0].place is None)) and (kb.injection.place is None or kb.injection.parameter is None):
 
-                if not any((conf.string, conf.notString, conf.regexp)) and PAYLOAD.TECHNIQUE.BOOLEAN in conf.tech:
+                if not any((conf.string, conf.notString, conf.regexp)) and PAYLOAD.TECHNIQUE.BOOLEAN in conf.technique:
                     # NOTE: this is not needed anymore, leaving only to display
                     # a warning message to the user in case the page is not stable
                     checkStability()
@@ -533,7 +533,7 @@ def start():
                             infoMsg = "ignoring %sparameter '%s'" % ("%s " % paramType if paramType != parameter else "", parameter)
                             logger.info(infoMsg)
 
-                        elif PAYLOAD.TECHNIQUE.BOOLEAN in conf.tech or conf.skipStatic:
+                        elif PAYLOAD.TECHNIQUE.BOOLEAN in conf.technique or conf.skipStatic:
                             check = checkDynParam(place, parameter, value)
 
                             if not check:
@@ -604,6 +604,14 @@ def start():
                 if kb.vainRun and not conf.multipleTargets:
                     errMsg = "no parameter(s) found for testing in the provided data "
                     errMsg += "(e.g. GET parameter 'id' in 'www.site.com/index.php?id=1')"
+                    if kb.originalPage:
+                        advice = []
+                        if not conf.forms and re.search(r"<form", kb.originalPage) is not None:
+                            advice.append("--forms")
+                        if not conf.crawlDepth and re.search(r"href=[\"']/?\w", kb.originalPage) is not None:
+                            advice.append("--crawl=2")
+                        if advice:
+                            errMsg += ". You are advised to rerun with '%s'" % ' '.join(advice)
                     raise SqlmapNoneDataException(errMsg)
                 else:
                     errMsg = "all tested parameters do not appear to be injectable."
@@ -612,7 +620,7 @@ def start():
                         errMsg += " Try to increase values for '--level'/'--risk' options "
                         errMsg += "if you wish to perform more tests."
 
-                    if isinstance(conf.tech, list) and len(conf.tech) < 5:
+                    if isinstance(conf.technique, list) and len(conf.technique) < 5:
                         errMsg += " Rerun without providing the option '--technique'."
 
                     if not conf.textOnly and kb.originalPage:

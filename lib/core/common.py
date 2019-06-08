@@ -70,6 +70,7 @@ from lib.core.decorators import cachedmethod
 from lib.core.defaults import defaults
 from lib.core.dicts import DBMS_DICT
 from lib.core.dicts import DEFAULT_DOC_ROOTS
+from lib.core.dicts import DEPRECATED_OPTIONS
 from lib.core.dicts import OBSOLETE_OPTIONS
 from lib.core.dicts import SQL_STATEMENTS
 from lib.core.enums import ADJUST_TIME_DELAY
@@ -140,6 +141,7 @@ from lib.core.settings import IS_WIN
 from lib.core.settings import LARGE_OUTPUT_THRESHOLD
 from lib.core.settings import LOCALHOST
 from lib.core.settings import MIN_ENCODED_LEN_CHECK
+from lib.core.settings import MIN_ERROR_PARSING_NON_WRITING_RATIO
 from lib.core.settings import MIN_TIME_RESPONSES
 from lib.core.settings import MIN_VALID_DELAYED_RESPONSE
 from lib.core.settings import NETSCAPE_FORMAT_HEADER_COOKIES
@@ -1539,7 +1541,7 @@ def parseTargetUrl():
         errMsg += "on this platform"
         raise SqlmapGenericException(errMsg)
 
-    if not re.search(r"^https?://", conf.url, re.I) and not re.search(r"^wss?://", conf.url, re.I):
+    if not re.search(r"^(http|ws)s?://", conf.url, re.I):
         if re.search(r":443\b", conf.url):
             conf.url = "https://%s" % conf.url
         else:
@@ -1558,9 +1560,12 @@ def parseTargetUrl():
 
     hostnamePort = urlSplit.netloc.split(":") if not re.search(r"\[.+\]", urlSplit.netloc) else filterNone((re.search(r"\[.+\]", urlSplit.netloc).group(0), re.search(r"\](:(?P<port>\d+))?", urlSplit.netloc).group("port")))
 
-    conf.scheme = (urlSplit.scheme.strip().lower() or "http") if not conf.forceSSL else "https"
+    conf.scheme = (urlSplit.scheme.strip().lower() or "http")
     conf.path = urlSplit.path.strip()
     conf.hostname = hostnamePort[0].strip()
+
+    if conf.forceSSL:
+        conf.scheme = re.sub(r"(?i)\A(http|ws)\Z", r"\g<1>s", conf.scheme)
 
     conf.ipv6 = conf.hostname != conf.hostname.strip("[]")
     conf.hostname = conf.hostname.strip("[]").replace(kb.customInjectionMark, "")
@@ -1583,7 +1588,7 @@ def parseTargetUrl():
         except:
             errMsg = "invalid target URL"
             raise SqlmapSyntaxException(errMsg)
-    elif conf.scheme == "https":
+    elif conf.scheme in ("https", "wss"):
         conf.port = 443
     else:
         conf.port = 80
@@ -2651,12 +2656,15 @@ def extractErrorMessage(page):
     retVal = None
 
     if isinstance(page, six.string_types):
+        if wasLastResponseDBMSError():
+            page = re.sub(r"<[^>]+>", "", page)
+
         for regex in ERROR_PARSING_REGEXES:
             match = re.search(regex, page, re.IGNORECASE)
 
             if match:
                 candidate = htmlUnescape(match.group("result")).replace("<br>", "\n").strip()
-                if re.search(r"\b([a-z]+ ){5}", candidate) is None:  # check for legitimate (e.g. Warning:...) text
+                if (1.0 * len(re.findall(r"[^A-Za-z,. ]", candidate))) / len(candidate) > MIN_ERROR_PARSING_NON_WRITING_RATIO:
                     retVal = candidate
                     break
 
@@ -3180,7 +3188,7 @@ def isTechniqueAvailable(technique):
     >>> kb.injection.data = popValue()
     """
 
-    if conf.tech and isinstance(conf.tech, list) and technique not in conf.tech:
+    if conf.technique and isinstance(conf.technique, list) and technique not in conf.technique:
         return False
     else:
         return getTechniqueData(technique) is not None
@@ -4232,7 +4240,7 @@ def asciifyUrl(url, forceQuote=False):
     """
 
     parts = _urllib.parse.urlsplit(url)
-    if not parts.scheme or not parts.netloc:
+    if not all((parts.scheme, parts.netloc, parts.hostname)):
         # apparently not an url
         return getText(url)
 
@@ -4462,9 +4470,9 @@ def getHostHeader(url):
 
     return retVal
 
-def checkObsoleteOptions(args):
+def checkOldOptions(args):
     """
-    Checks for obsolete options
+    Checks for obsolete/deprecated options
     """
 
     for _ in args:
@@ -4474,6 +4482,11 @@ def checkObsoleteOptions(args):
             if OBSOLETE_OPTIONS[_]:
                 errMsg += " (hint: %s)" % OBSOLETE_OPTIONS[_]
             raise SqlmapSyntaxException(errMsg)
+        elif _ in DEPRECATED_OPTIONS:
+            warnMsg = "switch/option '%s' is deprecated" % _
+            if DEPRECATED_OPTIONS[_]:
+                warnMsg += " (hint: %s)" % DEPRECATED_OPTIONS[_]
+            logger.warn(warnMsg)
 
 def checkSystemEncoding():
     """

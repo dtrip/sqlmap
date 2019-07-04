@@ -1125,6 +1125,20 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
 
     return retVal or ""
 
+def setTechnique(technique):
+    """
+    Thread-safe setting of currently used technique (Note: dealing with cases of per-thread technique switching)
+    """
+
+    getCurrentThreadData().technique = technique
+
+def getTechnique():
+    """
+    Thread-safe getting of currently used technique
+    """
+
+    return getCurrentThreadData().technique or kb.technique
+
 def randomRange(start=0, stop=1000, seed=None):
     """
     Returns random integer value in given range
@@ -1346,6 +1360,7 @@ def setPaths(rootPath):
 
     # sqlmap files
     paths.COMMON_COLUMNS = os.path.join(paths.SQLMAP_TXT_PATH, "common-columns.txt")
+    paths.COMMON_FILES = os.path.join(paths.SQLMAP_TXT_PATH, "common-files.txt")
     paths.COMMON_TABLES = os.path.join(paths.SQLMAP_TXT_PATH, "common-tables.txt")
     paths.COMMON_OUTPUTS = os.path.join(paths.SQLMAP_TXT_PATH, 'common-outputs.txt')
     paths.SQL_KEYWORDS = os.path.join(paths.SQLMAP_TXT_PATH, "keywords.txt")
@@ -2664,7 +2679,7 @@ def extractErrorMessage(page):
 
             if match:
                 candidate = htmlUnescape(match.group("result")).replace("<br>", "\n").strip()
-                if (1.0 * len(re.findall(r"[^A-Za-z,. ]", candidate))) / len(candidate) > MIN_ERROR_PARSING_NON_WRITING_RATIO:
+                if candidate and (1.0 * len(re.findall(r"[^A-Za-z,. ]", candidate)) / len(candidate) > MIN_ERROR_PARSING_NON_WRITING_RATIO):
                     retVal = candidate
                     break
 
@@ -3129,6 +3144,9 @@ def isDBMSVersionAtLeast(minimum):
     False
     >>> isDBMSVersionAtLeast("1.5")
     True
+    >>> kb.dbmsVersion = "MySQL 5.4.3-log4"
+    >>> isDBMSVersionAtLeast("5")
+    True
     >>> kb.dbmsVersion = popValue()
     """
 
@@ -3136,11 +3154,6 @@ def isDBMSVersionAtLeast(minimum):
 
     if not any(isNoneValue(_) for _ in (Backend.getVersion(), minimum)) and Backend.getVersion() != UNKNOWN_DBMS_VERSION:
         version = Backend.getVersion().replace(" ", "").rstrip('.')
-
-        if '.' in version:
-            parts = version.split('.', 1)
-            parts[1] = filterStringValue(parts[1], '[0-9]')
-            version = '.'.join(parts)
 
         correction = 0.0
         if ">=" in version:
@@ -3150,23 +3163,31 @@ def isDBMSVersionAtLeast(minimum):
         elif '<' in version:
             correction = -VERSION_COMPARISON_CORRECTION
 
-        version = float(filterStringValue(version, '[0-9.]')) + correction
+        version = extractRegexResult(r"(?P<result>[0-9][0-9.]*)", version)
 
-        if isinstance(minimum, six.string_types):
-            if '.' in minimum:
-                parts = minimum.split('.', 1)
+        if version:
+            if '.' in version:
+                parts = version.split('.', 1)
                 parts[1] = filterStringValue(parts[1], '[0-9]')
-                minimum = '.'.join(parts)
+                version = '.'.join(parts)
 
-            correction = 0.0
-            if minimum.startswith(">="):
-                pass
-            elif minimum.startswith(">"):
-                correction = VERSION_COMPARISON_CORRECTION
+            version = float(filterStringValue(version, '[0-9.]')) + correction
 
-            minimum = float(filterStringValue(minimum, '[0-9.]')) + correction
+            if isinstance(minimum, six.string_types):
+                if '.' in minimum:
+                    parts = minimum.split('.', 1)
+                    parts[1] = filterStringValue(parts[1], '[0-9]')
+                    minimum = '.'.join(parts)
 
-        retVal = version >= minimum
+                correction = 0.0
+                if minimum.startswith(">="):
+                    pass
+                elif minimum.startswith(">"):
+                    correction = VERSION_COMPARISON_CORRECTION
+
+                minimum = float(filterStringValue(minimum, '[0-9.]')) + correction
+
+            retVal = version >= minimum
 
     return retVal
 
@@ -3224,18 +3245,16 @@ def isHeavyQueryBased(technique=None):
     Returns True whether current (kb.)technique is heavy-query based
 
     >>> pushValue(kb.injection.data)
-    >>> pushValue(kb.technique)
-    >>> kb.technique = PAYLOAD.TECHNIQUE.STACKED
-    >>> kb.injection.data[kb.technique] = [test for test in getSortedInjectionTests() if "heavy" in test["title"].lower()][0]
+    >>> setTechnique(PAYLOAD.TECHNIQUE.STACKED)
+    >>> kb.injection.data[getTechnique()] = [test for test in getSortedInjectionTests() if "heavy" in test["title"].lower()][0]
     >>> isHeavyQueryBased()
     True
-    >>> kb.technique = popValue()
     >>> kb.injection.data = popValue()
     """
 
     retVal = False
 
-    technique = technique or kb.technique
+    technique = technique or getTechnique()
 
     if isTechniqueAvailable(technique):
         data = getTechniqueData(technique)
@@ -3623,7 +3642,7 @@ def unhandledExceptionMessage():
     errMsg += "Python version: %s\n" % PYVERSION
     errMsg += "Operating system: %s\n" % platform.platform()
     errMsg += "Command line: %s\n" % re.sub(r".+?\bsqlmap\.py\b", "sqlmap.py", getUnicode(" ".join(sys.argv), encoding=sys.stdin.encoding))
-    errMsg += "Technique: %s\n" % (enumValueToNameLookup(PAYLOAD.TECHNIQUE, kb.technique) if kb.get("technique") else ("DIRECT" if conf.get("direct") else None))
+    errMsg += "Technique: %s\n" % (enumValueToNameLookup(PAYLOAD.TECHNIQUE, getTechnique()) if getTechnique() is not None else ("DIRECT" if conf.get("direct") else None))
     errMsg += "Back-end DBMS:"
 
     if Backend.getDbms() is not None:
@@ -4631,6 +4650,8 @@ def decodeDbmsHexValue(value, raw=False):
     def _(value):
         retVal = value
         if value and isinstance(value, six.string_types):
+            value = value.strip()
+
             if len(value) % 2 != 0:
                 retVal = (decodeHex(value[:-1]) + b'?') if len(value) > 1 else value
                 singleTimeWarnMessage("there was a problem decoding value '%s' from expected hexadecimal form" % value)

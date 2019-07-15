@@ -3549,7 +3549,7 @@ def openFile(filename, mode='r', encoding=UNICODE_ENCODING, errors="reversible",
         except IOError:
             errMsg = "there has been a file opening error for filename '%s'. " % filename
             errMsg += "Please check %s permissions on a file " % ("write" if mode and ('w' in mode or 'a' in mode or '+' in mode) else "read")
-            errMsg += "and that it's not locked by another process."
+            errMsg += "and that it's not locked by another process"
             raise SqlmapSystemException(errMsg)
 
 def decodeIntToUnicode(value):
@@ -3762,7 +3762,7 @@ def createGithubIssue(errMsg, excMsg):
             logger.info(infoMsg)
 
             try:
-                with open(paths.GITHUB_HISTORY, "a+b") as f:
+                with openFile(paths.GITHUB_HISTORY, "a+b") as f:
                     f.write("%s\n" % key)
             except:
                 pass

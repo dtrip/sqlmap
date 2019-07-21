@@ -455,12 +455,14 @@ def _findPageForms():
     if conf.url and not checkConnection():
         return
 
+    found = False
     infoMsg = "searching for forms"
     logger.info(infoMsg)
 
     if not any((conf.bulkFile, conf.googleDork, conf.sitemapUrl)):
         page, _, _ = Request.queryPage(content=True)
-        findPageForms(page, conf.url, True, True)
+        if findPageForms(page, conf.url, True, True):
+            found = True
     else:
         if conf.bulkFile:
             targets = getFileItems(conf.bulkFile)
@@ -473,7 +475,8 @@ def _findPageForms():
             try:
                 target = targets[i]
                 page, _, _ = Request.getPage(url=target.strip(), cookie=conf.cookie, crawling=True, raise404=False)
-                findPageForms(page, target, False, True)
+                if findPageForms(page, target, False, True):
+                    found = True
 
                 if conf.verbose in (1, 2):
                     status = '%d/%d links visited (%d%%)' % (i + 1, len(targets), round(100.0 * (i + 1) / len(targets)))
@@ -483,6 +486,10 @@ def _findPageForms():
             except Exception as ex:
                 errMsg = "problem occurred while searching for forms at '%s' ('%s')" % (target, getSafeExString(ex))
                 logger.error(errMsg)
+
+    if not found:
+        warnMsg = "no forms found"
+        logger.warn(warnMsg)
 
 def _setDBMSAuthentication():
     """
@@ -526,22 +533,10 @@ def _setMetasploit():
             raise SqlmapMissingDependence(errMsg)
 
         if not conf.msfPath:
-            def _(key, value):
-                retVal = None
-
-                try:
-                    from six.moves.winreg import ConnectRegistry, OpenKey, QueryValueEx, HKEY_LOCAL_MACHINE
-                    _ = ConnectRegistry(None, HKEY_LOCAL_MACHINE)
-                    _ = OpenKey(_, key)
-                    retVal = QueryValueEx(_, value)[0]
-                except:
-                    logger.debug("unable to identify Metasploit installation path via registry key")
-
-                return retVal
-
-            conf.msfPath = _(r"SOFTWARE\Rapid7\Metasploit", "Location")
-            if conf.msfPath:
-                conf.msfPath = os.path.join(conf.msfPath, "msf3")
+            for candidate in os.environ.get("PATH", "").split(';'):
+                if all(_ in candidate for _ in ("metasploit", "bin")):
+                    conf.msfPath = os.path.dirname(candidate.rstrip('\\'))
+                    break
 
     if conf.osSmb:
         isAdmin = runningAsAdmin()
@@ -1453,6 +1448,9 @@ def _createHomeDirectories():
     Creates directories inside sqlmap's home directory
     """
 
+    if conf.get("purge"):
+        return
+
     for context in "output", "history":
         directory = paths["SQLMAP_%s_PATH" % context.upper()]
         try:
@@ -1463,7 +1461,7 @@ def _createHomeDirectories():
             open(_, "w+b").close()
             os.remove(_)
 
-            if conf.outputDir and context == "output":
+            if conf.get("outputDir") and context == "output":
                 warnMsg = "using '%s' as the %s directory" % (directory, context)
                 logger.warn(warnMsg)
         except (OSError, IOError) as ex:
@@ -1557,6 +1555,15 @@ def _cleanupOptions():
     else:
         conf.testParameter = []
 
+    if conf.ignoreCode:
+        try:
+            conf.ignoreCode = [int(_) for _ in re.split(PARAMETER_SPLITTING_REGEX, conf.ignoreCode)]
+        except ValueError:
+            errMsg = "options '--ignore-code' should contain a list of integer values"
+            raise SqlmapSyntaxException(errMsg)
+    else:
+        conf.ignoreCode = []
+
     if conf.paramFilter:
         conf.paramFilter = [_.strip() for _ in re.split(PARAMETER_SPLITTING_REGEX, conf.paramFilter.upper())]
     else:
@@ -1576,8 +1583,19 @@ def _cleanupOptions():
         conf.user = conf.user.replace(" ", "")
 
     if conf.rParam:
-        conf.rParam = conf.rParam.replace(" ", "")
-        conf.rParam = re.split(PARAMETER_SPLITTING_REGEX, conf.rParam)
+        if all(_ in conf.rParam for _ in ('=', ',')):
+            original = conf.rParam
+            conf.rParam = []
+            for part in original.split(';'):
+                if '=' in part:
+                    left, right = part.split('=', 1)
+                    conf.rParam.append(left)
+                    kb.randomPool[left] = filterNone(_.strip() for _ in right.split(','))
+                else:
+                    conf.rParam.append(part)
+        else:
+            conf.rParam = conf.rParam.replace(" ", "")
+            conf.rParam = re.split(PARAMETER_SPLITTING_REGEX, conf.rParam)
     else:
         conf.rParam = []
 
@@ -1939,6 +1957,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.processUserMarks = None
     kb.proxyAuthHeader = None
     kb.queryCounter = 0
+    kb.randomPool = {}
     kb.redirectChoice = None
     kb.reflectiveMechanism = True
     kb.reflectiveCounters = {REFLECTIVE_COUNTER.MISS: 0, REFLECTIVE_COUNTER.HIT: 0}

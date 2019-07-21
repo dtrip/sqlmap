@@ -7,6 +7,7 @@ See the file 'LICENSE' for copying permission
 
 import binascii
 import logging
+import random
 import re
 import socket
 import string
@@ -646,7 +647,7 @@ class Connect(object):
             if not multipart:
                 logger.log(CUSTOM_LOGGING.TRAFFIC_IN, responseMsg)
 
-            if ex.code != conf.ignoreCode:
+            if ex.code not in (conf.ignoreCode or []):
                 if ex.code == _http_client.UNAUTHORIZED:
                     errMsg = "not authorized, try to provide right HTTP "
                     errMsg += "authentication type and valid credentials (%d)" % code
@@ -1102,7 +1103,8 @@ class Connect(object):
                 match = re.search(r"(\A|\b)%s=(?P<value>[^&;]*)" % re.escape(randomParameter), paramString)
                 if match:
                     origValue = match.group("value")
-                    retVal = re.sub(r"(\A|\b)%s=[^&;]*" % re.escape(randomParameter), "%s=%s" % (randomParameter, randomizeParameterValue(origValue)), paramString)
+                    newValue = randomizeParameterValue(origValue) if randomParameter not in kb.randomPool else random.sample(kb.randomPool[randomParameter], 1)[0]
+                    retVal = re.sub(r"(\A|\b)%s=[^&;]*" % re.escape(randomParameter), "%s=%s" % (randomParameter, newValue), paramString)
                 return retVal
 
             for randomParameter in conf.rParam:

@@ -59,6 +59,7 @@ from lib.core.dicts import DEPRECATED_OPTIONS
 from lib.core.enums import AUTOCOMPLETE_TYPE
 from lib.core.exception import SqlmapShellQuitException
 from lib.core.exception import SqlmapSyntaxException
+from lib.core.option import _createHomeDirectories
 from lib.core.settings import BASIC_HELP_ITEMS
 from lib.core.settings import DUMMY_URL
 from lib.core.settings import INFERENCE_UNKNOWN_CHAR
@@ -175,7 +176,7 @@ def cmdLineParser(argv=None):
         request.add_argument("--auth-file", dest="authFile",
             help="HTTP authentication PEM cert/private key file")
 
-        request.add_argument("--ignore-code", dest="ignoreCode", type=int,
+        request.add_argument("--ignore-code", dest="ignoreCode",
             help="Ignore (problematic) HTTP error code (e.g. 401)")
 
         request.add_argument("--ignore-proxy", dest="ignoreProxy", action="store_true",
@@ -747,6 +748,9 @@ def cmdLineParser(argv=None):
         parser.add_argument("--force-dns", dest="forceDns", action="store_true",
             help=SUPPRESS)
 
+        parser.add_argument("--force-partial", dest="forcePartial", action="store_true",
+            help=SUPPRESS)
+
         parser.add_argument("--force-pivoting", dest="forcePivoting", action="store_true",
             help=SUPPRESS)
 
@@ -832,6 +836,8 @@ def cmdLineParser(argv=None):
         prompt = "--sqlmap-shell" in argv
 
         if prompt:
+            _createHomeDirectories()
+
             parser.usage = ""
             cmdLineOptions.sqlmapShell = True
 

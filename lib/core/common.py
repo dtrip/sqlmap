@@ -3222,7 +3222,7 @@ def getTechniqueData(technique=None):
     Returns injection data for technique specified
     """
 
-    return kb.injection.data.get(technique)
+    return kb.injection.data.get(technique if technique is not None else getTechnique())
 
 def isTechniqueAvailable(technique):
     """
@@ -4868,6 +4868,8 @@ def zeroDepthSearch(expression, value):
 
     >>> _ = "SELECT (SELECT id FROM users WHERE 2>1) AS result FROM DUAL"; _[zeroDepthSearch(_, "FROM")[0]:]
     'FROM DUAL'
+    >>> _ = "a(b; c),d;e"; _[zeroDepthSearch(_, "[;, ]")[0]:]
+    ',d;e'
     """
 
     retVal = []
@@ -4878,8 +4880,13 @@ def zeroDepthSearch(expression, value):
             depth += 1
         elif expression[index] == ')':
             depth -= 1
-        elif depth == 0 and expression[index:index + len(value)] == value:
-            retVal.append(index)
+        elif depth == 0:
+            found = False
+            if value.startswith('[') and value.endswith(']'):
+                if re.search(value, expression[index:index + 1]):
+                    retVal.append(index)
+            elif expression[index:index + len(value)] == value:
+                retVal.append(index)
 
     return retVal
 

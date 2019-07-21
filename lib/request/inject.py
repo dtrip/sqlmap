@@ -39,6 +39,7 @@ from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
 from lib.core.data import queries
+from lib.core.decorators import lockedmethod
 from lib.core.decorators import stackedmethod
 from lib.core.dicts import FROM_DUMMY_TABLE
 from lib.core.enums import CHARSET_TYPE
@@ -164,7 +165,7 @@ def _goInferenceProxy(expression, fromUser=False, batch=False, unpack=True, char
 
     initTechnique(getTechnique())
 
-    query = agent.prefixQuery(kb.injection.data[getTechnique()].vector)
+    query = agent.prefixQuery(getTechniqueData().vector)
     query = agent.suffixQuery(query)
     payload = agent.payload(newValue=query)
     count = None
@@ -312,7 +313,7 @@ def _goBooleanProxy(expression):
     initTechnique(getTechnique())
 
     if conf.dnsDomain:
-        query = agent.prefixQuery(kb.injection.data[getTechnique()].vector)
+        query = agent.prefixQuery(getTechniqueData().vector)
         query = agent.suffixQuery(query)
         payload = agent.payload(newValue=query)
         output = _goDns(payload, expression)
@@ -320,7 +321,7 @@ def _goBooleanProxy(expression):
         if output is not None:
             return output
 
-    vector = kb.injection.data[getTechnique()].vector
+    vector = getTechniqueData().vector
     vector = vector.replace(INFERENCE_MARKER, expression)
     query = agent.prefixQuery(vector)
     query = agent.suffixQuery(query)
@@ -351,6 +352,7 @@ def _goUnion(expression, unpack=True, dump=False):
 
     return output
 
+@lockedmethod
 @stackedmethod
 def getValue(expression, blind=True, union=True, error=True, time=True, fromUser=False, expected=None, batch=False, unpack=True, resumeValue=True, charsetType=None, firstChar=None, lastChar=None, dump=False, suppressOutput=None, expectingNone=False, safeCharEncode=True):
     """

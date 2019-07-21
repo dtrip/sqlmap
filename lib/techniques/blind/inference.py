@@ -23,6 +23,7 @@ from lib.core.common import getCharset
 from lib.core.common import getCounter
 from lib.core.common import getPartRun
 from lib.core.common import getTechnique
+from lib.core.common import getTechniqueData
 from lib.core.common import goGoodSamaritan
 from lib.core.common import hashDBRetrieve
 from lib.core.common import hashDBWrite
@@ -161,7 +162,11 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
             length = None
 
         showEta = conf.eta and isinstance(length, int)
-        numThreads = min(conf.threads or 0, length or 0) or 1
+
+        if kb.bruteMode:
+            numThreads = 1
+        else:
+            numThreads = min(conf.threads or 0, length or 0) or 1
 
         if showEta:
             progress = ProgressBar(maxValue=length)
@@ -173,13 +178,13 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
             else:
                 numThreads = 1
 
-        if conf.threads == 1 and not timeBasedCompare and not conf.predictOutput:
+        if conf.threads == 1 and not any((timeBasedCompare, conf.predictOutput)):
             warnMsg = "running in a single-thread mode. Please consider "
             warnMsg += "usage of option '--threads' for faster data retrieval"
             singleTimeWarnMessage(warnMsg)
 
-        if conf.verbose in (1, 2) and not showEta and not conf.api:
-            if isinstance(length, int) and conf.threads > 1:
+        if conf.verbose in (1, 2) and not any((showEta, conf.api, kb.bruteMode)):
+            if isinstance(length, int) and numThreads > 1:
                 dataToStdout("[%s] [INFO] retrieved: %s" % (time.strftime("%X"), "_" * min(length, conf.progressWidth)))
                 dataToStdout("\r[%s] [INFO] retrieved: " % time.strftime("%X"))
             else:
@@ -229,10 +234,10 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
 
             result = not Request.queryPage(forgedPayload, timeBasedCompare=timeBasedCompare, raise404=False)
 
-            if result and timeBasedCompare and kb.injection.data[getTechnique()].trueCode:
-                result = threadData.lastCode == kb.injection.data[getTechnique()].trueCode
+            if result and timeBasedCompare and getTechniqueData().trueCode:
+                result = threadData.lastCode == getTechniqueData().trueCode
                 if not result:
-                    warnMsg = "detected HTTP code '%s' in validation phase is differing from expected '%s'" % (threadData.lastCode, kb.injection.data[getTechnique()].trueCode)
+                    warnMsg = "detected HTTP code '%s' in validation phase is differing from expected '%s'" % (threadData.lastCode, getTechniqueData().trueCode)
                     singleTimeWarnMessage(warnMsg)
 
             incrementCounter(getTechnique())
@@ -342,7 +347,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
                     incrementCounter(getTechnique())
 
                     if not timeBasedCompare:
-                        unexpectedCode |= threadData.lastCode not in (kb.injection.data[getTechnique()].falseCode, kb.injection.data[getTechnique()].trueCode)
+                        unexpectedCode |= threadData.lastCode not in (getTechniqueData().falseCode, getTechniqueData().trueCode)
                         if unexpectedCode:
                             warnMsg = "unexpected HTTP code '%s' detected. Will use (extra) validation step in similar cases" % threadData.lastCode
                             singleTimeWarnMessage(warnMsg)
@@ -458,7 +463,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
                         return decodeIntToUnicode(candidates[0])
 
         # Go multi-threading (--threads > 1)
-        if conf.threads > 1 and isinstance(length, int) and length > 1:
+        if numThreads > 1 and isinstance(length, int) and length > 1:
             threadData.shared.value = [None] * length
             threadData.shared.index = [firstChar]    # As list for python nested function scoping
             threadData.shared.start = firstChar
@@ -516,7 +521,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
                                 if (endCharIndex - startCharIndex == conf.progressWidth) and (endCharIndex < length - 1):
                                     output = output[:-2] + ".."
 
-                                if conf.verbose in (1, 2) and not showEta and not conf.api:
+                                if conf.verbose in (1, 2) and not any((showEta, conf.api, kb.bruteMode)):
                                     _ = count - firstChar
                                     output += '_' * (min(length, conf.progressWidth) - len(output))
                                     status = ' %d/%d (%d%%)' % (_, length, int(100.0 * _ / length))
@@ -546,7 +551,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
                 finalValue = "".join(value)
                 infoMsg = "\r[%s] [INFO] retrieved: %s" % (time.strftime("%X"), filterControlChars(finalValue))
 
-            if conf.verbose in (1, 2) and not showEta and infoMsg and not conf.api:
+            if conf.verbose in (1, 2) and infoMsg and not any((showEta, conf.api, kb.bruteMode)):
                 dataToStdout(infoMsg)
 
         # No multi-threading (--threads = 1)
@@ -570,7 +575,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
                         # One-shot query containing equals commonValue
                         testValue = unescaper.escape("'%s'" % commonValue) if "'" not in commonValue else unescaper.escape("%s" % commonValue, quote=False)
 
-                        query = kb.injection.data[getTechnique()].vector
+                        query = getTechniqueData().vector
                         query = agent.prefixQuery(query.replace(INFERENCE_MARKER, "(%s)%s%s" % (expressionUnescaped, INFERENCE_EQUALS_CHAR, testValue)))
                         query = agent.suffixQuery(query)
 
@@ -594,7 +599,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
                         subquery = queries[Backend.getIdentifiedDbms()].substring.query % (expressionUnescaped, 1, len(commonPattern))
                         testValue = unescaper.escape("'%s'" % commonPattern) if "'" not in commonPattern else unescaper.escape("%s" % commonPattern, quote=False)
 
-                        query = kb.injection.data[getTechnique()].vector
+                        query = getTechniqueData().vector
                         query = agent.prefixQuery(query.replace(INFERENCE_MARKER, "(%s)=%s" % (subquery, testValue)))
                         query = agent.suffixQuery(query)
 
@@ -631,7 +636,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
 
                 if showEta:
                     progress.progress(index)
-                elif conf.verbose in (1, 2) or conf.api:
+                elif (conf.verbose in (1, 2) and not kb.bruteMode) or conf.api:
                     dataToStdout(filterControlChars(val))
 
                 # some DBMSes (e.g. Firebird, DB2, etc.) have issues with trailing spaces
@@ -660,11 +665,11 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
         elif partialValue:
             hashDBWrite(expression, "%s%s" % (PARTIAL_VALUE_MARKER if not conf.hexConvert else PARTIAL_HEX_VALUE_MARKER, partialValue))
 
-    if conf.hexConvert and not abortedFlag and not conf.api:
+    if conf.hexConvert and not any((abortedFlag, conf.api, kb.bruteMode)):
         infoMsg = "\r[%s] [INFO] retrieved: %s  %s\n" % (time.strftime("%X"), filterControlChars(finalValue), " " * retrievedLength)
         dataToStdout(infoMsg)
     else:
-        if conf.verbose in (1, 2) and not showEta and not conf.api:
+        if conf.verbose in (1, 2) and not any((showEta, conf.api, kb.bruteMode)):
             dataToStdout("\n")
 
         if (conf.verbose in (1, 2) and showEta) or conf.verbose >= 3:

@@ -1137,7 +1137,7 @@ def getTechnique():
     Thread-safe getting of currently used technique
     """
 
-    return getCurrentThreadData().technique or kb.technique
+    return getCurrentThreadData().technique or kb.get("technique")
 
 def randomRange(start=0, stop=1000, seed=None):
     """
@@ -4881,7 +4881,6 @@ def zeroDepthSearch(expression, value):
         elif expression[index] == ')':
             depth -= 1
         elif depth == 0:
-            found = False
             if value.startswith('[') and value.endswith(']'):
                 if re.search(value, expression[index:index + 1]):
                     retVal.append(index)
@@ -4995,7 +4994,7 @@ def parseRequestFile(reqFile, checkParams=True):
             else:
                 scheme, port = None, None
 
-            if not re.search(r"^[\n]*(%s).*?\sHTTP\/" % "|".join(getPublicTypeMembers(HTTPMETHOD, True)), request, re.I | re.M):
+            if "HTTP/" not in request:
                 continue
 
             if re.search(r"^[\n]*%s.*?\.(%s)\sHTTP\/" % (HTTPMETHOD.GET, "|".join(CRAWL_EXCLUDE_EXTENSIONS)), request, re.I | re.M):
@@ -5020,7 +5019,7 @@ def parseRequestFile(reqFile, checkParams=True):
 
                 newline = "\r\n" if line.endswith('\r') else '\n'
                 line = line.strip('\r')
-                match = re.search(r"\A(%s) (.+) HTTP/[\d.]+\Z" % "|".join(getPublicTypeMembers(HTTPMETHOD, True)), line) if not method else None
+                match = re.search(r"\A([A-Z]+) (.+) HTTP/[\d.]+\Z", line) if not method else None
 
                 if len(line.strip()) == 0 and method and method != HTTPMETHOD.GET and data is None:
                     data = ""

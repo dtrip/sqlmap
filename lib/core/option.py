@@ -293,6 +293,7 @@ def _setRequestFromFile():
     if conf.requestFile:
         for requestFile in re.split(PARAMETER_SPLITTING_REGEX, conf.requestFile):
             requestFile = safeExpandUser(requestFile)
+            url = None
             seen = set()
 
             if not checkFile(requestFile, False):
@@ -310,6 +311,11 @@ def _setRequestFromFile():
                     if len(kb.targets) > 1:
                         conf.multipleTargets = True
                     seen.add(url)
+
+            if url is None:
+                errMsg = "specified file '%s' " % requestFile
+                errMsg += "does not contain a valid HTTP request"
+                raise SqlmapDataException(errMsg)
 
     if conf.secondReq:
         conf.secondReq = safeExpandUser(conf.secondReq)
@@ -1296,6 +1302,9 @@ def _setHTTPExtraHeaders():
 
                 if header and value:
                     conf.httpHeaders.append((header, value))
+            elif headerValue.startswith('@'):
+                checkFile(headerValue[1:])
+                kb.headersFile = headerValue[1:]
             else:
                 errMsg = "invalid header value: %s. Valid header format is 'name:value'" % repr(headerValue).lstrip('u')
                 raise SqlmapSyntaxException(errMsg)
@@ -1899,6 +1908,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.forceWhere = None
     kb.futileUnion = None
     kb.heavilyDynamic = False
+    kb.headersFile = None
     kb.headersFp = {}
     kb.heuristicDbms = None
     kb.heuristicExtendedDbms = None

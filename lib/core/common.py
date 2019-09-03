@@ -624,7 +624,7 @@ def paramToDict(place, parameters=None):
                     try:
                         oldValue = value
                         value = decodeBase64(value, binary=False)
-                        parameters = re.sub(r"\b%s\b" % re.escape(oldValue), value, parameters)
+                        parameters = re.sub(r"\b%s(\b|\Z)" % re.escape(oldValue), value, parameters)
                     except:
                         errMsg = "parameter '%s' does not contain " % parameter
                         errMsg += "valid Base64 encoded value ('%s')" % value
@@ -701,7 +701,7 @@ def paramToDict(place, parameters=None):
                             message += "has boundaries. Do you want to inject inside? ('%s') [y/N] " % getUnicode(_)
 
                             if readInput(message, default='N', boolean=True):
-                                testableParameters[parameter] = re.sub(r"\b(%s\s*=\s*)%s" % (re.escape(parameter), re.escape(testableParameters[parameter])), (r"\g<1>%s" % re.sub(regex, r"\g<1>%s\g<2>" % BOUNDED_INJECTION_MARKER, testableParameters[parameter])).replace("\\", r"\\"), parameters)
+                                testableParameters[parameter] = re.sub(r"\b(%s\s*=\s*)%s" % (re.escape(parameter), re.escape(testableParameters[parameter])), (r"\g<1>%s" % re.sub(regex, r"\g<1>%s\g<2>" % BOUNDED_INJECTION_MARKER, testableParameters[parameter].replace("\\", r"\\"))), parameters)
                             break
 
     if conf.testParameter:
@@ -1285,36 +1285,43 @@ def banner():
     """
 
     if not any(_ in sys.argv for _ in ("--version", "--api")) and not conf.get("disableBanner"):
-        _ = BANNER
+        result = BANNER
 
         if not IS_TTY or "--disable-coloring" in sys.argv:
-            _ = clearColors(_)
+            result = clearColors(result)
         elif IS_WIN:
             coloramainit()
 
-        dataToStdout(_, forceOutput=True)
+        dataToStdout(result, forceOutput=True)
 
 def parsePasswordHash(password):
     """
     In case of Microsoft SQL Server password hash value is expanded to its components
+
+    >>> pushValue(kb.forcedDbms)
+    >>> kb.forcedDbms = DBMS.MSSQL
+    >>> "salt: 4086ceb6" in parsePasswordHash("0x01004086ceb60c90646a8ab9889fe3ed8e5c150b5460ece8425a")
+    True
+    >>> kb.forcedDbms = popValue()
     """
 
     blank = " " * 8
 
-    if not password or password == " ":
-        password = NULL
+    if isNoneValue(password) or password == " ":
+        retVal = NULL
+    else:
+        retVal = password
 
-    if Backend.isDbms(DBMS.MSSQL) and password != NULL and isHexEncodedString(password):
-        hexPassword = password
-        password = "%s\n" % hexPassword
-        password += "%sheader: %s\n" % (blank, hexPassword[:6])
-        password += "%ssalt: %s\n" % (blank, hexPassword[6:14])
-        password += "%smixedcase: %s\n" % (blank, hexPassword[14:54])
+    if Backend.isDbms(DBMS.MSSQL) and retVal != NULL and isHexEncodedString(password):
+        retVal = "%s\n" % password
+        retVal += "%sheader: %s\n" % (blank, password[:6])
+        retVal += "%ssalt: %s\n" % (blank, password[6:14])
+        retVal += "%smixedcase: %s\n" % (blank, password[14:54])
 
-        if not Backend.isVersionWithin(("2005", "2008")):
-            password += "%suppercase: %s" % (blank, hexPassword[54:])
+        if password[54:]:
+            retVal += "%suppercase: %s" % (blank, password[54:])
 
-    return password
+    return retVal
 
 def cleanQuery(query):
     """
@@ -3575,7 +3582,7 @@ def decodeIntToUnicode(value):
                     # Note: https://github.com/sqlmapproject/sqlmap/issues/1531
                     retVal = getUnicode(raw, conf.encoding or UNICODE_ENCODING)
                 elif Backend.isDbms(DBMS.MSSQL):
-                    retVal = getUnicode(raw, "UTF-16-BE")
+                    retVal = getUnicode(raw, "UTF-16-BE")   # References: https://docs.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support?view=sql-server-2017 and https://stackoverflow.com/a/14488478
                 elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.ORACLE):
                     retVal = _unichr(value)
                 else:
@@ -3662,7 +3669,7 @@ def getLatestRevision():
     """
 
     retVal = None
-    req = _urllib.request.Request(url="https://raw.githubusercontent.com/sqlmapproject/sqlmap/master/lib/core/settings.py")
+    req = _urllib.request.Request(url="https://raw.githubusercontent.com/sqlmapproject/sqlmap/master/lib/core/settings.py", headers={HTTP_HEADER.USER_AGENT: fetchRandomAgent()})
 
     try:
         content = getUnicode(_urllib.request.urlopen(req).read())
@@ -3794,7 +3801,7 @@ def maskSensitiveData(msg):
             retVal = retVal.replace(value, '*' * len(value))
 
     # Just in case (for problematic parameters regarding user encoding)
-    for match in re.finditer(r"(?i)[ -]-(u|url|data|cookie|auth-\w+|proxy)( |=)(.*?)(?= -?-[a-z]|\Z)", retVal):
+    for match in re.finditer(r"(?i)[ -]-(u|url|data|cookie|auth-\w+|proxy|host|referer|headers?|H)( |=)(.*?)(?= -?-[a-z]|\Z)", retVal):
         retVal = retVal.replace(match.group(3), '*' * len(match.group(3)))
 
     # Fail-safe substitutions

@@ -18,7 +18,7 @@ from lib.core.enums import OS
 from thirdparty.six import unichr as _unichr
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.3.8.22"
+VERSION = "1.3.9.1"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -338,6 +338,9 @@ BLANK = "<blank>"
 
 # String representation for current database
 CURRENT_DB = "CD"
+
+# String representation for current user
+CURRENT_USER = "CU"
 
 # Name of SQLite file used for storing session data
 SESSION_SQLITE_FILE = "session.sqlite"

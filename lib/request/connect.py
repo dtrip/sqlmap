@@ -22,7 +22,6 @@ except ImportError:
     class WebSocketException(Exception):
         pass
 
-from extra.safe2bin.safe2bin import safecharencode
 from lib.core.agent import agent
 from lib.core.common import asciifyUrl
 from lib.core.common import calculateDeltaSeconds
@@ -125,6 +124,7 @@ from lib.request.basic import processResponse
 from lib.request.comparison import comparison
 from lib.request.direct import direct
 from lib.request.methodrequest import MethodRequest
+from lib.utils.safe2bin import safecharencode
 from thirdparty import six
 from thirdparty.odict import OrderedDict
 from thirdparty.six import unichr as _unichr
@@ -1039,7 +1039,7 @@ class Connect(object):
                 return retVal
 
             token = AttribDict()
-            page, headers, code = Connect.getPage(url=conf.csrfUrl or conf.url, data=conf.data if conf.csrfUrl == conf.url else None, method=conf.method if conf.csrfUrl == conf.url else None, cookie=conf.parameters.get(PLACE.COOKIE), direct=True, silent=True, ua=conf.parameters.get(PLACE.USER_AGENT), referer=conf.parameters.get(PLACE.REFERER), host=conf.parameters.get(PLACE.HOST))
+            page, headers, code = Connect.getPage(url=conf.csrfUrl or conf.url, data=conf.data if conf.csrfUrl == conf.url else None, method=conf.csrfMethod or (conf.method if conf.csrfUrl == conf.url else None), cookie=conf.parameters.get(PLACE.COOKIE), direct=True, silent=True, ua=conf.parameters.get(PLACE.USER_AGENT), referer=conf.parameters.get(PLACE.REFERER), host=conf.parameters.get(PLACE.HOST))
             page = urldecode(page)  # for anti-CSRF tokens with special characters in their name (e.g. 'foo:bar=...')
 
             match = re.search(r"(?i)<input[^>]+\bname=[\"']?(?P<name>%s)\b[^>]*\bvalue=[\"']?(?P<value>[^>'\"]*)" % conf.csrfToken, page or "", re.I)

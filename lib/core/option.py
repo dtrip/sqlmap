@@ -2447,6 +2447,13 @@ def _basicOptionValidation():
             errMsg = "invalid regular expression '%s' ('%s')" % (conf.regexp, getSafeExString(ex))
             raise SqlmapSyntaxException(errMsg)
 
+    if conf.paramExclude:
+        try:
+            re.compile(conf.paramExclude)
+        except Exception as ex:
+            errMsg = "invalid regular expression '%s' ('%s')" % (conf.paramExclude, getSafeExString(ex))
+            raise SqlmapSyntaxException(errMsg)
+
     if conf.crawlExclude:
         try:
             re.compile(conf.crawlExclude)
@@ -2488,6 +2495,10 @@ def _basicOptionValidation():
 
     if conf.csrfUrl and not conf.csrfToken:
         errMsg = "option '--csrf-url' requires usage of option '--csrf-token'"
+        raise SqlmapSyntaxException(errMsg)
+
+    if conf.csrfMethod and not conf.csrfToken:
+        errMsg = "option '--csrf-method' requires usage of option '--csrf-token'"
         raise SqlmapSyntaxException(errMsg)
 
     if conf.csrfToken and conf.threads > 1:

@@ -5,7 +5,6 @@ Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
-import base64
 import re
 
 from lib.core.common import Backend
@@ -27,6 +26,7 @@ from lib.core.common import unArrayizeValue
 from lib.core.common import urlencode
 from lib.core.common import zeroDepthSearch
 from lib.core.compat import xrange
+from lib.core.convert import encodeBase64
 from lib.core.convert import getUnicode
 from lib.core.data import conf
 from lib.core.data import kb
@@ -50,6 +50,7 @@ from lib.core.settings import PAYLOAD_DELIMITER
 from lib.core.settings import REPLACEMENT_MARKER
 from lib.core.settings import SINGLE_QUOTE_MARKER
 from lib.core.settings import SLEEP_TIME_MARKER
+from lib.core.settings import UNICODE_ENCODING
 from lib.core.unescaper import unescaper
 from thirdparty import six
 
@@ -170,8 +171,8 @@ class Agent(object):
 
         if re.sub(r" \(.+", "", parameter) in conf.base64Parameter:
             # TODO: support for POST_HINT
-            newValue = base64.b64encode(newValue)
-            origValue = base64.b64encode(origValue)
+            newValue = encodeBase64(newValue, binary=False, encoding=conf.encoding or UNICODE_ENCODING)
+            origValue = encodeBase64(origValue, binary=False, encoding=conf.encoding or UNICODE_ENCODING)
 
         if place in (PLACE.URI, PLACE.CUSTOM_POST, PLACE.CUSTOM_HEADER):
             _ = "%s%s" % (origValue, kb.customInjectionMark)
@@ -654,7 +655,7 @@ class Agent(object):
                 concatenatedQuery = concatenatedQuery.replace("SELECT ", "'%s'||" % kb.chars.start, 1)
                 _ = unArrayizeValue(zeroDepthSearch(concatenatedQuery, " FROM "))
                 concatenatedQuery = "%s||'%s'%s" % (concatenatedQuery[:_], kb.chars.stop, concatenatedQuery[_:])
-                concatenatedQuery = re.sub(r"('%s'\|\|)(.+)(%s)" % (kb.chars.start, re.escape(castedFields)), r"\g<2>\g<1>\g<3>", concatenatedQuery)
+                concatenatedQuery = re.sub(r"('%s'\|\|)(.+?)(%s)" % (kb.chars.start, re.escape(castedFields)), r"\g<2>\g<1>\g<3>", concatenatedQuery)
             elif fieldsSelect:
                 concatenatedQuery = concatenatedQuery.replace("SELECT ", "'%s'||" % kb.chars.start, 1)
                 concatenatedQuery += "||'%s'" % kb.chars.stop

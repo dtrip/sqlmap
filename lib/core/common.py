@@ -46,7 +46,6 @@ from xml.sax import SAXParseException
 
 from extra.beep.beep import beep
 from extra.cloak.cloak import decloak
-from extra.safe2bin.safe2bin import safecharencode
 from lib.core.bigarray import BigArray
 from lib.core.compat import cmp
 from lib.core.compat import round
@@ -180,6 +179,7 @@ from lib.core.settings import VERSION_STRING
 from lib.core.settings import ZIP_HEADER
 from lib.core.settings import WEBSCARAB_SPLITTER
 from lib.core.threads import getCurrentThreadData
+from lib.utils.safe2bin import safecharencode
 from lib.utils.sqlalchemy import _sqlalchemy
 from thirdparty import six
 from thirdparty.clientform.clientform import ParseResponse
@@ -623,7 +623,7 @@ def paramToDict(place, parameters=None):
                 if parameter in (conf.base64Parameter or []):
                     try:
                         oldValue = value
-                        value = decodeBase64(value, binary=False)
+                        value = decodeBase64(value, binary=False, encoding=conf.encoding or UNICODE_ENCODING)
                         parameters = re.sub(r"\b%s(\b|\Z)" % re.escape(oldValue), value, parameters)
                     except:
                         errMsg = "parameter '%s' does not contain " % parameter

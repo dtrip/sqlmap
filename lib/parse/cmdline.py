@@ -44,6 +44,26 @@ finally:
     def get_groups(parser):
         return getattr(parser, "option_groups", None) or getattr(parser, "_action_groups")
 
+    def get_all_options(parser):
+        retVal = set()
+
+        for option in get_actions(parser):
+            if hasattr(option, "option_strings"):
+                retVal.update(option.option_strings)
+            else:
+                retVal.update(option._long_opts)
+                retVal.update(option._short_opts)
+
+        for group in get_groups(parser):
+            for option in get_actions(group):
+                if hasattr(option, "option_strings"):
+                    retVal.update(option.option_strings)
+                else:
+                    retVal.update(option._long_opts)
+                    retVal.update(option._short_opts)
+
+        return retVal
+
 from lib.core.common import checkOldOptions
 from lib.core.common import checkSystemEncoding
 from lib.core.common import dataToStdout
@@ -847,18 +867,10 @@ def cmdLineParser(argv=None):
             parser.usage = ""
             cmdLineOptions.sqlmapShell = True
 
-            _ = ["x", "q", "exit", "quit", "clear"]
+            commands = set(("x", "q", "exit", "quit", "clear"))
+            commands.update(get_all_options(parser))
 
-            for option in get_actions(parser):
-                _.extend(option._long_opts)
-                _.extend(option._short_opts)
-
-            for group in get_groups(parser):
-                for option in get_actions(group):
-                    _.extend(option._long_opts)
-                    _.extend(option._short_opts)
-
-            autoCompletion(AUTOCOMPLETE_TYPE.SQLMAP, commands=_)
+            autoCompletion(AUTOCOMPLETE_TYPE.SQLMAP, commands=commands)
 
             while True:
                 command = None
@@ -893,6 +905,7 @@ def cmdLineParser(argv=None):
                 raise SqlmapSyntaxException("something went wrong during command line parsing ('%s')" % getSafeExString(ex))
 
         for i in xrange(len(argv)):
+            longOptions = set(re.findall(r"\-\-([^= ]+?)=", parser.format_help()))
             if argv[i] == "-hh":
                 argv[i] = "-h"
             elif len(argv[i]) > 1 and all(ord(_) in xrange(0x2018, 0x2020) for _ in ((argv[i].split('=', 1)[-1].strip() or ' ')[0], argv[i][-1])):
@@ -940,6 +953,9 @@ def cmdLineParser(argv=None):
                             found = True
                     if not found:
                         get_groups(parser).remove(group)
+            elif '=' in argv[i] and not argv[i].startswith('-') and argv[i].split('=')[0] in longOptions and re.search(r"\A-\w\Z", argv[i - 1]) is None:
+                dataToStdout("[!] detected usage of long-option without a starting hyphen ('%s')\n" % argv[i])
+                raise SystemExit
 
         for verbosity in (_ for _ in argv if re.search(r"\A\-v+\Z", _)):
             try:

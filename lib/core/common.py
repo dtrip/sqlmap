@@ -4417,54 +4417,73 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
     except:
         pass
 
-    if forms:
-        for form in forms:
-            try:
-                for control in form.controls:
-                    if hasattr(control, "items") and not any((control.disabled, control.readonly)):
-                        # if control has selectable items select first non-disabled
-                        for item in control.items:
-                            if not item.disabled:
-                                if not item.selected:
-                                    item.selected = True
-                                break
+    for form in forms or []:
+        try:
+            for control in form.controls:
+                if hasattr(control, "items") and not any((control.disabled, control.readonly)):
+                    # if control has selectable items select first non-disabled
+                    for item in control.items:
+                        if not item.disabled:
+                            if not item.selected:
+                                item.selected = True
+                            break
 
-                if conf.crawlExclude and re.search(conf.crawlExclude, form.action or ""):
-                    dbgMsg = "skipping '%s'" % form.action
-                    logger.debug(dbgMsg)
-                    continue
+            if conf.crawlExclude and re.search(conf.crawlExclude, form.action or ""):
+                dbgMsg = "skipping '%s'" % form.action
+                logger.debug(dbgMsg)
+                continue
 
-                request = form.click()
-            except (ValueError, TypeError) as ex:
-                errMsg = "there has been a problem while "
-                errMsg += "processing page forms ('%s')" % getSafeExString(ex)
-                if raise_:
-                    raise SqlmapGenericException(errMsg)
-                else:
-                    logger.debug(errMsg)
+            request = form.click()
+        except (ValueError, TypeError) as ex:
+            errMsg = "there has been a problem while "
+            errMsg += "processing page forms ('%s')" % getSafeExString(ex)
+            if raise_:
+                raise SqlmapGenericException(errMsg)
             else:
-                url = urldecode(request.get_full_url(), kb.pageEncoding)
-                method = request.get_method()
-                data = request.data
-                data = urldecode(data, kb.pageEncoding, spaceplus=False)
+                logger.debug(errMsg)
+        else:
+            url = urldecode(request.get_full_url(), kb.pageEncoding)
+            method = request.get_method()
+            data = request.data
+            data = urldecode(data, kb.pageEncoding, spaceplus=False)
 
-                if not data and method and method.upper() == HTTPMETHOD.POST:
-                    debugMsg = "invalid POST form with blank data detected"
-                    logger.debug(debugMsg)
+            if not data and method and method.upper() == HTTPMETHOD.POST:
+                debugMsg = "invalid POST form with blank data detected"
+                logger.debug(debugMsg)
+                continue
+
+            # flag to know if we are dealing with the same target host
+            _ = checkSameHost(response.geturl(), url)
+
+            if conf.scope:
+                if not re.search(conf.scope, url, re.I):
                     continue
+            elif not _:
+                continue
+            else:
+                target = (url, method, data, conf.cookie, None)
+                retVal.add(target)
 
-                # flag to know if we are dealing with the same target host
-                _ = checkSameHost(response.geturl(), url)
+    for match in re.finditer(r"\.post\(['\"]([^'\"]*)['\"],\s*\{([^}]*)\}", content):
+        url = _urllib.parse.urljoin(url, htmlUnescape(match.group(1)))
+        data = ""
 
-                if conf.scope:
-                    if not re.search(conf.scope, url, re.I):
-                        continue
-                elif not _:
-                    continue
-                else:
-                    target = (url, method, data, conf.cookie, None)
-                    retVal.add(target)
-    else:
+        for name, value in re.findall(r"['\"]?(\w+)['\"]?\s*:\s*(['\"][^'\"]+)?", match.group(2)):
+            data += "%s=%s%s" % (name, value, DEFAULT_GET_POST_DELIMITER)
+
+        data = data.rstrip(DEFAULT_GET_POST_DELIMITER)
+        retVal.add((url, HTTPMETHOD.POST, data, conf.cookie, None))
+
+    for match in re.finditer(r"(?s)(\w+)\.open\(['\"]POST['\"],\s*['\"]([^'\"]+)['\"]\).*?\1\.send\(([^)]+)\)", content):
+        url = _urllib.parse.urljoin(url, htmlUnescape(match.group(2)))
+        data = match.group(3)
+
+        data = re.sub(r"\s*\+\s*[^\s'\"]+|[^\s'\"]+\s*\+\s*", "", data)
+
+        data = data.strip("['\"]")
+        retVal.add((url, HTTPMETHOD.POST, data, conf.cookie, None))
+
+    if not retVal:
         errMsg = "there were no forms found at the given target URL"
         if raise_:
             raise SqlmapGenericException(errMsg)

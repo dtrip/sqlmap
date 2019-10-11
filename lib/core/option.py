@@ -314,7 +314,7 @@ def _setRequestFromFile():
 
             if url is None:
                 errMsg = "specified file '%s' " % requestFile
-                errMsg += "does not contain a valid HTTP request"
+                errMsg += "does not contain a usable HTTP request (with parameters)"
                 raise SqlmapDataException(errMsg)
 
     if conf.secondReq:
@@ -467,7 +467,7 @@ def _findPageForms():
     logger.info(infoMsg)
 
     if not any((conf.bulkFile, conf.googleDork, conf.sitemapUrl)):
-        page, _, _ = Request.queryPage(content=True)
+        page, _, _ = Request.queryPage(content=True, ignoreSecondOrder=True)
         if findPageForms(page, conf.url, True, True):
             found = True
     else:

@@ -1245,6 +1245,22 @@ def isZipFile(filename):
 
     return openFile(filename, "rb", encoding=None).read(len(ZIP_HEADER)) == ZIP_HEADER
 
+def isDigit(value):
+    """
+    Checks if provided (string) value consists of digits (Note: Python's isdigit() is problematic)
+
+    >>> u'\xb2'.isdigit()
+    True
+    >>> isDigit(u'\xb2')
+    False
+    >>> isDigit('123456')
+    True
+    >>> isDigit('3b3')
+    False
+    """
+
+    return re.search(r"\A[0-9]+\Z", value or "") is not None
+
 def checkFile(filename, raiseOnError=True):
     """
     Checks for file existence and readability
@@ -4684,18 +4700,19 @@ def decodeDbmsHexValue(value, raw=False):
             else:
                 retVal = decodeHex(value)
 
-            if not kb.binaryField and not raw:
-                if Backend.isDbms(DBMS.MSSQL) and value.startswith("0x"):
-                    try:
-                        retVal = retVal.decode("utf-16-le")
-                    except UnicodeDecodeError:
-                        pass
+            if not raw:
+                if not kb.binaryField:
+                    if Backend.isDbms(DBMS.MSSQL) and value.startswith("0x"):
+                        try:
+                            retVal = retVal.decode("utf-16-le")
+                        except UnicodeDecodeError:
+                            pass
 
-                elif Backend.getIdentifiedDbms() in (DBMS.HSQLDB, DBMS.H2):
-                    try:
-                        retVal = retVal.decode("utf-16-be")
-                    except UnicodeDecodeError:
-                        pass
+                    elif Backend.getIdentifiedDbms() in (DBMS.HSQLDB, DBMS.H2):
+                        try:
+                            retVal = retVal.decode("utf-16-be")
+                        except UnicodeDecodeError:
+                            pass
 
                 if not isinstance(retVal, six.text_type):
                     retVal = getUnicode(retVal, conf.encoding or UNICODE_ENCODING)

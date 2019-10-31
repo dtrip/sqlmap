@@ -28,6 +28,7 @@ from lib.core.common import safeCSValue
 from lib.core.common import unsafeSQLIdentificatorNaming
 from lib.core.compat import xrange
 from lib.core.convert import getBytes
+from lib.core.convert import getConsoleLength
 from lib.core.convert import getText
 from lib.core.convert import getUnicode
 from lib.core.data import conf
@@ -245,7 +246,7 @@ class Dump(object):
                     if table and isListLike(table):
                         table = table[0]
 
-                    maxlength = max(maxlength, len(unsafeSQLIdentificatorNaming(normalizeUnicode(table) or getUnicode(table))))
+                    maxlength = max(maxlength, getConsoleLength(unsafeSQLIdentificatorNaming(getUnicode(table))))
 
             lines = "-" * (int(maxlength) + 2)
 
@@ -266,7 +267,7 @@ class Dump(object):
                         table = table[0]
 
                     table = unsafeSQLIdentificatorNaming(table)
-                    blank = " " * (maxlength - len(normalizeUnicode(table) or getUnicode(table)))
+                    blank = " " * (maxlength - getConsoleLength(getUnicode(table)))
                     self._write("| %s%s |" % (table, blank))
 
                 self._write("+%s+\n" % lines)
@@ -361,7 +362,7 @@ class Dump(object):
             for ctables in dbTables.values():
                 for tables in ctables.values():
                     for table in tables:
-                        maxlength1 = max(maxlength1, len(normalizeUnicode(table) or getUnicode(table)))
+                        maxlength1 = max(maxlength1, getConsoleLength(getUnicode(table)))
 
             for db, counts in dbTables.items():
                 self._write("Database: %s" % unsafeSQLIdentificatorNaming(db) if db else "Current database")
@@ -387,7 +388,7 @@ class Dump(object):
                     tables.sort(key=lambda _: _.lower() if hasattr(_, "lower") else _)
 
                     for table in tables:
-                        blank1 = " " * (maxlength1 - len(normalizeUnicode(table) or getUnicode(table)))
+                        blank1 = " " * (maxlength1 - getConsoleLength(getUnicode(table)))
                         blank2 = " " * (maxlength2 - len(str(count)))
                         self._write("| %s%s | %d%s |" % (table, blank1, count, blank2))
 
@@ -547,7 +548,7 @@ class Dump(object):
 
                 column = unsafeSQLIdentificatorNaming(column)
                 maxlength = int(info["length"])
-                blank = " " * (maxlength - len(column))
+                blank = " " * (maxlength - getConsoleLength(column))
 
                 self._write("| %s%s" % (column, blank), newline=False)
 
@@ -602,7 +603,7 @@ class Dump(object):
 
                     values.append(value)
                     maxlength = int(info["length"])
-                    blank = " " * (maxlength - len(value))
+                    blank = " " * (maxlength - getConsoleLength(value))
                     self._write("| %s%s" % (value, blank), newline=False, console=console)
 
                     if len(value) > MIN_BINARY_DISK_DUMP_SIZE and r'\x' in value:

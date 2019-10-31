@@ -347,6 +347,10 @@ def _setCrawler():
         for i in xrange(len(targets)):
             try:
                 target = targets[i]
+
+                if not re.search(r"\Ahttp[s]*://", target):
+                    target = "http://%s" % target
+
                 crawl(target)
 
                 if conf.verbose in (1, 2):
@@ -484,7 +488,11 @@ def _findPageForms():
 
         for i in xrange(len(targets)):
             try:
-                target = targets[i]
+                target = targets[i].strip()
+
+                if not re.search(r"\Ahttp[s]*://", target):
+                    target = "http://%s" % target
+
                 page, _, _ = Request.getPage(url=target.strip(), cookie=conf.cookie, crawling=True, raise404=False)
                 if findPageForms(page, target, False, True):
                     found = True
@@ -1161,9 +1169,9 @@ def _setSafeVisit():
     else:
         if not re.search(r"\Ahttp[s]*://", conf.safeUrl):
             if ":443/" in conf.safeUrl:
-                conf.safeUrl = "https://" + conf.safeUrl
+                conf.safeUrl = "https://%s" % conf.safeUrl
             else:
-                conf.safeUrl = "http://" + conf.safeUrl
+                conf.safeUrl = "http://%s" % conf.safeUrl
 
     if (conf.safeFreq or 0) <= 0:
         errMsg = "please provide a valid value (>0) for safe frequency (--safe-freq) while using safe visit features"
@@ -1228,7 +1236,7 @@ def _setHTTPAuthentication():
 
     elif not conf.authType and conf.authCred:
         errMsg = "you specified the HTTP authentication credentials, "
-        errMsg += "but did not provide the type"
+        errMsg += "but did not provide the type (e.g. --auth-type=\"basic\")"
         raise SqlmapSyntaxException(errMsg)
 
     elif (conf.authType or "").lower() not in (AUTH_TYPE.BASIC, AUTH_TYPE.DIGEST, AUTH_TYPE.NTLM, AUTH_TYPE.PKI):

@@ -34,6 +34,7 @@ from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
 from lib.core.decorators import cachedmethod
+from lib.core.decorators import lockedmethod
 from lib.core.dicts import HTML_ENTITIES
 from lib.core.enums import DBMS
 from lib.core.enums import HTTP_HEADER
@@ -57,6 +58,7 @@ from thirdparty.odict import OrderedDict
 from thirdparty.six import unichr as _unichr
 from thirdparty.six.moves import http_client as _http_client
 
+@lockedmethod
 def forgeHeaders(items=None, base=None):
     """
     Prepare HTTP Cookie, HTTP User-Agent and HTTP Referer headers to use when performing
@@ -110,9 +112,9 @@ def forgeHeaders(items=None, base=None):
                     if conf.loadCookies:
                         conf.httpHeaders = filterNone((item if item[0] != HTTP_HEADER.COOKIE else None) for item in conf.httpHeaders)
                     elif kb.mergeCookies is None:
-                        message = "you provided a HTTP %s header value. " % HTTP_HEADER.COOKIE
-                        message += "The target URL provided its own cookies within "
-                        message += "the HTTP %s header which intersect with yours. " % HTTP_HEADER.SET_COOKIE
+                        message = "you provided a HTTP %s header value, while " % HTTP_HEADER.COOKIE
+                        message += "target URL provides its own cookies within "
+                        message += "HTTP %s header which intersect with yours. " % HTTP_HEADER.SET_COOKIE
                         message += "Do you want to merge them in further requests? [Y/n] "
 
                         kb.mergeCookies = readInput(message, default='Y', boolean=True)

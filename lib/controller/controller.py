@@ -257,13 +257,9 @@ def _saveToResultsFile():
             line = "%s,%s,%s,%s,%s%s" % (safeCSValue(kb.originalUrls.get(conf.url) or conf.url), place, parameter, "".join(techniques[_][0].upper() for _ in sorted(value)), notes, os.linesep)
             conf.resultsFP.write(line)
 
-        if not results:
-            line = "%s,,,,%s" % (conf.url, os.linesep)
-            conf.resultsFP.write(line)
-
         conf.resultsFP.flush()
     except IOError as ex:
-        errMsg = "unable to write to the results file '%s' ('%s'). " % (conf.resultsFilename, getSafeExString(ex))
+        errMsg = "unable to write to the results file '%s' ('%s'). " % (conf.resultsFile, getSafeExString(ex))
         raise SqlmapSystemException(errMsg)
 
 @stackedmethod
@@ -293,7 +289,7 @@ def start():
         return False
 
     if kb.targets and len(kb.targets) > 1:
-        infoMsg = "sqlmap got a total of %d targets" % len(kb.targets)
+        infoMsg = "found a total of %d targets" % len(kb.targets)
         logger.info(infoMsg)
 
     hostCount = 0
@@ -301,7 +297,6 @@ def start():
 
     for targetUrl, targetMethod, targetData, targetCookie, targetHeaders in kb.targets:
         try:
-
             if conf.checkInternet:
                 infoMsg = "checking for Internet connection"
                 logger.info(infoMsg)
@@ -483,9 +478,6 @@ def start():
                     skip &= not (place == PLACE.COOKIE and intersect((PLACE.COOKIE,), conf.testParameter, True))
 
                     if skip:
-                        continue
-
-                    if kb.testOnlyCustom and place not in (PLACE.URI, PLACE.CUSTOM_POST, PLACE.CUSTOM_HEADER):
                         continue
 
                     if place not in conf.paramDict:
@@ -741,9 +733,9 @@ def start():
         logger.info("fetched data logged to text files under '%s'" % conf.outputPath)
 
     if conf.multipleTargets:
-        if conf.resultsFilename:
+        if conf.resultsFile:
             infoMsg = "you can find results of scanning in multiple targets "
-            infoMsg += "mode inside the CSV file '%s'" % conf.resultsFilename
+            infoMsg += "mode inside the CSV file '%s'" % conf.resultsFile
             logger.info(infoMsg)
 
     return True

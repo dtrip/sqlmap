@@ -1231,7 +1231,7 @@ def checkPipedInput():
     # Reference: https://stackoverflow.com/a/33873570
     """
 
-    return not os.isatty(sys.stdin.fileno())
+    return not os.isatty(sys.stdin.fileno()) if hasattr(sys.stdin, "fileno") else False
 
 def isZipFile(filename):
     """
@@ -3806,6 +3806,8 @@ def maskSensitiveData(msg):
 
     >>> maskSensitiveData('python sqlmap.py -u "http://www.test.com/vuln.php?id=1" --banner') == 'python sqlmap.py -u *********************************** --banner'
     True
+    >>> maskSensitiveData('sqlmap.py -u test.com/index.go?id=index') == 'sqlmap.py -u **************************'
+    True
     """
 
     retVal = getUnicode(msg)
@@ -4419,9 +4421,9 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
     try:
         forms = ParseResponse(response, backwards_compat=False)
     except ParseError:
-        if re.search(r"(?i)<!DOCTYPE html|<html", content or ""):
-            warnMsg = "badly formed HTML at the given URL ('%s'). Going to filter it" % url
-            logger.warning(warnMsg)
+        if re.search(r"(?i)<!DOCTYPE html|<html", content or "") and not re.search(r"(?i)\.js(\?|\Z)", url):
+            dbgMsg = "badly formed HTML at the given URL ('%s'). Going to filter it" % url
+            logger.debug(dbgMsg)
             filtered = _("".join(re.findall(FORM_SEARCH_REGEX, content)), url)
 
             if filtered and filtered != content:
@@ -4502,7 +4504,7 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
         data = data.strip("['\"]")
         retVal.add((url, HTTPMETHOD.POST, data, conf.cookie, None))
 
-    if not retVal:
+    if not retVal and not conf.crawlDepth:
         errMsg = "there were no forms found at the given target URL"
         if raise_:
             raise SqlmapGenericException(errMsg)

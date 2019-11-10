@@ -19,7 +19,6 @@ optDict = {
         "sessionFile": "string",
         "googleDork": "string",
         "configFile": "string",
-        "sitemapUrl": "string",
     },
 
     "Request": {
@@ -238,6 +237,7 @@ optDict = {
         "listTampers": "boolean",
         "offline": "boolean",
         "purge": "boolean",
+        "resultsFile": "string",
         "tmpDir": "string",
         "unstable": "boolean",
         "updateAll": "boolean",

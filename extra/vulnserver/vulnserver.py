@@ -102,8 +102,20 @@ class ReqHandler(BaseHTTPRequestHandler):
         if hasattr(self, "data"):
             if self.data.startswith('{') and self.data.endswith('}'):
                 params.update(json.loads(self.data))
+            elif self.data.startswith('<') and self.data.endswith('>'):
+                params.update(dict(re.findall(r'name="([^"]+)" value="([^"]*)"', self.data)))
             else:
                 params.update(parse_qs(self.data))
+
+        for name in self.headers:
+            params[name.lower()] = self.headers[name]
+
+        if "cookie" in params:
+            for part in params["cookie"].split(';'):
+                part = part.strip()
+                if '=' in part:
+                    name, value = part.split('=', 1)
+                    params[name.strip()] = unquote_plus(value.strip())
 
         for key in params:
             if params[key] and isinstance(params[key], (tuple, list)):

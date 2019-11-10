@@ -98,6 +98,7 @@ from lib.core.settings import HTTP_ACCEPT_ENCODING_HEADER_VALUE
 from lib.core.settings import HTTP_ACCEPT_HEADER_VALUE
 from lib.core.settings import IPS_WAF_CHECK_PAYLOAD
 from lib.core.settings import IS_WIN
+from lib.core.settings import JAVASCRIPT_HREF_REGEX
 from lib.core.settings import LARGE_READ_TRIM_MARKER
 from lib.core.settings import MAX_CONNECTION_READ_SIZE
 from lib.core.settings import MAX_CONNECTIONS_REGEX
@@ -563,10 +564,17 @@ class Connect(object):
                     debugMsg = "got HTML meta refresh header"
                     logger.debug(debugMsg)
 
+                if not refresh:
+                    refresh = extractRegexResult(JAVASCRIPT_HREF_REGEX, page)
+
+                    if refresh:
+                        debugMsg = "got Javascript redirect request"
+                        logger.debug(debugMsg)
+
                 if refresh:
                     if kb.alwaysRefresh is None:
-                        msg = "sqlmap got a refresh request "
-                        msg += "(redirect like response common to login pages). "
+                        msg = "got a refresh request "
+                        msg += "(redirect like response common to login pages) to '%s'. " % refresh
                         msg += "Do you want to apply the refresh "
                         msg += "from now on (or stay on the original page)? [Y/n]"
 
@@ -690,7 +698,7 @@ class Connect(object):
                         else:
                             raise SqlmapConnectionException(warnMsg)
                 else:
-                    debugMsg = "got HTTP error code: %d (%s)" % (code, status)
+                    debugMsg = "got HTTP error code: %d ('%s')" % (code, status)
                     logger.debug(debugMsg)
 
         except (_urllib.error.URLError, socket.error, socket.timeout, _http_client.HTTPException, struct.error, binascii.Error, ProxyError, SqlmapCompressionException, WebSocketException, TypeError, ValueError, OverflowError):

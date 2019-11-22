@@ -130,6 +130,7 @@ from lib.core.settings import GOOGLE_ANALYTICS_COOKIE_PREFIX
 from lib.core.settings import HASHDB_MILESTONE_VALUE
 from lib.core.settings import HOST_ALIASES
 from lib.core.settings import HTTP_CHUNKED_SPLIT_KEYWORDS
+from lib.core.settings import IGNORE_PARAMETERS
 from lib.core.settings import IGNORE_SAVE_OPTIONS
 from lib.core.settings import INFERENCE_UNKNOWN_CHAR
 from lib.core.settings import IP_ADDRESS_REGEX
@@ -1696,7 +1697,7 @@ def expandAsteriskForColumns(expression):
         if db is None:
             if expression != conf.sqlQuery:
                 conf.db = db
-            else:
+            elif conf.db:
                 expression = re.sub(r"([^\w])%s" % re.escape(conf.tbl), r"\g<1>%s.%s" % (conf.db, conf.tbl), expression)
         else:
             conf.db = db
@@ -2762,7 +2763,7 @@ def findMultipartPostBoundary(post):
 
     return retVal
 
-def urldecode(value, encoding=None, unsafe="%%&=;+%s" % CUSTOM_INJECTION_MARK_CHAR, convall=False, spaceplus=True):
+def urldecode(value, encoding=None, unsafe="%%?&=;+%s" % CUSTOM_INJECTION_MARK_CHAR, convall=False, spaceplus=True):
     """
     URL decodes given value
 
@@ -3483,6 +3484,23 @@ def flattenValue(value):
         else:
             yield i
 
+def joinValue(value, delimiter=','):
+    """
+    Returns a value consisting of joined parts of a given value
+
+    >>> joinValue(['1', '2'])
+    '1,2'
+    >>> joinValue('1')
+    '1'
+    """
+
+    if isListLike(value):
+        retVal = delimiter.join(value)
+    else:
+        retVal = value
+
+    return retVal
+
 def isListLike(value):
     """
     Returns True if the given value is a list-like instance
@@ -3562,7 +3580,13 @@ def openFile(filename, mode='r', encoding=UNICODE_ENCODING, errors="reversible",
 
     >>> "openFile" in openFile(__file__).read()
     True
+    >>> b"openFile" in openFile(__file__, "rb", None).read()
+    True
     """
+
+    # Reference: https://stackoverflow.com/a/37462452
+    if 'b' in mode:
+        buffering = 0
 
     if filename == STDIN_PIPE_DASH:
         if filename not in kb.cache.content:
@@ -4022,6 +4046,14 @@ def safeSQLIdentificatorNaming(name, isTable=False):
     Returns a safe representation of SQL identificator name (internal data format)
 
     # Reference: http://stackoverflow.com/questions/954884/what-special-characters-are-allowed-in-t-sql-column-retVal
+
+    >>> pushValue(kb.forcedDbms)
+    >>> kb.forcedDbms = DBMS.MSSQL
+    >>> getText(safeSQLIdentificatorNaming("begin"))
+    '[begin]'
+    >>> getText(safeSQLIdentificatorNaming("foobar"))
+    'foobar'
+    >>> kb.forceDbms = popValue()
     """
 
     retVal = name
@@ -4061,6 +4093,14 @@ def safeSQLIdentificatorNaming(name, isTable=False):
 def unsafeSQLIdentificatorNaming(name):
     """
     Extracts identificator's name from its safe SQL representation
+
+    >>> pushValue(kb.forcedDbms)
+    >>> kb.forcedDbms = DBMS.MSSQL
+    >>> getText(unsafeSQLIdentificatorNaming("[begin]"))
+    'begin'
+    >>> getText(unsafeSQLIdentificatorNaming("foobar"))
+    'foobar'
+    >>> kb.forceDbms = popValue()
     """
 
     retVal = name
@@ -4476,9 +4516,13 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
             # flag to know if we are dealing with the same target host
             _ = checkSameHost(response.geturl(), url)
 
-            if conf.scope:
-                if not re.search(conf.scope, url, re.I):
-                    continue
+            if data:
+                data = data.lstrip("&=").rstrip('&')
+
+            if conf.scope and not re.search(conf.scope, url, re.I):
+                continue
+            elif data and not re.sub(r"(%s)=[^&]*&?" % '|'.join(IGNORE_PARAMETERS), "", data):
+                continue
             elif not _:
                 continue
             else:
@@ -4871,7 +4915,7 @@ def prioritySortColumns(columns):
     """
 
     def _(column):
-        return column and "id" in column.lower()
+        return column and re.search(r"^id|id$", column, re.I) is not None
 
     return sorted(sorted(columns, key=len), key=functools.cmp_to_key(lambda x, y: -1 if _(x) and not _(y) else 1 if not _(x) and _(y) else 0))
 

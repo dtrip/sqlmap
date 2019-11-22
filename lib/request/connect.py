@@ -550,7 +550,7 @@ class Connect(object):
                     code = None
                     responseHeaders = {}
 
-                page = decodePage(page, responseHeaders.get(HTTP_HEADER.CONTENT_ENCODING), responseHeaders.get(HTTP_HEADER.CONTENT_TYPE))
+                page = decodePage(page, responseHeaders.get(HTTP_HEADER.CONTENT_ENCODING), responseHeaders.get(HTTP_HEADER.CONTENT_TYPE), percentDecode=not crawling)
                 status = getUnicode(conn.msg) if conn and getattr(conn, "msg", None) else None
 
             kb.connErrorCounter = 0
@@ -628,7 +628,7 @@ class Connect(object):
                 responseHeaders = ex.info()
                 responseHeaders[URI_HTTP_HEADER] = ex.geturl()
                 patchHeaders(responseHeaders)
-                page = decodePage(page, responseHeaders.get(HTTP_HEADER.CONTENT_ENCODING), responseHeaders.get(HTTP_HEADER.CONTENT_TYPE))
+                page = decodePage(page, responseHeaders.get(HTTP_HEADER.CONTENT_ENCODING), responseHeaders.get(HTTP_HEADER.CONTENT_TYPE), percentDecode=not crawling)
             except socket.timeout:
                 warnMsg = "connection timed out while trying "
                 warnMsg += "to get error page information (%d)" % ex.code
@@ -932,7 +932,7 @@ class Connect(object):
                 if kb.postHint in (POST_HINT.SOAP, POST_HINT.XML):
                     # payloads in SOAP/XML should have chars > and < replaced
                     # with their HTML encoded counterparts
-                    payload = payload.replace('>', "&gt;").replace('<', "&lt;")
+                    payload = payload.replace('&', "&amp;").replace('>', "&gt;").replace('<', "&lt;").replace('"', "&quot;").replace("'", "&apos;")  # Reference: https://stackoverflow.com/a/1091953
                 elif kb.postHint == POST_HINT.JSON:
                     payload = escapeJsonValue(payload)
                 elif kb.postHint == POST_HINT.JSON_LIKE:

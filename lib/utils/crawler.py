@@ -42,7 +42,10 @@ from thirdparty.beautifulsoup.beautifulsoup import BeautifulSoup
 from thirdparty.six.moves import http_client as _http_client
 from thirdparty.six.moves import urllib as _urllib
 
-def crawl(target):
+def crawl(target, post=None, cookie=None):
+    if not target:
+        return
+
     try:
         visited = set()
         threadData = getCurrentThreadData()
@@ -70,7 +73,7 @@ def crawl(target):
                 content = None
                 try:
                     if current:
-                        content = Request.getPage(url=current, crawling=True, raise404=False)[0]
+                        content = Request.getPage(url=current, post=post, cookie=None, crawling=True, raise404=False)[0]
                 except SqlmapConnectionException as ex:
                     errMsg = "connection exception detected ('%s'). skipping " % getSafeExString(ex)
                     errMsg += "URL '%s'" % current
@@ -96,6 +99,7 @@ def crawl(target):
                         tags = soup('a')
 
                         tags += re.finditer(r'(?i)\s(href|src)=["\'](?P<href>[^>"\']+)', content)
+                        tags += re.finditer(r'(?i)window\.open\(["\'](?P<href>[^)"\']+)["\']', content)
 
                         for tag in tags:
                             href = tag.get("href") if hasattr(tag, "get") else tag.group("href")
@@ -134,6 +138,14 @@ def crawl(target):
 
         threadData.shared.deeper = set()
         threadData.shared.unprocessed = set([target])
+
+        _ = re.sub(r"(?<!/)/(?!/).*", "", target)
+        if _:
+            if target.strip('/') != _.strip('/'):
+                threadData.shared.unprocessed.add(_)
+
+        if re.search(r"\?.*\b\w+=", target):
+            threadData.shared.value.add(target)
 
         if kb.checkSitemap is None:
             message = "do you want to check for the existence of "
@@ -212,15 +224,13 @@ def crawl(target):
                 results = OrderedSet()
 
                 for target in kb.targets:
-                    if target[1] in (HTTPMETHOD.GET, None):
-                        match = re.search(r"/[^/?]*\?.*\Z", target[0])
-                        if match:
-                            key = re.sub(r"=[^=&]*", "=", match.group(0))
-                            if key not in seen:
-                                results.add(target)
-                                seen.add(key)
-                    else:
-                        results.add(target)
+                    value = "%s%s%s" % (target[0], '&' if '?' in target[0] else '?', target[2] or "")
+                    match = re.search(r"/[^/?]*\?.+\Z", value)
+                    if match:
+                        key = re.sub(r"=[^=&]*", "=", match.group(0)).strip("&?")
+                        if '=' in key and key not in seen:
+                            results.add(target)
+                            seen.add(key)
 
                 kb.targets = results
 

@@ -18,7 +18,7 @@ from lib.core.enums import OS
 from thirdparty.six import unichr as _unichr
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.3.11.25"
+VERSION = "1.3.11.93"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -29,6 +29,7 @@ DEV_EMAIL_ADDRESS = "dev@sqlmap.org"
 ISSUES_PAGE = "https://github.com/sqlmapproject/sqlmap/issues/new"
 GIT_REPOSITORY = "https://github.com/dtrip/sqlmap.git"
 GIT_PAGE = "https://github.com/dtrip/sqlmap"
+WIKI_PAGE = "https://github.com/sqlmapproject/sqlmap/wiki/"
 ZIPBALL_PAGE = "https://github.com/dtrip/sqlmap/zipball/master"
 
 # colorful banner
@@ -366,7 +367,7 @@ ERROR_PARSING_REGEXES = (
 META_CHARSET_REGEX = r'(?si)<head>.*<meta[^>]+charset="?(?P<result>[^"> ]+).*</head>'
 
 # Regular expression used for parsing refresh info from meta html headers
-META_REFRESH_REGEX = r'(?si)<head>(?!.*?<noscript.*?</head).*?<meta http-equiv="?refresh"?[^>]+content="?[^">]+url=["\']?(?P<result>[^\'">]+).*</head>'
+META_REFRESH_REGEX = r'(?i)<meta http-equiv="?refresh"?[^>]+content="?[^">]+;\s*(url=)?["\']?(?P<result>[^\'">]+)'
 
 # Regular expression used for parsing Javascript redirect request
 JAVASCRIPT_HREF_REGEX = r'<script>\s*(\w+\.)?location\.href\s*=["\'](?P<result>[^"\']+)'

@@ -30,6 +30,7 @@ from lib.core.common import getSortedInjectionTests
 from lib.core.common import hashDBRetrieve
 from lib.core.common import hashDBWrite
 from lib.core.common import intersect
+from lib.core.common import joinValue
 from lib.core.common import listToStrValue
 from lib.core.common import parseFilePaths
 from lib.core.common import popValue
@@ -153,7 +154,7 @@ def checkSqlInjection(place, parameter, value):
                 # payload), ask the user to limit the tests to the fingerprinted
                 # DBMS
                 if kb.reduceTests is None and not conf.testFilter and (intersect(Backend.getErrorParsedDBMSes(), SUPPORTED_DBMS, True) or kb.heuristicDbms or injection.dbms):
-                    msg = "it looks like the back-end DBMS is '%s'. " % (Format.getErrorParsedDBMSes() or kb.heuristicDbms or injection.dbms)
+                    msg = "it looks like the back-end DBMS is '%s'. " % (Format.getErrorParsedDBMSes() or kb.heuristicDbms or joinValue(injection.dbms, '/'))
                     msg += "Do you want to skip test payloads specific for other DBMSes? [Y/n]"
                     kb.reduceTests = (Backend.getErrorParsedDBMSes() or [kb.heuristicDbms]) if readInput(msg, default='Y', boolean=True) else []
 
@@ -163,7 +164,7 @@ def checkSqlInjection(place, parameter, value):
             # regardless of --level and --risk values provided
             if kb.extendTests is None and not conf.testFilter and (conf.level < 5 or conf.risk < 3) and (intersect(Backend.getErrorParsedDBMSes(), SUPPORTED_DBMS, True) or kb.heuristicDbms or injection.dbms):
                 msg = "for the remaining tests, do you want to include all tests "
-                msg += "for '%s' extending provided " % (Format.getErrorParsedDBMSes() or kb.heuristicDbms or injection.dbms)
+                msg += "for '%s' extending provided " % (Format.getErrorParsedDBMSes() or kb.heuristicDbms or joinValue(injection.dbms, '/'))
                 msg += "level (%d)" % conf.level if conf.level < 5 else ""
                 msg += " and " if conf.level < 5 and conf.risk < 3 else ""
                 msg += "risk (%d)" % conf.risk if conf.risk < 3 else ""
@@ -786,8 +787,12 @@ def checkSqlInjection(place, parameter, value):
                                 infoMsg = "executing alerting shell command(s) ('%s')" % conf.alert
                                 logger.info(infoMsg)
 
-                                process = subprocess.Popen(conf.alert.encode(sys.getfilesystemencoding() or UNICODE_ENCODING), shell=True)
-                                process.wait()
+                                try:
+                                    process = subprocess.Popen(conf.alert.encode(sys.getfilesystemencoding() or UNICODE_ENCODING), shell=True)
+                                    process.wait()
+                                except Exception as ex:
+                                    errMsg = "error occurred while executing '%s' ('%s')" % (conf.alert, getSafeExString(ex))
+                                    logger.error(errMsg)
 
                             kb.alerted = True
 
@@ -1099,6 +1104,7 @@ def heuristicCheckSqlInjection(place, parameter):
         logger.warn(infoMsg)
 
     kb.heuristicMode = True
+    kb.disableHtmlDecoding = True
 
     randStr1, randStr2 = randomStr(NON_SQLI_CHECK_PREFIX_SUFFIX_LENGTH), randomStr(NON_SQLI_CHECK_PREFIX_SUFFIX_LENGTH)
     value = "%s%s%s" % (randStr1, DUMMY_NON_SQLI_CHECK_APPENDIX, randStr2)
@@ -1118,6 +1124,7 @@ def heuristicCheckSqlInjection(place, parameter):
             logger.info(infoMsg)
             break
 
+    kb.disableHtmlDecoding = False
     kb.heuristicMode = False
 
     return kb.heuristicTest
@@ -1512,8 +1519,9 @@ def checkConnection(suppressOutput=False):
             conf.disablePrecon = True
 
         if not kb.originalPage and wasLastResponseHTTPError():
-            errMsg = "unable to retrieve page content"
-            raise SqlmapConnectionException(errMsg)
+            if getLastRequestHTTPError() not in (conf.ignoreCode or []):
+                errMsg = "unable to retrieve page content"
+                raise SqlmapConnectionException(errMsg)
         elif wasLastResponseDBMSError():
             warnMsg = "there is a DBMS error found in the HTTP response body "
             warnMsg += "which could interfere with the results of the tests"

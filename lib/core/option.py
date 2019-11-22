@@ -98,6 +98,7 @@ from lib.core.exception import SqlmapSyntaxException
 from lib.core.exception import SqlmapSystemException
 from lib.core.exception import SqlmapUnsupportedDBMSException
 from lib.core.exception import SqlmapUserQuitException
+from lib.core.exception import SqlmapValueException
 from lib.core.log import FORMATTER
 from lib.core.optiondict import optDict
 from lib.core.settings import CODECS_LIST_PAGE
@@ -336,7 +337,11 @@ def _setCrawler():
         return
 
     if not conf.bulkFile:
-        crawl(conf.url)
+        if conf.url:
+            crawl(conf.url)
+        elif conf.requestFile and kb.targets:
+            target = list(kb.targets)[0]
+            crawl(target[0], target[2], target[3])
 
 def _doSearch():
     """
@@ -1414,7 +1419,10 @@ def _setHTTPTimeout():
     else:
         conf.timeout = 30.0
 
-    socket.setdefaulttimeout(conf.timeout)
+    try:
+        socket.setdefaulttimeout(conf.timeout)
+    except OverflowError as ex:
+        raise SqlmapValueException("invalid value used for option '--timeout' ('%s')" % getSafeExString(ex))
 
 def _checkDependencies():
     """
@@ -1737,10 +1745,11 @@ def _cleanupOptions():
 
         if not regex:
             conf.exclude = re.sub(r"\s*,\s*", ',', conf.exclude)
-            conf.exclude = "\A%s\Z" % '|'.join(re.escape(_) for _ in conf.exclude.split(','))
+            conf.exclude = r"\A%s\Z" % '|'.join(re.escape(_) for _ in conf.exclude.split(','))
 
     if conf.binaryFields:
-        conf.binaryFields = re.sub(r"\s*,\s*", ',', conf.binaryFields)
+        conf.binaryFields = conf.binaryFields.replace(" ", "")
+        conf.binaryFields = re.split(PARAMETER_SPLITTING_REGEX, conf.binaryFields)
 
     if any((conf.proxy, conf.proxyFile, conf.tor)):
         conf.disablePrecon = True
@@ -1867,6 +1876,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
 
     kb.delayCandidates = TIME_DELAY_CANDIDATES * [0]
     kb.dep = None
+    kb.disableHtmlDecoding = False
     kb.dnsMode = False
     kb.dnsTest = None
     kb.docRoot = None
@@ -2558,6 +2568,10 @@ def _basicOptionValidation():
 
     if conf.proxy and conf.ignoreProxy:
         errMsg = "option '--proxy' is incompatible with switch '--ignore-proxy'"
+        raise SqlmapSyntaxException(errMsg)
+
+    if conf.alert and conf.alert.startswith('-'):
+        errMsg = "value for option '--alert' must be valid operating system command(s)"
         raise SqlmapSyntaxException(errMsg)
 
     if conf.timeSec < 1:

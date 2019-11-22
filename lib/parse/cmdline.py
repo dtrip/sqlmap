@@ -121,11 +121,11 @@ def cmdLineParser(argv=None):
         # Target options
         target = parser.add_argument_group("Target", "At least one of these options has to be provided to define the target(s)")
 
-        target.add_argument("-d", dest="direct",
-            help="Connection string for direct database connection")
-
         target.add_argument("-u", "--url", dest="url",
             help="Target URL (e.g. \"http://www.site.com/vuln.php?id=1\")")
+
+        target.add_argument("-d", dest="direct",
+            help="Connection string for direct database connection")
 
         target.add_argument("-l", dest="logFile",
             help="Parse target(s) from Burp or WebScarab proxy log file")
@@ -144,6 +144,12 @@ def cmdLineParser(argv=None):
 
         # Request options
         request = parser.add_argument_group("Request", "These options can be used to specify how to connect to the target URL")
+
+        request.add_argument("-A", "--user-agent", dest="agent",
+            help="HTTP User-Agent header value")
+
+        request.add_argument("-H", "--header", dest="header",
+            help="Extra header (e.g. \"X-Forwarded-For: 127.0.0.1\")")
 
         request.add_argument("--method", dest="method",
             help="Force usage of given HTTP method (e.g. PUT)")
@@ -166,9 +172,6 @@ def cmdLineParser(argv=None):
         request.add_argument("--drop-set-cookie", dest="dropSetCookie", action="store_true",
             help="Ignore Set-Cookie header from response")
 
-        request.add_argument("--user-agent", dest="agent",
-            help="HTTP User-Agent header value")
-
         request.add_argument("--mobile", dest="mobile", action="store_true",
             help="Imitate smartphone through HTTP User-Agent header")
 
@@ -180,9 +183,6 @@ def cmdLineParser(argv=None):
 
         request.add_argument("--referer", dest="referer",
             help="HTTP Referer header value")
-
-        request.add_argument("-H", "--header", dest="header",
-            help="Extra header (e.g. \"X-Forwarded-For: 127.0.0.1\")")
 
         request.add_argument("--headers", dest="headers",
             help="Extra headers (e.g. \"Accept-Language: fr\\nETag: 123\")")
@@ -410,7 +410,7 @@ def cmdLineParser(argv=None):
             help="Perform an extensive DBMS version fingerprint")
 
         # Enumeration options
-        enumeration = parser.add_argument_group("Enumeration", "These options can be used to enumerate the back-end database management system information, structure and data contained in the tables. Moreover you can run your own SQL statements")
+        enumeration = parser.add_argument_group("Enumeration", "These options can be used to enumerate the back-end database management system information, structure and data contained in the tables")
 
         enumeration.add_argument("-a", "--all", dest="getAll", action="store_true",
             help="Retrieve everything")
@@ -783,6 +783,9 @@ def cmdLineParser(argv=None):
         parser.add_argument("--force-pivoting", dest="forcePivoting", action="store_true",
             help=SUPPRESS)
 
+        parser.add_argument("--gui", dest="gui", action="store_true",
+            help=SUPPRESS)
+
         parser.add_argument("--smoke-test", dest="smokeTest", action="store_true",
             help=SUPPRESS)
 
@@ -850,7 +853,6 @@ def cmdLineParser(argv=None):
                     break
 
         _ = []
-        prompt = False
         advancedHelp = True
         extraHeaders = []
         tamperIndex = None
@@ -862,9 +864,14 @@ def cmdLineParser(argv=None):
         argv = _
         checkOldOptions(argv)
 
-        prompt = "--sqlmap-shell" in argv
+        if "--gui" in argv:
+            from lib.core.gui import runGui
+            runGui(parser)
 
-        if prompt:
+            if hasattr(parser, "_args"):
+                return parser._args
+
+        elif "--sqlmap-shell" in argv:
             _createHomeDirectories()
 
             parser.usage = ""
@@ -909,6 +916,7 @@ def cmdLineParser(argv=None):
 
         for i in xrange(len(argv)):
             longOptions = set(re.findall(r"\-\-([^= ]+?)=", parser.format_help()))
+            longSwitches = set(re.findall(r"\-\-([^= ]+?)\s", parser.format_help()))
             if argv[i] == "-hh":
                 argv[i] = "-h"
             elif i == 1 and re.search(r"\A(http|www\.|\w[\w.-]+\.\w{2,})", argv[i]) is not None:
@@ -922,6 +930,9 @@ def cmdLineParser(argv=None):
             elif re.search(r"\A-\w=.+", argv[i]):
                 dataToStdout("[!] potentially miswritten (illegal '=') short option detected ('%s')\n" % argv[i])
                 raise SystemExit
+            elif re.search(r"\A-\w{3,}", argv[i]):
+                if argv[i].strip('-').split('=')[0] in (longOptions | longSwitches):
+                    argv[i] = "-%s" % argv[i]
             elif argv[i] in DEPRECATED_OPTIONS:
                 argv[i] = ""
             elif argv[i].startswith("--tamper"):

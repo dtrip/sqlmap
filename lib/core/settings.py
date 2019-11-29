@@ -18,7 +18,7 @@ from lib.core.enums import OS
 from thirdparty.six import unichr as _unichr
 
 # sqlmap version (<major>.<minor>.<month>.<monthly commit>)
-VERSION = "1.3.11.93"
+VERSION = "1.3.11.113"
 TYPE = "dev" if VERSION.count('.') > 2 and VERSION.split('.')[-1] != '0' else "stable"
 TYPE_COLORS = {"dev": 33, "stable": 90, "pip": 34}
 VERSION_STRING = "sqlmap/%s#%s" % ('.'.join(VERSION.split('.')[:-1]) if VERSION.count('.') > 2 and VERSION.split('.')[-1] == '0' else VERSION, TYPE)
@@ -238,6 +238,9 @@ STDIN_PIPE_DASH = '-'
 # URL used in dummy runs
 DUMMY_URL = "http://foo/bar?id=1"
 
+# Timeout used during initial websocket (pull) testing
+WEBSOCKET_INITIAL_TIMEOUT = 3
+
 # The name of the operating system dependent module imported. The following names have currently been registered: 'posix', 'nt', 'mac', 'os2', 'ce', 'java', 'riscos'
 PLATFORM = os.name
 PYVERSION = sys.version.split()[0]
@@ -388,7 +391,7 @@ WEBSCARAB_SPLITTER = "### Conversation"
 BURP_REQUEST_REGEX = r"={10,}\s+([A-Z]{3,} .+?)\s+={10,}"
 
 # Regex used for parsing XML Burp saved history items
-BURP_XML_HISTORY_REGEX = r'<port>(\d+)</port>.+?<request base64="true"><!\[CDATA\[([^]]+)'
+BURP_XML_HISTORY_REGEX = r'<port>(\d+)</port>.*?<request base64="true"><!\[CDATA\[([^]]+)'
 
 # Encoding used for Unicode data
 UNICODE_ENCODING = "utf8"
@@ -606,6 +609,9 @@ PARSE_HEADERS_LIMIT = 3
 
 # Step used in ORDER BY technique used for finding the right number of columns in UNION query injections
 ORDER_BY_STEP = 10
+
+# Maximum value used in ORDER BY technique used for finding the right number of columns in UNION query injections
+ORDER_BY_MAX = 1000
 
 # Maximum number of times for revalidation of a character in inference (as required)
 MAX_REVALIDATION_STEPS = 5

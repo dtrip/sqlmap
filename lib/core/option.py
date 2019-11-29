@@ -7,6 +7,7 @@ See the file 'LICENSE' for copying permission
 
 from __future__ import division
 
+import codecs
 import functools
 import glob
 import inspect
@@ -1524,6 +1525,13 @@ def _cleanupOptions():
     Cleanup configuration attributes.
     """
 
+    if conf.encoding:
+        try:
+            codecs.lookup(conf.encoding)
+        except LookupError:
+            errMsg = "unknown encoding '%s'" % conf.encoding
+            raise SqlmapValueException(errMsg)
+
     debugMsg = "cleaning up configuration parameters"
     logger.debug(debugMsg)
 
@@ -1998,6 +2006,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.uChar = NULL
     kb.udfFail = False
     kb.unionDuplicates = False
+    kb.webSocketRecvCount = None
     kb.wizardMode = False
     kb.xpCmdshellAvailable = False
 

@@ -33,6 +33,7 @@ from lib.core.common import readXmlFile
 from lib.core.common import shellExec
 from lib.core.compat import round
 from lib.core.compat import xrange
+from lib.core.convert import encodeBase64
 from lib.core.convert import getUnicode
 from lib.core.data import conf
 from lib.core.data import kb
@@ -64,22 +65,26 @@ def vulnTest():
     """
 
     TESTS = (
-        ("-r <request> --flush-session", ("CloudFlare",)),
-        ("-u <url> --flush-session --forms --crawl=2 --banner", ("total of 2 targets", "might be injectable", "Type: UNION query", "banner: '3")),
-        ("-u <url> --flush-session --data='{\"id\": 1}' --banner", ("might be injectable", "3 columns", "Payload: {\"id\"", "Type: boolean-based blind", "Type: time-based blind", "Type: UNION query", "banner: '3")),
-        ("-u <url> --flush-session --data='<root><param name=\"id\" value=\"1*\"/></root>' --union-char=1 --mobile --banner --smart", ("might be injectable", "Payload: <root><param name=\"id\" value=\"1", "Type: boolean-based blind", "Type: time-based blind", "Type: UNION query", "banner: '3")),
+        ("--list-tampers", ("between", "MySQL", "xforwardedfor")),
+        ("-r <request> --flush-session", ("CloudFlare", "possible DBMS: 'SQLite'")),
+        ("-l <log> --flush-session --skip-waf -v 3 --technique=U --union-from=users --banner --parse-errors", ("banner: '3.", "ORDER BY term out of range", "~xp_cmdshell")),
+        ("-l <log> --offline --banner -v 5", ("banner: '3.", "~[TRAFFIC OUT]")),
+        ("-u <url> --flush-session --encoding=ascii --forms --crawl=2 --threads=2 --banner", ("total of 2 targets", "might be injectable", "Type: UNION query", "banner: '3.")),
+        ("-u <url> --flush-session --data='{\"id\": 1}' --banner", ("might be injectable", "3 columns", "Payload: {\"id\"", "Type: boolean-based blind", "Type: time-based blind", "Type: UNION query", "banner: '3.")),
+        ("-u <url> --flush-session --data='<root><param name=\"id\" value=\"1*\"/></root>' --union-char=1 --mobile --answers='smartphone=3' --banner --smart -v 5", ("might be injectable", "Payload: <root><param name=\"id\" value=\"1", "Type: boolean-based blind", "Type: time-based blind", "Type: UNION query", "banner: '3.", "Nexus")),
         ("-u <url> --flush-session --method=PUT --data='a=1&b=2&c=3&id=1' --skip-static --dump -T users --start=1 --stop=2", ("might be injectable", "Parameter: id (PUT)", "Type: boolean-based blind", "Type: time-based blind", "Type: UNION query", "2 entries")),
         ("-u <url> --flush-session -H 'id: 1*' --tables", ("might be injectable", "Parameter: id #1* ((custom) HEADER)", "Type: boolean-based blind", "Type: time-based blind", "Type: UNION query", " users ")),
+        ("-u <url> --flush-session --banner --invalid-logical --technique=B --test-filter='OR boolean' --tamper=space2dash", ("banner: '3.", " LIKE ")),
         ("-u <url> --flush-session --cookie=\"PHPSESSID=d41d8cd98f00b204e9800998ecf8427e; id=1*; id2=2\" --tables --union-cols=3", ("might be injectable", "Cookie #1* ((custom) HEADER)", "Type: boolean-based blind", "Type: time-based blind", "Type: UNION query", " users ")),
-        ("-u <url> --flush-session --null-connection --technique=B --tamper=between,randomcase --banner", ("NULL connection is supported with HEAD method", "banner: '3")),
-        ("-u <url> --flush-session --parse-errors --test-filter=\"subquery\" --eval=\"id2=2\" --referer=\"localhost\"", ("might be injectable", ": syntax error", "back-end DBMS: SQLite", "WHERE or HAVING clause (subquery")),
-        ("-u <url> --banner --schema --dump -T users --binary-fields=surname --where \"id>3\"", ("banner: '3", "INTEGER", "TEXT", "id", "name", "surname", "2 entries", "6E616D6569736E756C6C")),
+        ("-u <url> --flush-session --null-connection --technique=B --tamper=between,randomcase --banner", ("NULL connection is supported with HEAD method", "banner: '3.")),
+        ("-u <url> --flush-session --parse-errors --test-filter=\"subquery\" --eval=\"import hashlib; id2=2; id3=hashlib.md5(id.encode()).hexdigest()\" --referer=\"localhost\"", ("might be injectable", ": syntax error", "back-end DBMS: SQLite", "WHERE or HAVING clause (subquery")),
+        ("-u <url> --banner --schema --dump -T users --binary-fields=surname --where \"id>3\"", ("banner: '3.", "INTEGER", "TEXT", "id", "name", "surname", "2 entries", "6E616D6569736E756C6C")),
         ("-u <url> --flush-session --all", ("5 entries", "Type: boolean-based blind", "Type: time-based blind", "Type: UNION query", "luther", "blisset", "fluffy", "179ad45c6ce2cb97cf1029e212046e81", "NULL", "nameisnull", "testpass")),
         ("-u <url> -z \"tec=B\" --hex --fresh-queries --threads=4 --sql-query=\"SELECT * FROM users\"", ("SELECT * FROM users [5]", "nameisnull")),
         ("-u '<url>&echo=foobar*' --flush-session", ("might be vulnerable to cross-site scripting",)),
-        ("-u '<url>&query=*' --flush-session --technique=Q --banner", ("Title: SQLite inline queries", "banner: '3")),
+        ("-u '<url>&query=*' --flush-session --technique=Q --banner", ("Title: SQLite inline queries", "banner: '3.")),
         ("-d <direct> --flush-session --dump -T users --binary-fields=name --where \"id=3\"", ("7775", "179ad45c6ce2cb97cf1029e212046e81 (testpass)",)),
-        ("-d <direct> --flush-session --banner --schema --sql-query=\"SELECT 987654321\"", ("banner: '3", "INTEGER", "TEXT", "id", "name", "surname", "[*] 987654321",)),
+        ("-d <direct> --flush-session --banner --schema --sql-query=\"UPDATE users SET name='foobar' WHERE id=5; SELECT * FROM users; SELECT 987654321\"", ("banner: '3.", "INTEGER", "TEXT", "id", "name", "surname", "5, foobar, nameisnull", "[*] 987654321",)),
     )
 
     retVal = True
@@ -112,7 +117,13 @@ def vulnTest():
     handle, request = tempfile.mkstemp(suffix=".req")
     os.close(handle)
 
-    open(request, "w+").write("POST / HTTP/1.0\nHost: %s:%s\n\nid=1\n" % (address, port))
+    handle, log = tempfile.mkstemp(suffix=".log")
+    os.close(handle)
+
+    content = "POST / HTTP/1.0\nHost: %s:%s\n\nid=1\n" % (address, port)
+
+    open(request, "w+").write(content)
+    open(log, "w+").write('<port>%d</port><request base64="true"><![CDATA[%s]]></request>' % (port, encodeBase64(content, binary=False)))
 
     url = "http://%s:%d/?id=1" % (address, port)
     direct = "sqlite3://%s" % database
@@ -121,10 +132,10 @@ def vulnTest():
         status = '%d/%d (%d%%) ' % (count, len(TESTS), round(100.0 * count / len(TESTS)))
         dataToStdout("\r[%s] [INFO] complete: %s" % (time.strftime("%X"), status))
 
-        cmd = "%s %s %s --batch" % (sys.executable, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "sqlmap.py")), options.replace("<url>", url).replace("<direct>", direct).replace("<request>", request))
+        cmd = "%s %s %s --batch" % (sys.executable, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "sqlmap.py")), options.replace("<url>", url).replace("<direct>", direct).replace("<request>", request).replace("<log>", log))
         output = shellExec(cmd)
 
-        if not all(check in output for check in checks):
+        if not all((check in output if not check.startswith('~') else check[1:] not in output) for check in checks):
             dataToStdout("---\n\n$ %s\n" % cmd)
             dataToStdout("%s---\n" % clearColors(output))
             retVal = False

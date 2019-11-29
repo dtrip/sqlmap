@@ -600,7 +600,7 @@ def checkSqlInjection(place, parameter, value):
                                         if candidates:
                                             candidates = sorted(candidates, key=len)
                                             for candidate in candidates:
-                                                if re.match(r"\A\w+\Z", candidate):
+                                                if re.match(r"\A\w{2,}\Z", candidate):  # Note: length of 1 (e.g. --string=5) could cause trouble, especially in error message pages with partially reflected payload content
                                                     break
 
                                             conf.string = candidate
@@ -929,6 +929,9 @@ def checkFalsePositives(injection):
 
                 randInt1 = min(randInt1, randInt2, randInt3)
                 randInt3 = max(randInt1, randInt2, randInt3)
+
+                if conf.string and any(conf.string in getUnicode(_) for _ in (randInt1, randInt2, randInt3)):
+                    continue
 
                 if randInt3 > randInt2 > randInt1:
                     break

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -459,7 +459,7 @@ def option_get(taskid):
             logger.debug("(%s) Requested value for unknown option '%s'" % (taskid, option))
             return jsonize({"success": False, "message": "Unknown option '%s'" % option})
 
-    logger.debug("(%s) Retrieved values for option(s) '%s'" % (taskid, ",".join(options)))
+    logger.debug("(%s) Retrieved values for option(s) '%s'" % (taskid, ','.join(options)))
 
     return jsonize({"success": True, "options": results})
 

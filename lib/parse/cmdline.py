@@ -252,7 +252,7 @@ def cmdLineParser(argv=None):
             help="Load safe HTTP request from a file")
 
         request.add_argument("--safe-freq", dest="safeFreq", type=int,
-            help="Test requests between two visits to a given safe URL")
+            help="Regular requests between visits to a safe URL")
 
         request.add_argument("--skip-urlencode", dest="skipUrlEncode", action="store_true",
             help="Skip URL encoding of payload data")
@@ -784,22 +784,19 @@ def cmdLineParser(argv=None):
         parser.add_argument("--force-pivoting", dest="forcePivoting", action="store_true",
             help=SUPPRESS)
 
+        parser.add_argument("--non-interactive", dest="nonInteractive", action="store_true",
+            help=SUPPRESS)
+
         parser.add_argument("--gui", dest="gui", action="store_true",
             help=SUPPRESS)
 
         parser.add_argument("--smoke-test", dest="smokeTest", action="store_true",
             help=SUPPRESS)
 
-        parser.add_argument("--live-test", dest="liveTest", action="store_true",
-            help=SUPPRESS)
-
         parser.add_argument("--vuln-test", dest="vulnTest", action="store_true",
             help=SUPPRESS)
 
-        parser.add_argument("--stop-fail", dest="stopFail", action="store_true",
-            help=SUPPRESS)
-
-        parser.add_argument("--run-case", dest="runCase",
+        parser.add_argument("--fuzz-test", dest="fuzzTest", action="store_true",
             help=SUPPRESS)
 
         # API options
@@ -1008,7 +1005,7 @@ def cmdLineParser(argv=None):
         if args.dummy:
             args.url = args.url or DUMMY_URL
 
-        if not any((args.direct, args.url, args.logFile, args.bulkFile, args.googleDork, args.configFile, args.requestFile, args.updateAll, args.smokeTest, args.vulnTest, args.liveTest, args.wizard, args.dependencies, args.purge, args.listTampers, args.hashFile)):
+        if not any((args.direct, args.url, args.logFile, args.bulkFile, args.googleDork, args.configFile, args.requestFile, args.updateAll, args.smokeTest, args.vulnTest, args.fuzzTest, args.wizard, args.dependencies, args.purge, args.listTampers, args.hashFile)):
             errMsg = "missing a mandatory option (-d, -u, -l, -m, -r, -g, -c, --list-tampers, --wizard, --update, --purge or --dependencies). "
             errMsg += "Use -h for basic and -hh for advanced help\n"
             parser.error(errMsg)

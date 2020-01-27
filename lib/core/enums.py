@@ -42,9 +42,15 @@ class DBMS(object):
     PGSQL = "PostgreSQL"
     SQLITE = "SQLite"
     SYBASE = "Sybase"
+    INFORMIX = "Informix"
     HSQLDB = "HSQLDB"
     H2 = "H2"
-    INFORMIX = "Informix"
+    MONETDB = "MonetDB"
+    DERBY = "Apache Derby"
+    VERTICA = "Vertica"
+    MCKOI = "Mckoi"
+    PRESTO = "Presto"
+    ALTIBASE = "Altibase"
 
 class DBMS_DIRECTORY_NAME(object):
     ACCESS = "access"
@@ -60,6 +66,18 @@ class DBMS_DIRECTORY_NAME(object):
     HSQLDB = "hsqldb"
     H2 = "h2"
     INFORMIX = "informix"
+    MONETDB = "monetdb"
+    DERBY = "derby"
+    VERTICA = "vertica"
+    MCKOI = "mckoi"
+    PRESTO = "presto"
+    ALTIBASE = "altibase"
+
+class FORK(object):
+    MARIADB = "MariaDB"
+    MEMSQL = "MemSQL"
+    COCKROACHDB = "CockroachDB"
+    TIDB = "TiDB"
 
 class CUSTOM_LOGGING(object):
     PAYLOAD = 9

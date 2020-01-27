@@ -40,7 +40,6 @@ import unicodedata
 from difflib import SequenceMatcher
 from math import sqrt
 from optparse import OptionValueError
-from xml.dom import minidom
 from xml.sax import parse
 from xml.sax import SAXParseException
 
@@ -139,6 +138,7 @@ from lib.core.settings import IS_TTY
 from lib.core.settings import IS_WIN
 from lib.core.settings import LARGE_OUTPUT_THRESHOLD
 from lib.core.settings import LOCALHOST
+from lib.core.settings import MAX_INT
 from lib.core.settings import MIN_ENCODED_LEN_CHECK
 from lib.core.settings import MIN_ERROR_PARSING_NON_WRITING_RATIO
 from lib.core.settings import MIN_TIME_RESPONSES
@@ -147,6 +147,7 @@ from lib.core.settings import NETSCAPE_FORMAT_HEADER_COOKIES
 from lib.core.settings import NULL
 from lib.core.settings import PARAMETER_AMP_MARKER
 from lib.core.settings import PARAMETER_SEMICOLON_MARKER
+from lib.core.settings import PARAMETER_PERCENTAGE_MARKER
 from lib.core.settings import PARTIAL_HEX_VALUE_MARKER
 from lib.core.settings import PARTIAL_VALUE_MARKER
 from lib.core.settings import PAYLOAD_DELIMITER
@@ -1461,7 +1462,7 @@ def parseTargetDirect():
     remote = False
 
     for dbms in SUPPORTED_DBMS:
-        details = re.search(r"^(?P<dbms>%s)://(?P<credentials>(?P<user>.+?)\:(?P<pass>.*)\@)?(?P<remote>(?P<hostname>[\w.-]+?)\:(?P<port>[\d]+)\/)?(?P<db>[\w\d\ \:\.\_\-\/\\]+?)$" % dbms, conf.direct, re.I)
+        details = re.search(r"^(?P<dbms>%s)://(?P<credentials>(?P<user>.*?)\:(?P<pass>.*)\@)?(?P<remote>(?P<hostname>[\w.-]+?)\:(?P<port>[\d]+)\/)?(?P<db>[\w\d\ \:\.\_\-\/\\]+?)$" % dbms, conf.direct, re.I)
 
         if details:
             conf.dbms = details.group("dbms")
@@ -2021,6 +2022,8 @@ def safeStringFormat(format_, params):
         if retVal.count("%s", start, end) == len(params):
             for param in params:
                 index = retVal.find("%s", start)
+                if isinstance(param, six.string_types):
+                    param = param.replace('%', PARAMETER_PERCENTAGE_MARKER)
                 retVal = retVal[:index] + getUnicode(param) + retVal[index + 2:]
         else:
             if any('%s' in _ for _ in conf.parameters.values()):
@@ -2046,7 +2049,7 @@ def safeStringFormat(format_, params):
                 else:
                     break
 
-    retVal = getText(retVal)
+    retVal = getText(retVal).replace(PARAMETER_PERCENTAGE_MARKER, '%')
 
     return retVal
 
@@ -2996,9 +2999,11 @@ def isNumPosStrValue(value):
     False
     >>> isNumPosStrValue('-2')
     False
+    >>> isNumPosStrValue('100000000000000000000')
+    False
     """
 
-    return (hasattr(value, "isdigit") and value.isdigit() and int(value) > 0) or (isinstance(value, int) and value > 0)
+    return ((hasattr(value, "isdigit") and value.isdigit() and int(value) > 0) or (isinstance(value, int) and value > 0)) and int(value) < MAX_INT
 
 @cachedmethod
 def aliasToDbmsEnum(dbms):
@@ -4067,9 +4072,9 @@ def safeSQLIdentificatorNaming(name, isTable=False):
 
             if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS, DBMS.SQLITE):  # Note: in SQLite double-quotes are treated as string if column/identifier is non-existent (e.g. SELECT "foobar" FROM users)
                 retVal = "`%s`" % retVal
-            elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX):
+            elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO):
                 retVal = "\"%s\"" % retVal
-            elif Backend.getIdentifiedDbms() in (DBMS.ORACLE,):
+            elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.ALTIBASE):
                 retVal = "\"%s\"" % retVal.upper()
             elif Backend.getIdentifiedDbms() in (DBMS.MSSQL, DBMS.SYBASE):
                 if isTable:
@@ -4105,9 +4110,9 @@ def unsafeSQLIdentificatorNaming(name):
     if isinstance(name, six.string_types):
         if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS, DBMS.SQLITE):
             retVal = name.replace("`", "")
-        elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.INFORMIX, DBMS.HSQLDB):
+        elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO):
             retVal = name.replace("\"", "")
-        elif Backend.getIdentifiedDbms() in (DBMS.ORACLE,):
+        elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.ALTIBASE):
             retVal = name.replace("\"", "").upper()
         elif Backend.getIdentifiedDbms() in (DBMS.MSSQL, DBMS.SYBASE):
             retVal = name.replace("[", "").replace("]", "")

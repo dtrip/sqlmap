@@ -7,7 +7,7 @@
         <error regexp="Warning.*?\Wmysqli?_"/>
         <error regexp="MySQLSyntaxErrorException"/>
         <error regexp="valid MySQL result"/>
-        <error regexp="check the manual that (corresponds to|fits) your (MySQL|MariaDB) server version"/>
+        <error regexp="check the manual that (corresponds to|fits) your MySQL server version"/>
         <error regexp="Unknown column '[^ ]+' in 'field list'"/>
         <error regexp="MySqlClient\."/>
         <error regexp="com\.mysql\.jdbc"/>
@@ -15,6 +15,10 @@
         <error regexp="Pdo[./_\\]Mysql"/>
         <error regexp="MySqlException"/>
         <error regexp="SQLSTATE\[\d+\]: Syntax error or access violation"/>
+        <error regexp="check the manual that (corresponds to|fits) your MariaDB server version" fork="MariaDB"/>
+        <error regexp="MemSQL does not support this type of query" fork="MemSQL"/>
+        <error regexp="is not supported by MemSQL" fork="MemSQL"/>
+        <error regexp="unsupported nested scalar subselect" fork="MemSQL"/>
     </dbms>
 
     <!-- PostgreSQL -->
@@ -168,5 +172,47 @@
     <!-- H2 -->
     <dbms value="H2">
         <error regexp="org\.h2\.jdbc"/>
+    </dbms>
+
+    <!-- MonetDB -->
+    <dbms value="MonetDB">
+        <error regexp="![0-9]{5}![^\n]+(failed|unexpected|error|syntax|expected|violation|exception)"/>
+        <error regexp="\[MonetDB\]\[ODBC Driver"/>
+        <error regexp="nl\.cwi\.monetdb\.jdbc"/>
+    </dbms>
+
+    <!-- Apache Derby -->
+    <dbms value="Apache Derby">
+        <error regexp="Syntax error: Encountered"/>
+        <error regexp="org\.apache\.derby"/>
+        <error regexp="ERROR 42X01"/>
+    </dbms>
+
+    <!-- Vertica -->
+    <dbms value="Vertica">
+        <error regexp=", Sqlstate: (3F|42).{3}, (Routine|Hint|Position):"/>
+        <error regexp="/vertica/Parser/scan"/>
+        <error regexp="com\.vertica\.jdbc"/>
+        <error regexp="org\.jkiss\.dbeaver\.ext\.vertica"/>
+        <error regexp="com\.vertica\.dsi\.dataengine"/>
+    </dbms>
+
+    <!-- Mckoi -->
+    <dbms value="Mckoi">
+        <error regexp="com\.mckoi\.JDBCDriver"/>
+        <error regexp="com\.mckoi\.database\.jdbc"/>
+    </dbms>
+
+    <!-- Presto -->
+    <dbms value="Presto">
+        <error regexp="com\.facebook\.presto\.jdbc"/>
+        <error regexp="io\.prestosql\.jdbc"/>
+        <error regexp="com\.simba\.presto\.jdbc"/>
+        <error regexp="UNION query has different number of fields: \d+, \d+"/>
+    </dbms>
+
+    <!-- Altibase -->
+    <dbms value="Altibase">
+        <error regexp="Altibase\.jdbc\.driver"/>
     </dbms>
 </root>

@@ -128,7 +128,7 @@ class Users(object):
                 errMsg = "unable to retrieve the number of database users"
                 raise SqlmapNoneDataException(errMsg)
 
-            plusOne = Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2)
+            plusOne = Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2, DBMS.ALTIBASE)
             indexRange = getLimitRange(count, plusOne=plusOne)
 
             for index in indexRange:
@@ -293,7 +293,7 @@ class Users(object):
 
                     passwords = []
 
-                    plusOne = Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2)
+                    plusOne = Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2, DBMS.ALTIBASE)
                     indexRange = getLimitRange(count, plusOne=plusOne)
 
                     for index in indexRange:
@@ -441,7 +441,7 @@ class Users(object):
 
                             # In MySQL >= 5.0 and Oracle we get the list
                             # of privileges as string
-                            elif Backend.isDbms(DBMS.ORACLE) or (Backend.isDbms(DBMS.MYSQL) and kb.data.has_information_schema):
+                            elif Backend.isDbms(DBMS.ORACLE) or (Backend.isDbms(DBMS.MYSQL) and kb.data.has_information_schema) or Backend.isDbms(DBMS.VERTICA):
                                 privileges.add(privilege)
 
                             # In MySQL < 5.0 we get Y if the privilege is
@@ -541,7 +541,7 @@ class Users(object):
 
                 privileges = set()
 
-                plusOne = Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2)
+                plusOne = Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2, DBMS.ALTIBASE)
                 indexRange = getLimitRange(count, plusOne=plusOne)
 
                 for index in indexRange:
@@ -580,7 +580,7 @@ class Users(object):
 
                     # In MySQL >= 5.0 and Oracle we get the list
                     # of privileges as string
-                    elif Backend.isDbms(DBMS.ORACLE) or (Backend.isDbms(DBMS.MYSQL) and kb.data.has_information_schema):
+                    elif Backend.isDbms(DBMS.ORACLE) or (Backend.isDbms(DBMS.MYSQL) and kb.data.has_information_schema) or Backend.isDbms(DBMS.VERTICA):
                         privileges.add(privilege)
 
                     # In MySQL < 5.0 we get Y if the privilege is

@@ -7,10 +7,14 @@ See the file 'LICENSE' for copying permission
 
 from lib.core.common import Backend
 from lib.core.common import Format
+from lib.core.common import hashDBRetrieve
+from lib.core.common import hashDBWrite
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
 from lib.core.enums import DBMS
+from lib.core.enums import FORK
+from lib.core.enums import HASHDB_KEYS
 from lib.core.enums import OS
 from lib.core.session import setDbms
 from lib.core.settings import PGSQL_ALIASES
@@ -22,6 +26,12 @@ class Fingerprint(GenericFingerprint):
         GenericFingerprint.__init__(self, DBMS.PGSQL)
 
     def getFingerprint(self):
+        fork = hashDBRetrieve(HASHDB_KEYS.DBMS_FORK)
+
+        if fork is None:
+            fork = inject.checkBooleanExpression("VERSION() LIKE '%CockroachDB%'") and FORK.COCKROACHDB or ""
+            hashDBWrite(HASHDB_KEYS.DBMS_FORK, fork)
+
         value = ""
         wsOsFp = Format.getOs("web server", kb.headersFp)
 
@@ -38,6 +48,8 @@ class Fingerprint(GenericFingerprint):
 
         if not conf.extensiveFp:
             value += DBMS.PGSQL
+            if fork:
+                value += " (%s fork)" % fork
             return value
 
         actVer = Format.getDbms()
@@ -55,6 +67,9 @@ class Fingerprint(GenericFingerprint):
 
         if htmlErrorFp:
             value += "\n%shtml error message fingerprint: %s" % (blank, htmlErrorFp)
+
+        if fork:
+            value += "\n%sfork fingerprint: %s" % (blank, fork)
 
         return value
 
@@ -75,7 +90,8 @@ class Fingerprint(GenericFingerprint):
         infoMsg = "testing %s" % DBMS.PGSQL
         logger.info(infoMsg)
 
-        result = inject.checkBooleanExpression("QUOTE_IDENT(NULL) IS NULL")
+        # NOTE: Vertica works too without the CONVERT_TO()
+        result = inject.checkBooleanExpression("CONVERT_TO('[RANDSTR]', QUOTE_IDENT(NULL)) IS NULL")
 
         if result:
             infoMsg = "confirming %s" % DBMS.PGSQL
@@ -99,7 +115,9 @@ class Fingerprint(GenericFingerprint):
             infoMsg = "actively fingerprinting %s" % DBMS.PGSQL
             logger.info(infoMsg)
 
-            if inject.checkBooleanExpression("SHA256(NULL) IS NULL"):
+            if inject.checkBooleanExpression("SINH(0)=0"):
+                Backend.setVersion(">= 12.0")
+            elif inject.checkBooleanExpression("SHA256(NULL) IS NULL"):
                 Backend.setVersion(">= 11.0")
             elif inject.checkBooleanExpression("XMLTABLE(NULL) IS NULL"):
                 Backend.setVersionList([">= 10.0", "< 11.0"])

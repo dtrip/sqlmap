@@ -166,8 +166,10 @@ class Dump(object):
     def currentDb(self, data):
         if Backend.isDbms(DBMS.MAXDB):
             self.string("current database (no practical usage on %s)" % Backend.getIdentifiedDbms(), data, content_type=CONTENT_TYPE.CURRENT_DB)
-        elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.PGSQL, DBMS.HSQLDB, DBMS.H2):
+        elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.PGSQL, DBMS.HSQLDB, DBMS.H2, DBMS.MONETDB, DBMS.VERTICA):
             self.string("current schema (equivalent to database on %s)" % Backend.getIdentifiedDbms(), data, content_type=CONTENT_TYPE.CURRENT_DB)
+        elif Backend.getIdentifiedDbms() in (DBMS.ALTIBASE,):
+            self.string("current user (equivalent to database on %s)" % Backend.getIdentifiedDbms(), data, content_type=CONTENT_TYPE.CURRENT_DB)
         else:
             self.string("current database", data, content_type=CONTENT_TYPE.CURRENT_DB)
 
@@ -638,7 +640,7 @@ class Dump(object):
 
         if conf.dumpFormat == DUMP_FORMAT.SQLITE:
             rtable.endTransaction()
-            logger.info("table '%s.%s' dumped to sqlite3 database '%s'" % (db, table, replication.dbpath))
+            logger.info("table '%s.%s' dumped to SQLITE database '%s'" % (db, table, replication.dbpath))
 
         elif conf.dumpFormat in (DUMP_FORMAT.CSV, DUMP_FORMAT.HTML):
             if conf.dumpFormat == DUMP_FORMAT.HTML:

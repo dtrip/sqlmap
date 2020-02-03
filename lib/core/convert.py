@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -227,7 +227,7 @@ def encodeBase64(value, binary=True, encoding=None):
 
     return retVal
 
-def getBytes(value, encoding=UNICODE_ENCODING, errors="strict", unsafe=True):
+def getBytes(value, encoding=None, errors="strict", unsafe=True):
     """
     Returns byte representation of provided Unicode value
 
@@ -237,9 +237,12 @@ def getBytes(value, encoding=UNICODE_ENCODING, errors="strict", unsafe=True):
 
     retVal = value
 
+    if encoding is None:
+        encoding = conf.get("encoding") or UNICODE_ENCODING
+
     try:
         codecs.lookup(encoding)
-    except LookupError:
+    except (LookupError, TypeError):
         encoding = UNICODE_ENCODING
 
     if isinstance(value, six.text_type):
@@ -300,7 +303,7 @@ def getUnicode(value, encoding=None, noneToNull=False):
         for candidate in candidates:
             try:
                 return six.text_type(value, candidate)
-            except UnicodeDecodeError:
+            except (UnicodeDecodeError, LookupError):
                 pass
 
         try:

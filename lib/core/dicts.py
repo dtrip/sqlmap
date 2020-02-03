@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -10,20 +10,28 @@ from lib.core.enums import DBMS
 from lib.core.enums import OS
 from lib.core.enums import POST_HINT
 from lib.core.settings import ACCESS_ALIASES
+from lib.core.settings import ALTIBASE_ALIASES
 from lib.core.settings import BLANK
+from lib.core.settings import CRATEDB_ALIASES
 from lib.core.settings import DB2_ALIASES
+from lib.core.settings import DERBY_ALIASES
 from lib.core.settings import FIREBIRD_ALIASES
 from lib.core.settings import H2_ALIASES
 from lib.core.settings import HSQLDB_ALIASES
 from lib.core.settings import INFORMIX_ALIASES
 from lib.core.settings import MAXDB_ALIASES
+from lib.core.settings import MCKOI_ALIASES
+from lib.core.settings import MIMERSQL_ALIASES
+from lib.core.settings import MONETDB_ALIASES
 from lib.core.settings import MSSQL_ALIASES
 from lib.core.settings import MYSQL_ALIASES
 from lib.core.settings import NULL
 from lib.core.settings import ORACLE_ALIASES
 from lib.core.settings import PGSQL_ALIASES
+from lib.core.settings import PRESTO_ALIASES
 from lib.core.settings import SQLITE_ALIASES
 from lib.core.settings import SYBASE_ALIASES
+from lib.core.settings import VERTICA_ALIASES
 
 FIREBIRD_TYPES = {
     261: "BLOB",
@@ -198,8 +206,17 @@ DBMS_DICT = {
     DBMS.HSQLDB: (HSQLDB_ALIASES, "python jaydebeapi & python-jpype", "https://pypi.python.org/pypi/JayDeBeApi/ & http://jpype.sourceforge.net/", None),
     DBMS.H2: (H2_ALIASES, None, None, None),
     DBMS.INFORMIX: (INFORMIX_ALIASES, "python ibm-db", "https://github.com/ibmdb/python-ibmdb", "ibm_db_sa"),
+    DBMS.MONETDB: (MONETDB_ALIASES, "pymonetdb", "https://github.com/gijzelaerr/pymonetdb", "monetdb"),
+    DBMS.DERBY: (DERBY_ALIASES, "pydrda", "https://github.com/nakagami/pydrda/", None),
+    DBMS.VERTICA: (VERTICA_ALIASES, "vertica-python", "https://github.com/vertica/vertica-python", "vertica+vertica_python"),
+    DBMS.MCKOI: (MCKOI_ALIASES, None, None, None),
+    DBMS.PRESTO: (PRESTO_ALIASES, "presto-python-client", "https://github.com/prestodb/presto-python-client", None),
+    DBMS.ALTIBASE: (ALTIBASE_ALIASES, None, None, None),
+    DBMS.MIMERSQL: (MIMERSQL_ALIASES, "mimerpy", "https://github.com/mimersql/MimerPy", None),
+    DBMS.CRATEDB: (CRATEDB_ALIASES, "python-psycopg2", "http://initd.org/psycopg/", "postgresql"),
 }
 
+# Reference: https://blog.jooq.org/tag/sysibm-sysdummy1/
 FROM_DUMMY_TABLE = {
     DBMS.ORACLE: " FROM DUAL",
     DBMS.ACCESS: " FROM MSysAccessObjects",
@@ -207,7 +224,27 @@ FROM_DUMMY_TABLE = {
     DBMS.MAXDB: " FROM VERSIONS",
     DBMS.DB2: " FROM SYSIBM.SYSDUMMY1",
     DBMS.HSQLDB: " FROM INFORMATION_SCHEMA.SYSTEM_USERS",
-    DBMS.INFORMIX: " FROM SYSMASTER:SYSDUAL"
+    DBMS.INFORMIX: " FROM SYSMASTER:SYSDUAL",
+    DBMS.DERBY: " FROM SYSIBM.SYSDUMMY1",
+    DBMS.MIMERSQL: " FROM SYSTEM.ONEROW",
+}
+
+HEURISTIC_NULL_EVAL = {
+    DBMS.ACCESS: "CVAR(NULL)",
+    DBMS.MAXDB: "ALPHA(NULL)",
+    DBMS.MSSQL: "DIFFERENCE(NULL,NULL)",
+    DBMS.MYSQL: "QUARTER(NULL)",
+    DBMS.ORACLE: "INSTR2(NULL,NULL)",
+    DBMS.PGSQL: "QUOTE_IDENT(NULL)",
+    DBMS.SQLITE: "UNLIKELY(NULL)",
+    DBMS.MONETDB: "CODE(NULL)",
+    DBMS.DERBY: "NULLIF(USER,SESSION_USER)",
+    DBMS.VERTICA: "BITSTRING_TO_BINARY(NULL)",
+    DBMS.MCKOI: "TONUMBER(NULL)",
+    DBMS.PRESTO: "FROM_HEX(NULL)",
+    DBMS.ALTIBASE: "TDESENCRYPT(NULL,NULL)",
+    DBMS.MIMERSQL: "ASCII_CHAR(256)",
+    DBMS.CRATEDB: "(NULL~NULL)",
 }
 
 SQL_STATEMENTS = {

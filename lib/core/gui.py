@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -29,6 +29,7 @@ from lib.core.settings import VERSION_STRING
 from lib.core.settings import WIKI_PAGE
 from thirdparty.six.moves import queue as _queue
 
+alive = None
 line = ""
 process = None
 queue = None
@@ -186,7 +187,7 @@ def runGui(parser):
 
         center(top)
 
-        while alive:
+        while True:
             line = ""
             try:
                 # line = queue.get_nowait()
@@ -195,6 +196,9 @@ def runGui(parser):
             except _queue.Empty:
                 text.see(_tkinter.END)
                 text.update_idletasks()
+
+                if not alive:
+                    break
 
     menubar = _tkinter.Menu(window)
 
@@ -213,7 +217,7 @@ def runGui(parser):
     helpmenu.add_command(label="Wiki pages", command=lambda: webbrowser.open(WIKI_PAGE))
     helpmenu.add_command(label="Report issue", command=lambda: webbrowser.open(ISSUES_PAGE))
     helpmenu.add_separator()
-    helpmenu.add_command(label="About", command=lambda: _tkinter_messagebox.showinfo("About", "Copyright (c) 2006-2019\n\n    (%s)" % DEV_EMAIL_ADDRESS))
+    helpmenu.add_command(label="About", command=lambda: _tkinter_messagebox.showinfo("About", "Copyright (c) 2006-2020\n\n    (%s)" % DEV_EMAIL_ADDRESS))
     menubar.add_cascade(label="Help", menu=helpmenu)
 
     window.config(menu=menubar)

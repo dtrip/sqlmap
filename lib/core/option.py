@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -121,6 +121,7 @@ from lib.core.settings import MAX_NUMBER_OF_THREADS
 from lib.core.settings import NULL
 from lib.core.settings import PARAMETER_SPLITTING_REGEX
 from lib.core.settings import PRECONNECT_CANDIDATE_TIMEOUT
+from lib.core.settings import PROXY_ENVIRONMENT_VARIABLES
 from lib.core.settings import SOCKET_PRE_CONNECT_QUEUE_SIZE
 from lib.core.settings import SQLMAP_ENVIRONMENT_PREFIX
 from lib.core.settings import SUPPORTED_DBMS
@@ -330,8 +331,13 @@ def _setRequestFromFile():
         infoMsg = "parsing second-order HTTP request from '%s'" % conf.secondReq
         logger.info(infoMsg)
 
-        target = next(parseRequestFile(conf.secondReq, False))
-        kb.secondReq = target
+        try:
+            target = next(parseRequestFile(conf.secondReq, False))
+            kb.secondReq = target
+        except StopIteration:
+            errMsg = "specified second-order HTTP request file '%s' " % conf.secondReq
+            errMsg += "does not contain a valid HTTP request"
+            raise SqlmapDataException(errMsg)
 
 def _setCrawler():
     if not conf.crawlDepth:
@@ -341,7 +347,7 @@ def _setCrawler():
         if conf.url:
             crawl(conf.url)
         elif conf.requestFile and kb.targets:
-            target = list(kb.targets)[0]
+            target = next(iter(kb.targets))
             crawl(target[0], target[2], target[3])
 
 def _doSearch():
@@ -1139,7 +1145,7 @@ def _setSafeVisit():
                 conf.safeUrl = "http://%s" % conf.safeUrl
 
     if (conf.safeFreq or 0) <= 0:
-        errMsg = "please provide a valid value (>0) for safe frequency (--safe-freq) while using safe visit features"
+        errMsg = "please provide a valid value (>0) for safe frequency ('--safe-freq') while using safe visit features"
         raise SqlmapSyntaxException(errMsg)
 
 def _setPrefixSuffix():
@@ -1729,8 +1735,7 @@ def _cleanupOptions():
             conf.__setitem__(_, True)
 
     if conf.noCast:
-        for _ in list(DUMP_REPLACEMENTS.keys()):
-            del DUMP_REPLACEMENTS[_]
+        DUMP_REPLACEMENTS.clear()
 
     if conf.dumpFormat:
         conf.dumpFormat = conf.dumpFormat.upper()
@@ -1758,6 +1763,13 @@ def _cleanupOptions():
     if conf.binaryFields:
         conf.binaryFields = conf.binaryFields.replace(" ", "")
         conf.binaryFields = re.split(PARAMETER_SPLITTING_REGEX, conf.binaryFields)
+
+    envProxy = max(os.environ.get(_, "") for _ in PROXY_ENVIRONMENT_VARIABLES)
+    if re.search(r"\A(https?|socks[45])://.+:\d+\Z", envProxy) and conf.proxy is None:
+        debugMsg = "using environment proxy '%s'" % envProxy
+        logger.debug(debugMsg)
+
+        conf.proxy = envProxy
 
     if any((conf.proxy, conf.proxyFile, conf.tor)):
         conf.disablePrecon = True
@@ -1906,6 +1918,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.forcePartialUnion = False
     kb.forceThreads = None
     kb.forceWhere = None
+    kb.forkNote = None
     kb.futileUnion = None
     kb.heavilyDynamic = False
     kb.headersFile = None
@@ -2602,7 +2615,7 @@ def _basicOptionValidation():
         errMsg = "value for option '--union-char' must be an alpha-numeric value (e.g. 1)"
         raise SqlmapSyntaxException(errMsg)
 
-    if conf.hashFile and any((conf.direct, conf.url, conf.logFile, conf.bulkFile, conf.googleDork, conf.configFile, conf.requestFile, conf.updateAll, conf.smokeTest, conf.liveTest, conf.wizard, conf.dependencies, conf.purge, conf.listTampers)):
+    if conf.hashFile and any((conf.direct, conf.url, conf.logFile, conf.bulkFile, conf.googleDork, conf.configFile, conf.requestFile, conf.updateAll, conf.smokeTest, conf.wizard, conf.dependencies, conf.purge, conf.listTampers)):
         errMsg = "option '--crack' should be used as a standalone"
         raise SqlmapSyntaxException(errMsg)
 
@@ -2669,7 +2682,7 @@ def init():
 
     parseTargetDirect()
 
-    if any((conf.url, conf.logFile, conf.bulkFile, conf.requestFile, conf.googleDork, conf.liveTest)):
+    if any((conf.url, conf.logFile, conf.bulkFile, conf.requestFile, conf.googleDork)):
         _setHostname()
         _setHTTPTimeout()
         _setHTTPExtraHeaders()

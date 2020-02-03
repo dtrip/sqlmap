@@ -1,62 +1,39 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
 from __future__ import division
 
-import codecs
 import doctest
 import logging
 import os
 import random
 import re
-import shutil
 import socket
 import sqlite3
 import sys
 import tempfile
 import threading
 import time
-import traceback
 
-from extra.beep.beep import beep
 from extra.vulnserver import vulnserver
-from lib.controller.controller import start
 from lib.core.common import clearColors
 from lib.core.common import clearConsoleLine
 from lib.core.common import dataToStdout
+from lib.core.common import randomInt
 from lib.core.common import randomStr
-from lib.core.common import readXmlFile
 from lib.core.common import shellExec
 from lib.core.compat import round
 from lib.core.compat import xrange
 from lib.core.convert import encodeBase64
-from lib.core.convert import getUnicode
-from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
 from lib.core.data import paths
 from lib.core.data import queries
-from lib.core.enums import MKSTEMP_PREFIX
-from lib.core.exception import SqlmapBaseException
-from lib.core.exception import SqlmapNotVulnerableException
-from lib.core.log import LOGGER_HANDLER
-from lib.core.option import init
-from lib.core.option import initOptions
-from lib.core.option import setVerbosity
-from lib.core.optiondict import optDict
-from lib.core.settings import UNICODE_ENCODING
-from lib.parse.cmdline import cmdLineParser
 
-class Failures(object):
-    failedItems = None
-    failedParseOn = None
-    failedTraceBack = None
-
-_failures = Failures()
 _rand = 0
 
 def vulnTest():
@@ -65,8 +42,11 @@ def vulnTest():
     """
 
     TESTS = (
-        (u"-u <url> --flush-session --sql-query=\"SELECT '\u0161u\u0107uraj'\" --technique=U", (u": '\u0161u\u0107uraj'",)),
-        (u"-u <url> --flush-session --sql-query=\"SELECT '\u0161u\u0107uraj'\" --technique=B --no-escape", (u": '\u0161u\u0107uraj'",)),
+        ("-h", ("to see full list of options run with '-hh'",)),
+        ("-u <url> --flush-session --wizard --check-internet", ("Please choose:", "back-end DBMS: SQLite", "current user is DBA: True", "banner: '3.", "~no connection detected")),
+        (u"-c <config> --flush-session --sql-query=\"SELECT '\u0161u\u0107uraj'\" --technique=U", (u": '\u0161u\u0107uraj'",)),
+        (u"-u <url> --flush-session --sql-query=\"SELECT '\u0161u\u0107uraj'\" --technique=B --no-escape --string=luther --unstable", (u": '\u0161u\u0107uraj'",)),
+        ("--dummy", ("all tested parameters do not appear to be injectable", "does not seem to be injectable", "there is not at least one", "~might be injectable")),
         ("--list-tampers", ("between", "MySQL", "xforwardedfor")),
         ("-r <request> --flush-session -v 5", ("CloudFlare", "possible DBMS: 'SQLite'", "User-agent: foobar")),
         ("-l <log> --flush-session --keep-alive --skip-waf -v 5 --technique=U --union-from=users --banner --parse-errors", ("banner: '3.", "ORDER BY term out of range", "~xp_cmdshell", "Connection: keep-alive")),
@@ -81,13 +61,14 @@ def vulnTest():
         ("-u <url> --flush-session --null-connection --technique=B --tamper=between,randomcase --banner", ("NULL connection is supported with HEAD method", "banner: '3.")),
         ("-u <url> --flush-session --parse-errors --test-filter=\"subquery\" --eval=\"import hashlib; id2=2; id3=hashlib.md5(id.encode()).hexdigest()\" --referer=\"localhost\"", ("might be injectable", ": syntax error", "back-end DBMS: SQLite", "WHERE or HAVING clause (subquery")),
         ("-u <url> --banner --schema --dump -T users --binary-fields=surname --where \"id>3\"", ("banner: '3.", "INTEGER", "TEXT", "id", "name", "surname", "2 entries", "6E616D6569736E756C6C")),
-        ("-u <url> --technique=U --fresh-queries --force-partial --dump -T users --answer=\"crack=n\" -v 3", ("performed 6 queries", "nameisnull", "~using default dictionary")),
+        ("-u <url> --technique=U --fresh-queries --force-partial --dump -T users --dump-format=HTML --answers=\"crack=n\" -v 3", ("performed 6 queries", "nameisnull", "~using default dictionary", "dumped to HTML file")),
         ("-u <url> --flush-session --all", ("5 entries", "Type: boolean-based blind", "Type: time-based blind", "Type: UNION query", "luther", "blisset", "fluffy", "179ad45c6ce2cb97cf1029e212046e81", "NULL", "nameisnull", "testpass")),
         ("-u <url> -z \"tec=B\" --hex --fresh-queries --threads=4 --sql-query=\"SELECT * FROM users\"", ("SELECT * FROM users [5]", "nameisnull")),
         ("-u '<url>&echo=foobar*' --flush-session", ("might be vulnerable to cross-site scripting",)),
         ("-u '<url>&query=*' --flush-session --technique=Q --banner", ("Title: SQLite inline queries", "banner: '3.")),
-        ("-d <direct> --flush-session --dump -T users --binary-fields=name --where \"id=3\"", ("7775", "179ad45c6ce2cb97cf1029e212046e81 (testpass)",)),
+        ("-d <direct> --flush-session --dump -T users --dump-format=SQLITE --binary-fields=name --where \"id=3\"", ("7775", "179ad45c6ce2cb97cf1029e212046e81 (testpass)", "dumped to SQLITE database")),
         ("-d <direct> --flush-session --banner --schema --sql-query=\"UPDATE users SET name='foobar' WHERE id=5; SELECT * FROM users; SELECT 987654321\"", ("banner: '3.", "INTEGER", "TEXT", "id", "name", "surname", "5, foobar, nameisnull", "[*] 987654321",)),
+        ("--purge -v 3", ("~ERROR", "~CRITICAL", "deleting the whole directory tree")),
     )
 
     retVal = True
@@ -110,6 +91,9 @@ def vulnTest():
         except:
             time.sleep(1)
 
+    handle, config = tempfile.mkstemp(suffix=".conf")
+    os.close(handle)
+
     handle, database = tempfile.mkstemp(suffix=".sqlite")
     os.close(handle)
 
@@ -131,11 +115,14 @@ def vulnTest():
     url = "http://%s:%d/?id=1" % (address, port)
     direct = "sqlite3://%s" % database
 
+    content = open(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "sqlmap.conf"))).read().replace("url =", "url = %s" % url)
+    open(config, "w+").write(content)
+
     for options, checks in TESTS:
         status = '%d/%d (%d%%) ' % (count, len(TESTS), round(100.0 * count / len(TESTS)))
         dataToStdout("\r[%s] [INFO] complete: %s" % (time.strftime("%X"), status))
 
-        cmd = "%s %s %s --batch" % (sys.executable, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "sqlmap.py")), options.replace("<url>", url).replace("<direct>", direct).replace("<request>", request).replace("<log>", log))
+        cmd = "%s %s %s --batch" % (sys.executable, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "sqlmap.py")), options.replace("<url>", url).replace("<direct>", direct).replace("<request>", request).replace("<log>", log).replace("<config>", config))
         output = shellExec(cmd)
 
         if not all((check in output if not check.startswith('~') else check[1:] not in output) for check in checks):
@@ -152,6 +139,67 @@ def vulnTest():
         logger.error("vuln test final result: FAILED")
 
     return retVal
+
+def fuzzTest():
+    count = 0
+    address, port = "127.0.0.10", random.randint(1025, 65535)
+
+    def _thread():
+        vulnserver.init(quiet=True)
+        vulnserver.run(address=address, port=port)
+
+    thread = threading.Thread(target=_thread)
+    thread.daemon = True
+    thread.start()
+
+    while True:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect((address, port))
+            break
+        except:
+            time.sleep(1)
+
+    handle, config = tempfile.mkstemp(suffix=".conf")
+    os.close(handle)
+
+    url = "http://%s:%d/?id=1" % (address, port)
+
+    content = open(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "sqlmap.conf"))).read().replace("url =", "url = %s" % url)
+    open(config, "w+").write(content)
+
+    while True:
+        lines = content.split("\n")
+
+        for i in xrange(20):
+            j = random.randint(0, len(lines) - 1)
+
+            if any(_ in lines[j] for _ in ("googleDork",)):
+                continue
+
+            if lines[j].strip().endswith('='):
+                lines[j] += random.sample(("True", "False", randomStr(), str(randomInt())), 1)[0]
+
+            k = random.randint(0, len(lines) - 1)
+            if '=' in lines[k]:
+                lines[k] += chr(random.randint(0, 255))
+
+        open(config, "w+").write("\n".join(lines))
+
+        cmd = "%s %s -c %s --non-interactive --answers='Github=n' --flush-session --technique=%s --banner" % (sys.executable, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "sqlmap.py")), config, random.sample("BEUQ", 1)[0])
+        output = shellExec(cmd)
+
+        if "Traceback" in output:
+            dataToStdout("---\n\n$ %s\n" % cmd)
+            dataToStdout("%s---\n" % clearColors(output))
+
+            handle, config = tempfile.mkstemp(prefix="sqlmapcrash", suffix=".conf")
+            os.close(handle)
+            open(config, "w+").write("\n".join(lines))
+        else:
+            dataToStdout("\r%d\r" % count)
+
+        count += 1
 
 def dirtyPatchRandom():
     """
@@ -191,6 +239,15 @@ def smokeTest():
     """
 
     dirtyPatchRandom()
+
+    content = open(paths.ERRORS_XML, "r").read()
+    for regex in re.findall(r'<error regexp="(.+?)"/>', content):
+        try:
+            re.compile(regex)
+        except re.error:
+            errMsg = "smoke test failed at compiling '%s'" % regex
+            logger.error(errMsg)
+            return False
 
     retVal = True
     count, length = 0, 0
@@ -262,235 +319,5 @@ def smokeTest():
         logger.info("smoke test final result: PASSED")
     else:
         logger.error("smoke test final result: FAILED")
-
-    return retVal
-
-def adjustValueType(tagName, value):
-    for family in optDict:
-        for name, type_ in optDict[family].items():
-            if type(type_) == tuple:
-                type_ = type_[0]
-            if tagName == name:
-                if type_ == "boolean":
-                    value = (value == "True")
-                elif type_ == "integer":
-                    value = int(value)
-                elif type_ == "float":
-                    value = float(value)
-                break
-    return value
-
-def liveTest():
-    """
-    Runs the test of a program against the live testing environment
-    """
-
-    retVal = True
-    count = 0
-    global_ = {}
-    vars_ = {}
-
-    livetests = readXmlFile(paths.LIVE_TESTS_XML)
-    length = len(livetests.getElementsByTagName("case"))
-
-    element = livetests.getElementsByTagName("global")
-    if element:
-        for item in element:
-            for child in item.childNodes:
-                if child.nodeType == child.ELEMENT_NODE and child.hasAttribute("value"):
-                    global_[child.tagName] = adjustValueType(child.tagName, child.getAttribute("value"))
-
-    element = livetests.getElementsByTagName("vars")
-    if element:
-        for item in element:
-            for child in item.childNodes:
-                if child.nodeType == child.ELEMENT_NODE and child.hasAttribute("value"):
-                    var = child.getAttribute("value")
-                    vars_[child.tagName] = randomStr(6) if var == "random" else var
-
-    for case in livetests.getElementsByTagName("case"):
-        parse_from_console_output = False
-        count += 1
-        name = None
-        parse = []
-        switches = dict(global_)
-        value = ""
-        vulnerable = True
-        result = None
-
-        if case.hasAttribute("name"):
-            name = case.getAttribute("name")
-
-        if conf.runCase and ((conf.runCase.isdigit() and conf.runCase != count) or not re.search(conf.runCase, name, re.DOTALL)):
-            continue
-
-        if case.getElementsByTagName("switches"):
-            for child in case.getElementsByTagName("switches")[0].childNodes:
-                if child.nodeType == child.ELEMENT_NODE and child.hasAttribute("value"):
-                    value = replaceVars(child.getAttribute("value"), vars_)
-                    switches[child.tagName] = adjustValueType(child.tagName, value)
-
-        if case.getElementsByTagName("parse"):
-            for item in case.getElementsByTagName("parse")[0].getElementsByTagName("item"):
-                if item.hasAttribute("value"):
-                    value = replaceVars(item.getAttribute("value"), vars_)
-
-                if item.hasAttribute("console_output"):
-                    parse_from_console_output = bool(item.getAttribute("console_output"))
-
-                parse.append((value, parse_from_console_output))
-
-        conf.verbose = global_.get("verbose", 1)
-        setVerbosity()
-
-        msg = "running live test case: %s (%d/%d)" % (name, count, length)
-        logger.info(msg)
-
-        initCase(switches, count)
-
-        test_case_fd = codecs.open(os.path.join(paths.SQLMAP_OUTPUT_PATH, "test_case"), "wb", UNICODE_ENCODING)
-        test_case_fd.write("%s\n" % name)
-
-        try:
-            result = runCase(parse)
-        except SqlmapNotVulnerableException:
-            vulnerable = False
-        finally:
-            conf.verbose = global_.get("verbose", 1)
-            setVerbosity()
-
-        if result is True:
-            logger.info("test passed")
-            cleanCase()
-        else:
-            errMsg = "test failed"
-
-            if _failures.failedItems:
-                errMsg += " at parsing items: %s" % ", ".join(i for i in _failures.failedItems)
-
-            errMsg += " - scan folder: %s" % paths.SQLMAP_OUTPUT_PATH
-            errMsg += " - traceback: %s" % bool(_failures.failedTraceBack)
-
-            if not vulnerable:
-                errMsg += " - SQL injection not detected"
-
-            logger.error(errMsg)
-            test_case_fd.write("%s\n" % errMsg)
-
-            if _failures.failedParseOn:
-                console_output_fd = codecs.open(os.path.join(paths.SQLMAP_OUTPUT_PATH, "console_output"), "wb", UNICODE_ENCODING)
-                console_output_fd.write(_failures.failedParseOn)
-                console_output_fd.close()
-
-            if _failures.failedTraceBack:
-                traceback_fd = codecs.open(os.path.join(paths.SQLMAP_OUTPUT_PATH, "traceback"), "wb", UNICODE_ENCODING)
-                traceback_fd.write(_failures.failedTraceBack)
-                traceback_fd.close()
-
-            beep()
-
-            if conf.stopFail is True:
-                return retVal
-
-        test_case_fd.close()
-        retVal &= bool(result)
-
-    dataToStdout("\n")
-
-    if retVal:
-        logger.info("live test final result: PASSED")
-    else:
-        logger.error("live test final result: FAILED")
-
-    return retVal
-
-def initCase(switches, count):
-    _failures.failedItems = []
-    _failures.failedParseOn = None
-    _failures.failedTraceBack = None
-
-    paths.SQLMAP_OUTPUT_PATH = tempfile.mkdtemp(prefix="%s%d-" % (MKSTEMP_PREFIX.TESTING, count))
-    paths.SQLMAP_DUMP_PATH = os.path.join(paths.SQLMAP_OUTPUT_PATH, "%s", "dump")
-    paths.SQLMAP_FILES_PATH = os.path.join(paths.SQLMAP_OUTPUT_PATH, "%s", "files")
-
-    logger.debug("using output directory '%s' for this test case" % paths.SQLMAP_OUTPUT_PATH)
-
-    LOGGER_HANDLER.stream = sys.stdout = tempfile.SpooledTemporaryFile(max_size=0, mode="w+b", prefix="sqlmapstdout-")
-
-    cmdLineOptions = cmdLineParser()
-
-    if switches:
-        for key, value in switches.items():
-            if key in cmdLineOptions.__dict__:
-                cmdLineOptions.__dict__[key] = value
-
-    initOptions(cmdLineOptions, True)
-    init()
-
-def cleanCase():
-    shutil.rmtree(paths.SQLMAP_OUTPUT_PATH, True)
-
-def runCase(parse):
-    retVal = True
-    handled_exception = None
-    unhandled_exception = None
-    result = False
-    console = ""
-
-    try:
-        result = start()
-    except KeyboardInterrupt:
-        pass
-    except SqlmapBaseException as ex:
-        handled_exception = ex
-    except Exception as ex:
-        unhandled_exception = ex
-    finally:
-        sys.stdout.seek(0)
-        console = sys.stdout.read()
-        LOGGER_HANDLER.stream = sys.stdout = sys.__stdout__
-
-    if unhandled_exception:
-        _failures.failedTraceBack = "unhandled exception: %s" % str(traceback.format_exc())
-        retVal = None
-    elif handled_exception:
-        _failures.failedTraceBack = "handled exception: %s" % str(traceback.format_exc())
-        retVal = None
-    elif result is False:  # this means no SQL injection has been detected - if None, ignore
-        retVal = False
-
-    console = getUnicode(console, encoding=sys.stdin.encoding)
-
-    if parse and retVal:
-        with codecs.open(conf.dumper.getOutputFile(), "rb", UNICODE_ENCODING) as f:
-            content = f.read()
-
-        for item, parse_from_console_output in parse:
-            parse_on = console if parse_from_console_output else content
-
-            if item.startswith("r'") and item.endswith("'"):
-                if not re.search(item[2:-1], parse_on, re.DOTALL):
-                    retVal = None
-                    _failures.failedItems.append(item)
-
-            elif item not in parse_on:
-                retVal = None
-                _failures.failedItems.append(item)
-
-        if _failures.failedItems:
-            _failures.failedParseOn = console
-
-    elif retVal is False:
-        _failures.failedParseOn = console
-
-    return retVal
-
-def replaceVars(item, vars_):
-    retVal = item
-
-    if item and vars_:
-        for var in re.findall(r"\$\{([^}]+)\}", item):
-            if var in vars_:
-                retVal = retVal.replace("${%s}" % var, vars_[var])
 
     return retVal

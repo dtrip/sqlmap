@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -42,9 +42,17 @@ class DBMS(object):
     PGSQL = "PostgreSQL"
     SQLITE = "SQLite"
     SYBASE = "Sybase"
+    INFORMIX = "Informix"
     HSQLDB = "HSQLDB"
     H2 = "H2"
-    INFORMIX = "Informix"
+    MONETDB = "MonetDB"
+    DERBY = "Apache Derby"
+    VERTICA = "Vertica"
+    MCKOI = "Mckoi"
+    PRESTO = "Presto"
+    ALTIBASE = "Altibase"
+    MIMERSQL = "MimerSQL"
+    CRATEDB = "CrateDB"
 
 class DBMS_DIRECTORY_NAME(object):
     ACCESS = "access"
@@ -60,6 +68,23 @@ class DBMS_DIRECTORY_NAME(object):
     HSQLDB = "hsqldb"
     H2 = "h2"
     INFORMIX = "informix"
+    MONETDB = "monetdb"
+    DERBY = "derby"
+    VERTICA = "vertica"
+    MCKOI = "mckoi"
+    PRESTO = "presto"
+    ALTIBASE = "altibase"
+    MIMERSQL = "mimersql"
+    CRATEDB = "cratedb"
+
+class FORK(object):
+    MARIADB = "MariaDB"
+    MEMSQL = "MemSQL"
+    PERCONA = "Percona"
+    COCKROACHDB = "CockroachDB"
+    TIDB = "TiDB"
+    REDSHIFT = "Amazon Redshift"
+    GREENPLUM = "Greenplum"
 
 class CUSTOM_LOGGING(object):
     PAYLOAD = 9

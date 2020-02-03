@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -107,6 +107,14 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
             logger.info(infoMsg)
 
             return 0, retVal
+
+    if Backend.isDbms(DBMS.MCKOI):
+        match = re.search(r"\ASELECT\b(.+)\bFROM\b(.+)\Z", expression, re.I)
+        if match:
+            original = queries[Backend.getIdentifiedDbms()].inference.query
+            right = original.split('<')[1]
+            payload = payload.replace(right, "(SELECT %s FROM %s)" % (right, match.group(2).strip()))
+            expression = match.group(1).strip()
 
     try:
         # Set kb.partRun in case "common prediction" feature (a.k.a. "good samaritan") is used or the engine is called from the API
@@ -642,7 +650,7 @@ def bisection(payload, expression, length=None, charsetType=None, firstChar=None
                     dataToStdout(filterControlChars(val))
 
                 # some DBMSes (e.g. Firebird, DB2, etc.) have issues with trailing spaces
-                if Backend.getIdentifiedDbms() in (DBMS.FIREBIRD, DBMS.DB2, DBMS.MAXDB) and len(partialValue) > INFERENCE_BLANK_BREAK and partialValue[-INFERENCE_BLANK_BREAK:].isspace():
+                if Backend.getIdentifiedDbms() in (DBMS.FIREBIRD, DBMS.DB2, DBMS.MAXDB, DBMS.DERBY) and len(partialValue) > INFERENCE_BLANK_BREAK and partialValue[-INFERENCE_BLANK_BREAK:].isspace():
                     finalValue = partialValue[:-INFERENCE_BLANK_BREAK]
                     break
                 elif charsetType and partialValue[-1:].isspace():

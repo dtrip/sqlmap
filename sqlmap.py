@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -173,9 +173,9 @@ def main():
             elif conf.vulnTest:
                 from lib.core.testing import vulnTest
                 os._exitcode = 1 - (vulnTest() or 0)
-            elif conf.liveTest:
-                from lib.core.testing import liveTest
-                os._exitcode = 1 - (liveTest() or 0)
+            elif conf.fuzzTest:
+                from lib.core.testing import fuzzTest
+                fuzzTest()
             else:
                 from lib.controller.controller import start
                 if conf.profile and six.PY2:
@@ -275,6 +275,11 @@ def main():
             logger.critical(errMsg)
             raise SystemExit
 
+        elif all(_ in excMsg for _ in ("Permission denied", "metasploit")):
+            errMsg = "permission error occurred while using Metasploit"
+            logger.critical(errMsg)
+            raise SystemExit
+
         elif "Read-only file system" in excMsg:
             errMsg = "output device is mounted as read-only"
             logger.critical(errMsg)
@@ -343,6 +348,11 @@ def main():
 
         elif all(_ in excMsg for _ in ("pymysql", "configparser")):
             errMsg = "wrong initialization of pymsql detected (using Python3 dependencies)"
+            logger.critical(errMsg)
+            raise SystemExit
+
+        elif all(_ in excMsg for _ in ("drda", "to_bytes")):
+            errMsg = "wrong initialization of drda detected (using Python3 syntax)"
             logger.critical(errMsg)
             raise SystemExit
 

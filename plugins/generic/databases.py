@@ -37,11 +37,13 @@ from lib.core.data import logger
 from lib.core.data import paths
 from lib.core.data import queries
 from lib.core.decorators import stackedmethod
+from lib.core.dicts import ALTIBASE_TYPES
 from lib.core.dicts import FIREBIRD_TYPES
 from lib.core.dicts import INFORMIX_TYPES
 from lib.core.enums import CHARSET_TYPE
 from lib.core.enums import DBMS
 from lib.core.enums import EXPECTED
+from lib.core.enums import FORK
 from lib.core.enums import PAYLOAD
 from lib.core.exception import SqlmapMissingMandatoryOptionException
 from lib.core.exception import SqlmapNoneDataException
@@ -87,7 +89,7 @@ class Databases(object):
             warnMsg += "schema names for enumeration as the counterpart to database "
             warnMsg += "names on other DBMSes"
             singleTimeWarnMessage(warnMsg)
-        elif Backend.getIdentifiedDbms() in (DBMS.ALTIBASE,):
+        elif Backend.getIdentifiedDbms() in (DBMS.ALTIBASE, DBMS.CUBRID):
             warnMsg = "on %s you'll need to use " % Backend.getIdentifiedDbms()
             warnMsg += "user names for enumeration as the counterpart to database "
             warnMsg += "names on other DBMSes"
@@ -115,7 +117,7 @@ class Databases(object):
 
             infoMsg = "fetching database (schema) names"
 
-        elif Backend.getIdentifiedDbms() in (DBMS.ALTIBASE,):
+        elif Backend.getIdentifiedDbms() in (DBMS.ALTIBASE, DBMS.CUBRID):
             warnMsg = "user names are going to be used on %s " % Backend.getIdentifiedDbms()
             warnMsg += "for enumeration as the counterpart to database "
             warnMsg += "names on other DBMSes"
@@ -602,9 +604,12 @@ class Databases(object):
                     condQueryStr = "%%s%s" % colCondParam
                     condQuery = " AND (%s)" % " OR ".join(condQueryStr % (condition, unsafeSQLIdentificatorNaming(col)) for col in sorted(colList))
 
-                if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB, DBMS.H2, DBMS.MONETDB, DBMS.VERTICA, DBMS.PRESTO, DBMS.CRATEDB):
+                if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB, DBMS.H2, DBMS.MONETDB, DBMS.VERTICA, DBMS.PRESTO, DBMS.CRATEDB, DBMS.CUBRID):
                     query = rootQuery.inband.query % (unsafeSQLIdentificatorNaming(tbl), unsafeSQLIdentificatorNaming(conf.db))
                     query += condQuery
+
+                    if Backend.isFork(FORK.DRIZZLE):
+                        query = query.replace("column_type", "data_type")
 
                 elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.DB2, DBMS.DERBY, DBMS.ALTIBASE, DBMS.MIMERSQL):
                     query = rootQuery.inband.query % (unsafeSQLIdentificatorNaming(tbl.upper()), unsafeSQLIdentificatorNaming(conf.db.upper()))
@@ -702,6 +707,8 @@ class Databases(object):
                                     key = int(columnData[1]) if isinstance(columnData[1], six.string_types) and columnData[1].isdigit() else columnData[1]
                                     if Backend.isDbms(DBMS.FIREBIRD):
                                         columnData[1] = FIREBIRD_TYPES.get(key, columnData[1])
+                                    elif Backend.isDbms(DBMS.ALTIBASE):
+                                        columnData[1] = ALTIBASE_TYPES.get(key, columnData[1])
                                     elif Backend.isDbms(DBMS.INFORMIX):
                                         notNull = False
                                         if isinstance(key, int) and key > 255:
@@ -744,7 +751,7 @@ class Databases(object):
                     condQueryStr = "%%s%s" % colCondParam
                     condQuery = " AND (%s)" % " OR ".join(condQueryStr % (condition, unsafeSQLIdentificatorNaming(col)) for col in sorted(colList))
 
-                if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB, DBMS.H2, DBMS.MONETDB, DBMS.VERTICA, DBMS.PRESTO, DBMS.CRATEDB):
+                if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB, DBMS.H2, DBMS.MONETDB, DBMS.VERTICA, DBMS.PRESTO, DBMS.CRATEDB, DBMS.CUBRID):
                     query = rootQuery.blind.count % (unsafeSQLIdentificatorNaming(tbl), unsafeSQLIdentificatorNaming(conf.db))
                     query += condQuery
 
@@ -811,7 +818,7 @@ class Databases(object):
                             continue
 
                 for index in getLimitRange(count):
-                    if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB, DBMS.VERTICA, DBMS.PRESTO, DBMS.CRATEDB):
+                    if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.PGSQL, DBMS.HSQLDB, DBMS.VERTICA, DBMS.PRESTO, DBMS.CRATEDB, DBMS.CUBRID):
                         query = rootQuery.blind.query % (unsafeSQLIdentificatorNaming(tbl), unsafeSQLIdentificatorNaming(conf.db))
                         query += condQuery
                         field = None
@@ -1013,7 +1020,10 @@ class Databases(object):
         rootQuery = queries[Backend.getIdentifiedDbms()].statements
 
         if any(isTechniqueAvailable(_) for _ in (PAYLOAD.TECHNIQUE.UNION, PAYLOAD.TECHNIQUE.ERROR, PAYLOAD.TECHNIQUE.QUERY)) or conf.direct:
-            query = rootQuery.inband.query
+            if Backend.isFork(FORK.DRIZZLE):
+                query = rootQuery.inband.query2
+            else:
+                query = rootQuery.inband.query
 
             while True:
                 values = inject.getValue(query, blind=False, time=False)
@@ -1036,6 +1046,10 @@ class Databases(object):
             logger.info(infoMsg)
 
             query = rootQuery.blind.count
+
+            if Backend.isFork(FORK.DRIZZLE):
+                query = query.replace("INFORMATION_SCHEMA", "DATA_DICTIONARY")
+
             count = inject.getValue(query, union=False, error=False, expected=EXPECTED.INT, charsetType=CHARSET_TYPE.DIGITS)
 
             if count == 0:
@@ -1060,6 +1074,10 @@ class Databases(object):
 
                 if isNoneValue(value):
                     query = rootQuery.blind.query % index
+
+                    if Backend.isFork(FORK.DRIZZLE):
+                        query = query.replace("INFORMATION_SCHEMA", "DATA_DICTIONARY")
+
                     value = unArrayizeValue(inject.getValue(query, union=False, error=False))
 
                 if not isNoneValue(value):

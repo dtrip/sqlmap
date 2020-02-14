@@ -53,6 +53,7 @@ class DBMS(object):
     ALTIBASE = "Altibase"
     MIMERSQL = "MimerSQL"
     CRATEDB = "CrateDB"
+    CUBRID = "Cubrid"
 
 class DBMS_DIRECTORY_NAME(object):
     ACCESS = "access"
@@ -76,6 +77,7 @@ class DBMS_DIRECTORY_NAME(object):
     ALTIBASE = "altibase"
     MIMERSQL = "mimersql"
     CRATEDB = "cratedb"
+    CUBRID = "cubrid"
 
 class FORK(object):
     MARIADB = "MariaDB"
@@ -85,6 +87,10 @@ class FORK(object):
     TIDB = "TiDB"
     REDSHIFT = "Amazon Redshift"
     GREENPLUM = "Greenplum"
+    DRIZZLE = "Drizzle"
+    IGNITE = "Apache Ignite"
+    AURORA = "Aurora"
+    ENTERPRISEDB = "EnterpriseDB"
 
 class CUSTOM_LOGGING(object):
     PAYLOAD = 9

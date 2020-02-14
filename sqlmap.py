@@ -173,6 +173,9 @@ def main():
             elif conf.vulnTest:
                 from lib.core.testing import vulnTest
                 os._exitcode = 1 - (vulnTest() or 0)
+            elif conf.bedTest:
+                from lib.core.testing import bedTest
+                os._exitcode = 1 - (bedTest() or 0)
             elif conf.fuzzTest:
                 from lib.core.testing import fuzzTest
                 fuzzTest()
@@ -351,6 +354,11 @@ def main():
             logger.critical(errMsg)
             raise SystemExit
 
+        elif all(_ in excMsg for _ in ("ntlm", "socket.error, err", "SyntaxError")):
+            errMsg = "wrong initialization of python-ntlm detected (using Python2 syntax)"
+            logger.critical(errMsg)
+            raise SystemExit
+
         elif all(_ in excMsg for _ in ("drda", "to_bytes")):
             errMsg = "wrong initialization of drda detected (using Python3 syntax)"
             logger.critical(errMsg)
@@ -359,6 +367,11 @@ def main():
         elif all(_ in excMsg for _ in ("window = tkinter.Tk()",)):
             errMsg = "there has been a problem in initialization of GUI interface "
             errMsg += "('%s')" % excMsg.strip().split('\n')[-1]
+            logger.critical(errMsg)
+            raise SystemExit
+
+        elif any(_ in excMsg for _ in ("unable to access item 'liveTest'",)):
+            errMsg = "detected usage of files from different versions of sqlmap"
             logger.critical(errMsg)
             raise SystemExit
 

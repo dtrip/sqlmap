@@ -31,10 +31,14 @@ class Fingerprint(GenericFingerprint):
         if fork is None:
             if inject.checkBooleanExpression("VERSION() LIKE '%CockroachDB%'"):
                 fork = FORK.COCKROACHDB
-            elif inject.checkBooleanExpression("VERSION() LIKE '%Redshift%'"):  # Reference: https://dataedo.com/kb/query/amazon-redshift/check-server-version
+            elif inject.checkBooleanExpression("VERSION() LIKE '%Redshift%'"):      # Reference: https://dataedo.com/kb/query/amazon-redshift/check-server-version
                 fork = FORK.REDSHIFT
-            elif inject.checkBooleanExpression("VERSION() LIKE '%Greenplum%'"):  # Reference: http://www.sqldbpros.com/wordpress/wp-content/uploads/2014/08/what-version-of-greenplum.png
+            elif inject.checkBooleanExpression("VERSION() LIKE '%Greenplum%'"):     # Reference: http://www.sqldbpros.com/wordpress/wp-content/uploads/2014/08/what-version-of-greenplum.png
                 fork = FORK.GREENPLUM
+            elif inject.checkBooleanExpression("VERSION() LIKE '%EnterpriseDB%'"):  # Reference: https://www.enterprisedb.com/edb-docs/d/edb-postgres-advanced-server/user-guides/user-guide/11/EDB_Postgres_Advanced_Server_Guide.1.087.html
+                fork = FORK.ENTERPRISEDB
+            elif inject.checkBooleanExpression("AURORA_VERSION() LIKE '%'"):        # Reference: https://aws.amazon.com/premiumsupport/knowledge-center/aurora-version-number/
+                fork = FORK.AURORA
             else:
                 fork = ""
 

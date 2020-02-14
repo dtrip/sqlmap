@@ -75,6 +75,7 @@ from lib.core.enums import CHARSET_TYPE
 from lib.core.enums import CONTENT_STATUS
 from lib.core.enums import DBMS
 from lib.core.enums import EXPECTED
+from lib.core.enums import HASHDB_KEYS
 from lib.core.enums import HEURISTIC_TEST
 from lib.core.enums import HTTP_HEADER
 from lib.core.enums import HTTPMETHOD
@@ -559,6 +560,10 @@ class Backend(object):
         return Backend.getIdentifiedDbms() == aliasToDbmsEnum(dbms)
 
     @staticmethod
+    def isFork(fork):
+        return hashDBRetrieve(HASHDB_KEYS.DBMS_FORK) == fork
+
+    @staticmethod
     def isDbmsWithin(aliases):
         return Backend.getDbms() is not None and Backend.getDbms().lower() in aliases
 
@@ -944,6 +949,13 @@ def setColor(message, color=None, bold=False, level=None, istty=None):
             except:
                 level = None
             retVal = LOGGER_HANDLER.colorize(message, level)
+        else:
+            match = re.search(r"\(([^)]*)\s*fork\)", message)
+            if match:
+                retVal = retVal.replace(match.group(1), colored(match.group(1), color="lightgrey"))
+
+            for match in re.finditer(r"[^\w]'([^\n']+)'", message):  # single-quoted (Note: watch-out for the banner)
+                retVal = retVal.replace(match.group(1), colored(match.group(1), color="lightgrey"))
 
     return retVal
 
@@ -2703,6 +2715,12 @@ def extractErrorMessage(page):
                     retVal = candidate
                     break
 
+        if not retVal and wasLastResponseDBMSError():
+            match = re.search(r"[^\n]*SQL[^\n:]*:[^\n]*", page, re.IGNORECASE)
+
+            if match:
+                retVal = match.group(0)
+
     return retVal
 
 def findLocalPort(ports):
@@ -2826,6 +2844,7 @@ def urlencode(value, safe="%&=-_", convall=False, limit=False, spaceplus=False):
         # except in cases when tampering scripts are used
         if all('%' in _ for _ in (safe, value)) and not kb.tamperFunctions:
             value = re.sub(r"%(?![0-9a-fA-F]{2})", "%25", value)
+            value = re.sub(r"(?<= ')%", "%25", value)   # e.g. LIKE '%DBA%'
 
         while True:
             result = _urllib.parse.quote(getBytes(value), safe)
@@ -4070,7 +4089,7 @@ def safeSQLIdentificatorNaming(name, isTable=False):
         if retVal.upper() in kb.keywords or (retVal or " ")[0].isdigit() or not re.match(r"\A[A-Za-z0-9_@%s\$]+\Z" % ('.' if _ else ""), retVal):  # MsSQL is the only DBMS where we automatically prepend schema to table name (dot is normal)
             retVal = unsafeSQLIdentificatorNaming(retVal)
 
-            if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS, DBMS.SQLITE):  # Note: in SQLite double-quotes are treated as string if column/identifier is non-existent (e.g. SELECT "foobar" FROM users)
+            if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS, DBMS.CUBRID, DBMS.SQLITE):  # Note: in SQLite double-quotes are treated as string if column/identifier is non-existent (e.g. SELECT "foobar" FROM users)
                 retVal = "`%s`" % retVal
             elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO, DBMS.CRATEDB):
                 retVal = "\"%s\"" % retVal
@@ -4108,7 +4127,7 @@ def unsafeSQLIdentificatorNaming(name):
     retVal = name
 
     if isinstance(name, six.string_types):
-        if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS, DBMS.SQLITE):
+        if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS, DBMS.CUBRID, DBMS.SQLITE):
             retVal = name.replace("`", "")
         elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO, DBMS.CRATEDB):
             retVal = name.replace("\"", "")

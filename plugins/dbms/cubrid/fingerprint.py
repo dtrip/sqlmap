@@ -7,34 +7,20 @@ See the file 'LICENSE' for copying permission
 
 from lib.core.common import Backend
 from lib.core.common import Format
-from lib.core.common import hashDBRetrieve
-from lib.core.common import hashDBWrite
 from lib.core.data import conf
 from lib.core.data import kb
 from lib.core.data import logger
 from lib.core.enums import DBMS
-from lib.core.enums import FORK
-from lib.core.enums import HASHDB_KEYS
 from lib.core.session import setDbms
-from lib.core.settings import H2_ALIASES
+from lib.core.settings import CUBRID_ALIASES
 from lib.request import inject
 from plugins.generic.fingerprint import Fingerprint as GenericFingerprint
 
 class Fingerprint(GenericFingerprint):
     def __init__(self):
-        GenericFingerprint.__init__(self, DBMS.H2)
+        GenericFingerprint.__init__(self, DBMS.CUBRID)
 
     def getFingerprint(self):
-        fork = hashDBRetrieve(HASHDB_KEYS.DBMS_FORK)
-
-        if fork is None:
-            if inject.checkBooleanExpression("EXISTS(SELECT * FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='IGNITE')"):
-                fork = FORK.IGNITE
-            else:
-                fork = ""
-
-            hashDBWrite(HASHDB_KEYS.DBMS_FORK, fork)
-
         value = ""
         wsOsFp = Format.getOs("web server", kb.headersFp)
 
@@ -50,9 +36,7 @@ class Fingerprint(GenericFingerprint):
         value += "back-end DBMS: "
 
         if not conf.extensiveFp:
-            value += DBMS.H2
-            if fork:
-                value += " (%s fork)" % fork
+            value += DBMS.CUBRID
             return value
 
         actVer = Format.getDbms()
@@ -74,41 +58,37 @@ class Fingerprint(GenericFingerprint):
         return value
 
     def checkDbms(self):
-        if not conf.extensiveFp and Backend.isDbmsWithin(H2_ALIASES):
-            setDbms("%s %s" % (DBMS.H2, Backend.getVersion()))
+        if not conf.extensiveFp and Backend.isDbmsWithin(CUBRID_ALIASES):
+            setDbms(DBMS.CUBRID)
 
             self.getBanner()
 
             return True
 
-        infoMsg = "testing %s" % DBMS.H2
+        infoMsg = "testing %s" % DBMS.CUBRID
         logger.info(infoMsg)
 
-        result = inject.checkBooleanExpression("ZERO() IS 0")
+        result = inject.checkBooleanExpression("{} SUBSETEQ (CAST ({} AS SET))")
 
         if result:
-            infoMsg = "confirming %s" % DBMS.H2
+            infoMsg = "confirming %s" % DBMS.CUBRID
             logger.info(infoMsg)
 
-            result = inject.checkBooleanExpression("ROUNDMAGIC(PI())>=3")
+            result = inject.checkBooleanExpression("DRAND()<2")
 
             if not result:
-                warnMsg = "the back-end DBMS is not %s" % DBMS.H2
+                warnMsg = "the back-end DBMS is not %s" % DBMS.CUBRID
                 logger.warn(warnMsg)
 
                 return False
-            else:
-                setDbms(DBMS.H2)
 
-                self.getBanner()
+            setDbms(DBMS.CUBRID)
 
-                return True
+            self.getBanner()
+
+            return True
         else:
-            warnMsg = "the back-end DBMS is not %s" % DBMS.H2
+            warnMsg = "the back-end DBMS is not %s" % DBMS.CUBRID
             logger.warn(warnMsg)
 
             return False
-
-    def getHostname(self):
-        warnMsg = "on H2 it is not possible to enumerate the hostname"
-        logger.warn(warnMsg)

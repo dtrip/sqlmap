@@ -83,6 +83,7 @@ from lib.core.exception import SqlmapSyntaxException
 from lib.core.option import _createHomeDirectories
 from lib.core.settings import BASIC_HELP_ITEMS
 from lib.core.settings import DUMMY_URL
+from lib.core.settings import IGNORED_OPTIONS
 from lib.core.settings import INFERENCE_UNKNOWN_CHAR
 from lib.core.settings import IS_WIN
 from lib.core.settings import MAX_HELP_OPTION_LENGTH
@@ -796,6 +797,9 @@ def cmdLineParser(argv=None):
         parser.add_argument("--vuln-test", dest="vulnTest", action="store_true",
             help=SUPPRESS)
 
+        parser.add_argument("--bed-test", dest="bedTest", action="store_true",
+            help=SUPPRESS)
+
         parser.add_argument("--fuzz-test", dest="fuzzTest", action="store_true",
             help=SUPPRESS)
 
@@ -931,6 +935,8 @@ def cmdLineParser(argv=None):
             elif re.search(r"\A-\w{3,}", argv[i]):
                 if argv[i].strip('-').split('=')[0] in (longOptions | longSwitches):
                     argv[i] = "-%s" % argv[i]
+            elif argv[i] in IGNORED_OPTIONS:
+                argv[i] = ""
             elif argv[i] in DEPRECATED_OPTIONS:
                 argv[i] = ""
             elif argv[i].startswith("--tamper"):
@@ -1005,7 +1011,7 @@ def cmdLineParser(argv=None):
         if args.dummy:
             args.url = args.url or DUMMY_URL
 
-        if not any((args.direct, args.url, args.logFile, args.bulkFile, args.googleDork, args.configFile, args.requestFile, args.updateAll, args.smokeTest, args.vulnTest, args.fuzzTest, args.wizard, args.dependencies, args.purge, args.listTampers, args.hashFile)):
+        if not any((args.direct, args.url, args.logFile, args.bulkFile, args.googleDork, args.configFile, args.requestFile, args.updateAll, args.smokeTest, args.vulnTest, args.bedTest, args.fuzzTest, args.wizard, args.dependencies, args.purge, args.listTampers, args.hashFile)):
             errMsg = "missing a mandatory option (-d, -u, -l, -m, -r, -g, -c, --list-tampers, --wizard, --update, --purge or --dependencies). "
             errMsg += "Use -h for basic and -hh for advanced help\n"
             parser.error(errMsg)

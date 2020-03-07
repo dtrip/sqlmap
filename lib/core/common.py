@@ -935,12 +935,21 @@ def setColor(message, color=None, bold=False, level=None, istty=None):
 
     >>> setColor("Hello World", color="red", istty=True)
     '\\x1b[31mHello World\\x1b[0m'
+    >>> setColor("[INFO] Hello World", istty=True)
+    '[\\x1b[32mINFO\\x1b[0m] Hello World'
+    >>> setColor("[INFO] Hello [CRITICAL] World", istty=True)
+    '[INFO] Hello [CRITICAL] World'
     """
 
     retVal = message
-    level = level or extractRegexResult(r"\[(?P<result>%s)\]" % '|'.join(_[0] for _ in getPublicTypeMembers(LOGGING_LEVELS)), message)
 
     if message and (IS_TTY or istty) and not conf.get("disableColoring"):  # colorizing handler
+        if level is None:
+            levels = re.findall(r"\[(?P<result>%s)\]" % '|'.join(_[0] for _ in getPublicTypeMembers(LOGGING_LEVELS)), message)
+
+            if len(levels) == 1:
+                level = levels[0]
+
         if bold or color:
             retVal = colored(message, color=color, on_color=None, attrs=("bold",) if bold else None)
         elif level:
@@ -954,8 +963,8 @@ def setColor(message, color=None, bold=False, level=None, istty=None):
             if match:
                 retVal = retVal.replace(match.group(1), colored(match.group(1), color="lightgrey"))
 
-            for match in re.finditer(r"[^\w]'([^\n']+)'", message):  # single-quoted (Note: watch-out for the banner)
-                retVal = retVal.replace(match.group(1), colored(match.group(1), color="lightgrey"))
+            for match in re.finditer(r"([^\w])'([^\n']+)'", message):  # single-quoted (Note: watch-out for the banner)
+                retVal = retVal.replace(match.group(0), "%s'%s'" % (match.group(1), colored(match.group(2), color="lightgrey")))
 
     return retVal
 
@@ -974,7 +983,7 @@ def clearColors(message):
 
     return retVal
 
-def dataToStdout(data, forceOutput=False, bold=False, content_type=None, status=CONTENT_STATUS.IN_PROGRESS):
+def dataToStdout(data, forceOutput=False, bold=False, contentType=None, status=CONTENT_STATUS.IN_PROGRESS, coloring=True):
     """
     Writes text to the stdout (console) stream
     """
@@ -987,9 +996,9 @@ def dataToStdout(data, forceOutput=False, bold=False, content_type=None, status=
 
             try:
                 if conf.get("api"):
-                    sys.stdout.write(stdoutEncode(clearColors(data)), status, content_type)
+                    sys.stdout.write(stdoutEncode(clearColors(data)), status, contentType)
                 else:
-                    sys.stdout.write(stdoutEncode(setColor(data, bold=bold)))
+                    sys.stdout.write(stdoutEncode(setColor(data, bold=bold) if coloring else clearColors(data)))
 
                 sys.stdout.flush()
             except IOError:
@@ -1121,7 +1130,7 @@ def readInput(message, default=None, checkBatch=True, boolean=False):
                 if not retVal:  # Note: Python doesn't print newline on empty input
                     dataToStdout("\n")
                 retVal = retVal.strip() or default
-                retVal = getUnicode(retVal, encoding=sys.stdin.encoding) if retVal else retVal
+                retVal = getUnicode(retVal, encoding=getattr(sys.stdin, "encoding", None)) if retVal else retVal
             except:
                 try:
                     time.sleep(0.05)  # Reference: http://www.gossamer-threads.com/lists/python/python/781893
@@ -2821,6 +2830,10 @@ def urlencode(value, safe="%&=-_", convall=False, limit=False, spaceplus=False):
 
     >>> urlencode('AND 1>(2+3)#')
     'AND%201%3E%282%2B3%29%23'
+    >>> urlencode('AND COUNT(SELECT name FROM users WHERE name LIKE \\'%DBA%\\')>0')
+    'AND%20COUNT%28SELECT%20name%20FROM%20users%20WHERE%20name%20LIKE%20%27%25DBA%25%27%29%3E0'
+    >>> urlencode('AND COUNT(SELECT name FROM users WHERE name LIKE \\'%_SYSTEM%\\')>0')
+    'AND%20COUNT%28SELECT%20name%20FROM%20users%20WHERE%20name%20LIKE%20%27%25_SYSTEM%25%27%29%3E0'
     """
 
     if conf.get("direct"):
@@ -2843,8 +2856,8 @@ def urlencode(value, safe="%&=-_", convall=False, limit=False, spaceplus=False):
         # encoded (when not representing URL encoded char)
         # except in cases when tampering scripts are used
         if all('%' in _ for _ in (safe, value)) and not kb.tamperFunctions:
-            value = re.sub(r"%(?![0-9a-fA-F]{2})", "%25", value)
             value = re.sub(r"(?<= ')%", "%25", value)   # e.g. LIKE '%DBA%'
+            value = re.sub(r"%(?![0-9a-fA-F]{2})", "%25", value)
 
         while True:
             result = _urllib.parse.quote(getBytes(value), safe)
@@ -3712,7 +3725,7 @@ def unhandledExceptionMessage():
     errMsg += "Running version: %s\n" % VERSION_STRING[VERSION_STRING.find('/') + 1:]
     errMsg += "Python version: %s\n" % PYVERSION
     errMsg += "Operating system: %s\n" % platform.platform()
-    errMsg += "Command line: %s\n" % re.sub(r".+?\bsqlmap\.py\b", "sqlmap.py", getUnicode(" ".join(sys.argv), encoding=sys.stdin.encoding))
+    errMsg += "Command line: %s\n" % re.sub(r".+?\bsqlmap\.py\b", "sqlmap.py", getUnicode(" ".join(sys.argv), encoding=getattr(sys.stdin, "encoding", None)))
     errMsg += "Technique: %s\n" % (enumValueToNameLookup(PAYLOAD.TECHNIQUE, getTechnique()) if getTechnique() is not None else ("DIRECT" if conf.get("direct") else None))
     errMsg += "Back-end DBMS:"
 
@@ -4007,7 +4020,7 @@ def removeReflectiveValues(content, payload, suppressWarning=False):
                     thread.start()
                     thread.join(REFLECTED_REPLACEMENT_TIMEOUT)
 
-                    if thread.isAlive():
+                    if thread.is_alive():
                         kb.reflectiveMechanism = False
                         retVal = content
                         if not suppressWarning:
@@ -4086,12 +4099,13 @@ def safeSQLIdentificatorNaming(name, isTable=False):
         if _:
             retVal = re.sub(r"(?i)\A\[?%s\]?\." % DEFAULT_MSSQL_SCHEMA, "%s." % DEFAULT_MSSQL_SCHEMA, retVal)
 
-        if retVal.upper() in kb.keywords or (retVal or " ")[0].isdigit() or not re.match(r"\A[A-Za-z0-9_@%s\$]+\Z" % ('.' if _ else ""), retVal):  # MsSQL is the only DBMS where we automatically prepend schema to table name (dot is normal)
+        # Note: SQL 92 has restrictions for identifiers starting with underscore (e.g. http://www.frontbase.com/documentation/FBUsers_4.pdf)
+        if retVal.upper() in kb.keywords or (not isTable and (retVal or " ")[0] == '_') or (retVal or " ")[0].isdigit() or not re.match(r"\A[A-Za-z0-9_@%s\$]+\Z" % ('.' if _ else ""), retVal):  # MsSQL is the only DBMS where we automatically prepend schema to table name (dot is normal)
             retVal = unsafeSQLIdentificatorNaming(retVal)
 
             if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS, DBMS.CUBRID, DBMS.SQLITE):  # Note: in SQLite double-quotes are treated as string if column/identifier is non-existent (e.g. SELECT "foobar" FROM users)
                 retVal = "`%s`" % retVal
-            elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO, DBMS.CRATEDB, DBMS.CACHE):
+            elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO, DBMS.CRATEDB, DBMS.CACHE, DBMS.EXTREMEDB, DBMS.FRONTBASE):
                 retVal = "\"%s\"" % retVal
             elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.ALTIBASE, DBMS.MIMERSQL):
                 retVal = "\"%s\"" % retVal.upper()
@@ -4129,7 +4143,7 @@ def unsafeSQLIdentificatorNaming(name):
     if isinstance(name, six.string_types):
         if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS, DBMS.CUBRID, DBMS.SQLITE):
             retVal = name.replace("`", "")
-        elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO, DBMS.CRATEDB, DBMS.CACHE):
+        elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO, DBMS.CRATEDB, DBMS.CACHE, DBMS.EXTREMEDB, DBMS.FRONTBASE):
             retVal = name.replace("\"", "")
         elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.ALTIBASE, DBMS.MIMERSQL):
             retVal = name.replace("\"", "").upper()

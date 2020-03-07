@@ -17,7 +17,9 @@ from lib.core.settings import CRATEDB_ALIASES
 from lib.core.settings import CUBRID_ALIASES
 from lib.core.settings import DB2_ALIASES
 from lib.core.settings import DERBY_ALIASES
+from lib.core.settings import EXTREMEDB_ALIASES
 from lib.core.settings import FIREBIRD_ALIASES
+from lib.core.settings import FRONTBASE_ALIASES
 from lib.core.settings import H2_ALIASES
 from lib.core.settings import HSQLDB_ALIASES
 from lib.core.settings import INFORMIX_ALIASES
@@ -240,6 +242,8 @@ DBMS_DICT = {
     DBMS.CRATEDB: (CRATEDB_ALIASES, "python-psycopg2", "http://initd.org/psycopg/", "postgresql"),
     DBMS.CUBRID: (CUBRID_ALIASES, "CUBRID-Python", "https://github.com/CUBRID/cubrid-python", None),
     DBMS.CACHE: (CACHE_ALIASES, "python jaydebeapi & python-jpype", "https://pypi.python.org/pypi/JayDeBeApi/ & http://jpype.sourceforge.net/", None),
+    DBMS.EXTREMEDB: (EXTREMEDB_ALIASES, None, None, None),
+    DBMS.FRONTBASE: (FRONTBASE_ALIASES, None, None, None),
 }
 
 # Reference: https://blog.jooq.org/tag/sysibm-sysdummy1/
@@ -253,6 +257,7 @@ FROM_DUMMY_TABLE = {
     DBMS.INFORMIX: " FROM SYSMASTER:SYSDUAL",
     DBMS.DERBY: " FROM SYSIBM.SYSDUMMY1",
     DBMS.MIMERSQL: " FROM SYSTEM.ONEROW",
+    DBMS.FRONTBASE: " FROM INFORMATION_SCHEMA.IO_STATISTICS"
 }
 
 HEURISTIC_NULL_EVAL = {
@@ -274,6 +279,7 @@ HEURISTIC_NULL_EVAL = {
     DBMS.CRATEDB: "MD5(NULL~NULL)",  # Note: NULL~NULL also being evaluated on H2 and Ignite
     DBMS.CUBRID: "(NULL SETEQ NULL)",
     DBMS.CACHE: "%SQLUPPER NULL",
+    DBMS.EXTREMEDB: "NULLIFZERO(hashcode(NULL))",
 }
 
 SQL_STATEMENTS = {

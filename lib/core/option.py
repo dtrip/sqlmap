@@ -425,6 +425,9 @@ def _setBulkMultipleTargets():
 
     found = False
     for line in getFileItems(conf.bulkFile):
+        if conf.scope and not re.search(conf.scope, line, re.I):
+            continue
+
         if re.match(r"[^ ]+\?(.+)", line, re.I) or kb.customInjectionMark in line:
             found = True
             kb.targets.add((line.strip(), conf.method, conf.data, conf.cookie, None))
@@ -676,7 +679,7 @@ def _setDBMS():
     logger.debug(debugMsg)
 
     conf.dbms = conf.dbms.lower()
-    regex = re.search(r"%s ([\d\.]+)" % ("(%s)" % "|".join([alias for alias in SUPPORTED_DBMS])), conf.dbms, re.I)
+    regex = re.search(r"%s ([\d\.]+)" % ("(%s)" % "|".join(SUPPORTED_DBMS)), conf.dbms, re.I)
 
     if regex:
         conf.dbms = regex.group(1)
@@ -1920,6 +1923,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.forceWhere = None
     kb.forkNote = None
     kb.futileUnion = None
+    kb.fuzzUnionTest = None
     kb.heavilyDynamic = False
     kb.headersFile = None
     kb.headersFp = {}
@@ -2019,6 +2023,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.uChar = NULL
     kb.udfFail = False
     kb.unionDuplicates = False
+    kb.unionTemplate = None
     kb.webSocketRecvCount = None
     kb.wizardMode = False
     kb.xpCmdshellAvailable = False

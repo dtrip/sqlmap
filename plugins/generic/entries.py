@@ -131,6 +131,8 @@ class Entries(object):
             try:
                 if Backend.isDbms(DBMS.INFORMIX):
                     kb.dumpTable = "%s:%s" % (conf.db, tbl)
+                elif Backend.isDbms(DBMS.SQLITE):
+                    kb.dumpTable = tbl
                 else:
                     kb.dumpTable = "%s.%s" % (conf.db, tbl)
 
@@ -156,7 +158,7 @@ class Entries(object):
                     logger.warn(warnMsg)
                     continue
 
-                kb.dumpColumns = colList
+                kb.dumpColumns = [unsafeSQLIdentificatorNaming(_) for _ in colList]
                 colNames = colString = ", ".join(column for column in colList)
                 rootQuery = queries[Backend.getIdentifiedDbms()].dump_table
 

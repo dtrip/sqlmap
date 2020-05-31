@@ -178,6 +178,10 @@ class Agent(object):
             _newValue = newValue
             _origValue = origValue
 
+            if newValue:
+                newValue = newValue.replace(BOUNDARY_BACKSLASH_MARKER, '\\')
+                newValue = self.adjustLateValues(newValue)
+
             # TODO: support for POST_HINT
             newValue = encodeBase64(newValue, binary=False, encoding=conf.encoding or UNICODE_ENCODING)
             origValue = encodeBase64(origValue, binary=False, encoding=conf.encoding or UNICODE_ENCODING)
@@ -420,7 +424,7 @@ class Agent(object):
         rootQuery = queries[Backend.getIdentifiedDbms()]
         hexField = field
 
-        if "hex" in rootQuery:
+        if "hex" in rootQuery and hasattr(rootQuery.hex, "query"):
             hexField = rootQuery.hex.query % field
         else:
             warnMsg = "switch '--hex' is currently not supported on DBMS '%s'" % Backend.getIdentifiedDbms()

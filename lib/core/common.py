@@ -675,17 +675,21 @@ def paramToDict(place, parameters=None):
                                     elif isinstance(current, dict):
                                         for key in current.keys():
                                             value = current[key]
-                                            if isinstance(value, (list, tuple, set, dict)):
-                                                if value:
-                                                    walk(head, value)
-                                            elif isinstance(value, (bool, int, float, six.string_types)):
+                                            if isinstance(value, (bool, int, float, six.string_types)) or value in (None, []):
                                                 original = current[key]
                                                 if isinstance(value, bool):
                                                     current[key] = "%s%s" % (getUnicode(value).lower(), BOUNDED_INJECTION_MARKER)
+                                                elif value is None:
+                                                    current[key] = "%s%s" % (randomInt(), BOUNDED_INJECTION_MARKER)
+                                                elif value == []:
+                                                    current[key] = ["%s%s" % (randomInt(), BOUNDED_INJECTION_MARKER)]
                                                 else:
                                                     current[key] = "%s%s" % (value, BOUNDED_INJECTION_MARKER)
                                                 candidates["%s (%s)" % (parameter, key)] = re.sub(r"\b(%s\s*=\s*)%s" % (re.escape(parameter), re.escape(testableParameters[parameter])), r"\g<1>%s" % json.dumps(deserialized, separators=(',', ':') if ", " not in testableParameters[parameter] else None), parameters)
                                                 current[key] = original
+                                            elif isinstance(value, (list, tuple, set, dict)):
+                                                if value:
+                                                    walk(head, value)
 
                                 deserialized = json.loads(testableParameters[parameter])
                                 walk(deserialized)
@@ -1270,7 +1274,7 @@ def checkPipedInput():
     # Reference: https://stackoverflow.com/a/33873570
     """
 
-    return not os.isatty(sys.stdin.fileno()) if hasattr(sys.stdin, "fileno") else False
+    return hasattr(sys.stdin, "fileno") and not os.isatty(sys.stdin.fileno())
 
 def isZipFile(filename):
     """
@@ -1360,9 +1364,9 @@ def parsePasswordHash(password):
     >>> kb.forcedDbms = popValue()
     """
 
-    blank = " " * 8
+    blank = ' ' * 8
 
-    if isNoneValue(password) or password == " ":
+    if isNoneValue(password) or password == ' ':
         retVal = NULL
     else:
         retVal = password
@@ -1452,6 +1456,12 @@ def setPaths(rootPath):
     else:
         paths.SQLMAP_HOME_PATH = os.path.join(os.path.expandvars(os.path.expanduser("~")), ".sqlmap")
 
+        if not os.path.isdir(paths.SQLMAP_HOME_PATH):
+            if "XDG_DATA_HOME" in os.environ:
+                paths.SQLMAP_HOME_PATH = os.path.join(os.environ["XDG_DATA_HOME"], "sqlmap")
+            else:
+                paths.SQLMAP_HOME_PATH = os.path.join(os.path.expandvars(os.path.expanduser("~")), ".local", "share", "sqlmap")
+
     paths.SQLMAP_OUTPUT_PATH = getUnicode(paths.get("SQLMAP_OUTPUT_PATH", os.path.join(paths.SQLMAP_HOME_PATH, "output")), encoding=sys.getfilesystemencoding() or UNICODE_ENCODING)
     paths.SQLMAP_DUMP_PATH = os.path.join(paths.SQLMAP_OUTPUT_PATH, "%s", "dump")
     paths.SQLMAP_FILES_PATH = os.path.join(paths.SQLMAP_OUTPUT_PATH, "%s", "files")
@@ -1500,7 +1510,7 @@ def parseTargetDirect():
         if details:
             conf.dbms = details.group("dbms")
 
-            if details.group('credentials'):
+            if details.group("credentials"):
                 conf.dbmsUser = details.group("user")
                 conf.dbmsPass = details.group("pass")
             else:
@@ -1612,7 +1622,7 @@ def parseTargetUrl():
 
     originalUrl = conf.url
 
-    if re.search(r"\[.+\]", conf.url) and not socket.has_ipv6:
+    if re.search(r"://\[.+\]", conf.url) and not socket.has_ipv6:
         errMsg = "IPv6 communication is not supported "
         errMsg += "on this platform"
         raise SqlmapGenericException(errMsg)
@@ -3265,7 +3275,7 @@ def parseSqliteTableSchema(value):
     Parses table column names and types from specified SQLite table schema
 
     >>> kb.data.cachedColumns = {}
-    >>> parseSqliteTableSchema("CREATE TABLE users\\n\\t\\tid INTEGER\\n\\t\\tname TEXT\\n);")
+    >>> parseSqliteTableSchema("CREATE TABLE users(\\n\\t\\tid INTEGER,\\n\\t\\tname TEXT\\n);")
     True
     >>> repr(kb.data.cachedColumns).count(',') == 1
     True
@@ -3277,9 +3287,9 @@ def parseSqliteTableSchema(value):
         table = {}
         columns = {}
 
-        for match in re.finditer(r"(\w+)[\"'`]?\s+(INT|INTEGER|TINYINT|SMALLINT|MEDIUMINT|BIGINT|UNSIGNED BIG INT|INT2|INT8|INTEGER|CHARACTER|VARCHAR|VARYING CHARACTER|NCHAR|NATIVE CHARACTER|NVARCHAR|TEXT|CLOB|LONGTEXT|BLOB|NONE|REAL|DOUBLE|DOUBLE PRECISION|FLOAT|REAL|NUMERIC|DECIMAL|BOOLEAN|DATE|DATETIME|NUMERIC)\b", decodeStringEscape(value), re.I):
+        for match in re.finditer(r"[(,]\s*[\"'`]?(\w+)[\"'`]?(?:\s+(INT|INTEGER|TINYINT|SMALLINT|MEDIUMINT|BIGINT|UNSIGNED BIG INT|INT2|INT8|INTEGER|CHARACTER|VARCHAR|VARYING CHARACTER|NCHAR|NATIVE CHARACTER|NVARCHAR|TEXT|CLOB|LONGTEXT|BLOB|NONE|REAL|DOUBLE|DOUBLE PRECISION|FLOAT|REAL|NUMERIC|DECIMAL|BOOLEAN|DATE|DATETIME|NUMERIC)\b)?", decodeStringEscape(value), re.I):
             retVal = True
-            columns[match.group(1)] = match.group(2)
+            columns[match.group(1)] = match.group(2) or "TEXT"
 
         table[safeSQLIdentificatorNaming(conf.tbl, True)] = columns
         kb.data.cachedColumns[conf.db] = table

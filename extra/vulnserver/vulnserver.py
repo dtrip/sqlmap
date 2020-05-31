@@ -18,6 +18,7 @@ import traceback
 
 PY3 = sys.version_info >= (3, 0)
 UNICODE_ENCODING = "utf-8"
+DEBUG = False
 
 if PY3:
     from http.client import INTERNAL_SERVER_ERROR
@@ -83,7 +84,8 @@ class ThreadingServer(ThreadingMixIn, HTTPServer):
         try:
             HTTPServer.finish_request(self, *args, **kwargs)
         except Exception:
-            traceback.print_exc()
+            if DEBUG:
+                traceback.print_exc()
 
 class ReqHandler(BaseHTTPRequestHandler):
     def do_REQUEST(self):
@@ -131,7 +133,7 @@ class ReqHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-type", "text/html; charset=%s" % UNICODE_ENCODING)
                 self.send_header("Connection", "close")
                 self.end_headers()
-                self.wfile.write(b"<html><p><h3>GET:</h3><a href='/?id=1'>link</a></p><hr><p><h3>POST:</h3><form method='post'>ID: <input type='text' name='id'><input type='submit' value='Submit'></form></p></html>")
+                self.wfile.write(b"<!DOCTYPE html><html><head><title>vulnserver</title></head><body><h3>GET:</h3><a href='/?id=1'>link</a><hr><h3>POST:</h3><form method='post'>ID: <input type='text' name='id'><input type='submit' value='Submit'></form></body></html>")
             else:
                 code, output = OK, ""
 
@@ -147,16 +149,21 @@ class ReqHandler(BaseHTTPRequestHandler):
                             _cursor.execute("SELECT * FROM users WHERE id=%s LIMIT 0, 1" % self.params["id"])
                         results = _cursor.fetchall()
 
-                    output += "<b>SQL results:</b>\n"
-                    output += "<table border=\"1\">\n"
+                    output += "<b>SQL results:</b><br>\n"
 
-                    for row in results:
-                        output += "<tr>"
-                        for value in row:
-                            output += "<td>%s</td>" % value
-                        output += "</tr>\n"
+                    if results:
+                        output += "<table border=\"1\">\n"
 
-                    output += "</table>\n"
+                        for row in results:
+                            output += "<tr>"
+                            for value in row:
+                                output += "<td>%s</td>" % value
+                            output += "</tr>\n"
+
+                        output += "</table>\n"
+                    else:
+                        output += "no results found"
+
                     output += "</body></html>"
                 except Exception as ex:
                     code = INTERNAL_SERVER_ERROR
@@ -221,7 +228,7 @@ def run(address=LISTEN_ADDRESS, port=LISTEN_PORT):
     global _server
     try:
         _server = ThreadingServer((address, port), ReqHandler)
-        print("[i] running HTTP server at '%s:%d'" % (address, port))
+        print("[i] running HTTP server at 'http://%s:%d'" % (address, port))
         _server.serve_forever()
     except KeyboardInterrupt:
         _server.socket.close()

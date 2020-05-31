@@ -506,7 +506,7 @@ def checkSqlInjection(place, parameter, value):
                             falseRawResponse = "%s%s" % (falseHeaders, falsePage)
 
                             # Checking if there is difference between current FALSE, original and heuristics page (i.e. not used parameter)
-                            if not kb.negativeLogic:
+                            if not any((kb.negativeLogic, conf.string, conf.notString)):
                                 try:
                                     ratio = 1.0
                                     seqMatcher = getCurrentThreadData().seqMatcher
@@ -937,6 +937,9 @@ def checkFalsePositives(injection):
                 randInt3 = max(randInt1, randInt2, randInt3)
 
                 if conf.string and any(conf.string in getUnicode(_) for _ in (randInt1, randInt2, randInt3)):
+                    continue
+
+                if conf.notString and any(conf.notString in getUnicode(_) for _ in (randInt1, randInt2, randInt3)):
                     continue
 
                 if randInt3 > randInt2 > randInt1:

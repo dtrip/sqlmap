@@ -623,7 +623,7 @@ def cmdLineParser(argv=None):
             help="Parameter(s) containing Base64 encoded data")
 
         general.add_argument("--base64-safe", dest="base64Safe", action="store_true",
-            help="Use URL and filename safe Base64 alphabet")
+            help="Use URL and filename safe Base64 alphabet (RFC 4648)")
 
         general.add_argument("--batch", dest="batch", action="store_true",
             help="Never ask for user input, use the default behavior")
@@ -955,8 +955,8 @@ def cmdLineParser(argv=None):
                 argv[i] = ""
             elif argv[i] in DEPRECATED_OPTIONS:
                 argv[i] = ""
-            elif any(argv[i].startswith(_) for _ in ("--tamper",)):
-                key = re.search(r"\-\-(\w+)", argv[i]).group(1)
+            elif any(argv[i].startswith(_) for _ in ("--tamper", "--ignore-code", "--skip")):
+                key = re.search(r"\-?\-(\w+)\b", argv[i]).group(1)
                 index = auxIndexes.get(key, None)
                 if index is None:
                     index = i if '=' in argv[i] else (i + 1 if i + 1 < len(argv) and not argv[i + 1].startswith('-') else None)

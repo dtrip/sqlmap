@@ -539,7 +539,7 @@ class Connect(object):
                 conn = _urllib.request.urlopen(req)
 
                 if not kb.authHeader and getRequestHeader(req, HTTP_HEADER.AUTHORIZATION) and (conf.authType or "").lower() == AUTH_TYPE.BASIC.lower():
-                    kb.authHeader = getRequestHeader(req, HTTP_HEADER.AUTHORIZATION)
+                    kb.authHeader = getUnicode(getRequestHeader(req, HTTP_HEADER.AUTHORIZATION))
 
                 if not kb.proxyAuthHeader and getRequestHeader(req, HTTP_HEADER.PROXY_AUTHORIZATION):
                     kb.proxyAuthHeader = getRequestHeader(req, HTTP_HEADER.PROXY_AUTHORIZATION)
@@ -1088,6 +1088,9 @@ class Connect(object):
 
                             if not match:
                                 match = re.search(r"\b(?P<name>%s)\s*=\s*['\"]?(?P<value>[^;'\"]+)" % conf.csrfToken, page or "", re.I)
+
+                                if not match:
+                                    match = re.search(r"<meta\s+name=[\"']?(?P<name>%s)[\"']?[^>]+\b(value|content)=[\"']?(?P<value>[^>\"']+)" % conf.csrfToken, page or "", re.I)
 
                 if match:
                     token.name, token.value = match.group("name"), match.group("value")

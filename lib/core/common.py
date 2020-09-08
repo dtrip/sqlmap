@@ -632,6 +632,7 @@ def paramToDict(place, parameters=None):
                 if parameter in (conf.base64Parameter or []):
                     try:
                         kb.base64Originals[parameter] = oldValue = value
+                        value = urldecode(value, convall=True)
                         value = decodeBase64(value, binary=False, encoding=conf.encoding or UNICODE_ENCODING)
                         parameters = re.sub(r"\b%s(\b|\Z)" % re.escape(oldValue), value, parameters)
                     except:
@@ -5005,6 +5006,10 @@ def decloakToTemp(filename):
     >>> os.remove(_)
     >>> _ = decloakToTemp(os.path.join(paths.SQLMAP_SHELL_PATH, "backdoors", "backdoor.asp_"))
     >>> openFile(_, "rb", encoding=None).read().startswith(b'<%')
+    True
+    >>> os.remove(_)
+    >>> _ = decloakToTemp(os.path.join(paths.SQLMAP_UDF_PATH, "postgresql", "linux", "64", "11", "lib_postgresqludf_sys.so_"))
+    >>> b'sys_eval' in openFile(_, "rb", encoding=None).read()
     True
     >>> os.remove(_)
     """

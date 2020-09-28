@@ -683,7 +683,10 @@ def cmdLineParser(argv=None):
             help="Parse and display DBMS error messages from responses")
 
         general.add_argument("--preprocess", dest="preprocess",
-            help="Use given script(s) for preprocessing of response data")
+            help="Use given script(s) for preprocessing (request)")
+
+        general.add_argument("--postprocess", dest="postprocess",
+            help="Use given script(s) for postprocessing (response)")
 
         general.add_argument("--repair", dest="repair", action="store_true",
             help="Redump entries having unknown character marker (%s)" % INFERENCE_UNKNOWN_CHAR)
@@ -1006,7 +1009,7 @@ def cmdLineParser(argv=None):
         for verbosity in (_ for _ in argv if re.search(r"\A\-v+\Z", _)):
             try:
                 if argv.index(verbosity) == len(argv) - 1 or not argv[argv.index(verbosity) + 1].isdigit():
-                    conf.verbose = verbosity.count('v') + 1
+                    conf.verbose = verbosity.count('v')
                     del argv[argv.index(verbosity)]
             except (IndexError, ValueError):
                 pass

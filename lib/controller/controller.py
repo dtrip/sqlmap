@@ -291,7 +291,7 @@ def start():
         logger.error(errMsg)
         return False
 
-    if kb.targets and len(kb.targets) > 1:
+    if kb.targets and isListLike(kb.targets) and len(kb.targets) > 1:
         infoMsg = "found a total of %d targets" % len(kb.targets)
         logger.info(infoMsg)
 
@@ -704,6 +704,12 @@ def start():
                     action()
 
         except KeyboardInterrupt:
+            if kb.lastCtrlCTime and (time.time() - kb.lastCtrlCTime < 1):
+                kb.multipleCtrlC = True
+                raise SqlmapUserQuitException("user aborted (Ctrl+C was pressed multiple times)")
+
+            kb.lastCtrlCTime = time.time()
+
             if conf.multipleTargets:
                 warnMsg = "user aborted in multiple target mode"
                 logger.warn(warnMsg)

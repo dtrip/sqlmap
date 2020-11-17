@@ -215,7 +215,7 @@ class UnicodeRawConfigParser(_configparser.RawConfigParser):
             fp.write("[%s]\n" % _configparser.DEFAULTSECT)
 
             for (key, value) in self._defaults.items():
-                fp.write("%s = %s\n" % (key, getUnicode(value, UNICODE_ENCODING).replace('\n', '\n\t')))
+                fp.write("\t%s = %s" % (key, getUnicode(value, UNICODE_ENCODING)))
 
             fp.write("\n")
 
@@ -225,9 +225,9 @@ class UnicodeRawConfigParser(_configparser.RawConfigParser):
             for (key, value) in self._sections[section].items():
                 if key != "__name__":
                     if value is None:
-                        fp.write("%s\n" % (key))
-                    else:
-                        fp.write("%s = %s\n" % (key, getUnicode(value, UNICODE_ENCODING).replace('\n', '\n\t')))
+                        fp.write("\t%s\n" % (key))
+                    elif not isListLike(value):
+                        fp.write("\t%s = %s\n" % (key, getUnicode(value, UNICODE_ENCODING)))
 
             fp.write("\n")
 
@@ -1749,7 +1749,7 @@ def expandAsteriskForColumns(expression):
     the SQL query string (expression)
     """
 
-    match = re.search(r"(?i)\ASELECT(\s+TOP\s+[\d]+)?\s+\*\s+FROM\s+`?([^`\s()]+)", expression)
+    match = re.search(r"(?i)\ASELECT(\s+TOP\s+[\d]+)?\s+\*\s+FROM\s+((`[^`]+`|[^\s]+)+)", expression)
 
     if match:
         infoMsg = "you did not provide the fields in your query. "
@@ -2071,6 +2071,8 @@ def safeStringFormat(format_, params):
 
     >>> safeStringFormat('SELECT foo FROM %s LIMIT %d', ('bar', '1'))
     'SELECT foo FROM bar LIMIT 1'
+    >>> safeStringFormat("SELECT foo FROM %s WHERE name LIKE '%susan%' LIMIT %d", ('bar', '1'))
+    "SELECT foo FROM bar WHERE name LIKE '%susan%' LIMIT 1"
     """
 
     if format_.count(PAYLOAD_DELIMITER) == 2:
@@ -2114,7 +2116,10 @@ def safeStringFormat(format_, params):
                         warnMsg += "Please report by e-mail content \"%r | %r | %r\" to '%s'" % (format_, params, retVal, DEV_EMAIL_ADDRESS)
                         raise SqlmapValueException(warnMsg)
                     else:
-                        retVal = re.sub(r"(\A|[^A-Za-z0-9])(%s)([^A-Za-z0-9]|\Z)", r"\g<1>%s\g<3>" % params[count], retVal, 1)
+                        try:
+                            retVal = re.sub(r"(\A|[^A-Za-z0-9])(%s)([^A-Za-z0-9]|\Z)", r"\g<1>%s\g<3>" % params[count], retVal, 1)
+                        except re.error:
+                            retVal = retVal.replace(match.group(0), match.group(0) % params[count], 1)
                         count += 1
                 else:
                     break
@@ -3609,7 +3614,7 @@ def isListLike(value):
     False
     """
 
-    return isinstance(value, (list, tuple, set, BigArray))
+    return isinstance(value, (list, tuple, set, OrderedSet, BigArray))
 
 def getSortedInjectionTests():
     """

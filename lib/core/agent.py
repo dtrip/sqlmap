@@ -471,6 +471,12 @@ class Agent(object):
         @rtype: C{str}
         """
 
+        match = re.search(r"(?i)(.+)( AS \w+)\Z", field)
+        if match:
+            field, suffix = match.groups()
+        else:
+            suffix = ""
+
         nulledCastedField = field
 
         if field and Backend.getIdentifiedDbms():
@@ -489,6 +495,9 @@ class Agent(object):
             kb.binaryField = conf.binaryFields and field in conf.binaryFields
             if conf.hexConvert or kb.binaryField:
                 nulledCastedField = self.hexConvertField(nulledCastedField)
+
+        if suffix:
+            nulledCastedField += suffix
 
         return nulledCastedField
 
@@ -533,6 +542,7 @@ class Agent(object):
             nulledCastedFields = []
 
             for field in fieldsSplitted:
+                field = re.sub(r"(?i) AS \w+\Z", "", field)         # NOTE: fields such as "... AS type_name" have to be stripped from the alias part for this functionality to work
                 nulledCastedFields.append(self.nullAndCastField(field))
 
             delimiterStr = "%s'%s'%s" % (dbmsDelimiter, kb.chars.delimiter, dbmsDelimiter)
@@ -1207,7 +1217,7 @@ class Agent(object):
 
     def whereQuery(self, query):
         if conf.dumpWhere and query:
-            if Backend.isDbms(DBMS.ORACLE) and re.search("qq ORDER BY \w+\)", query, re.I) is not None:
+            if Backend.isDbms(DBMS.ORACLE) and re.search(r"qq ORDER BY \w+\)", query, re.I) is not None:
                 prefix, suffix = re.sub(r"(?i)(qq)( ORDER BY \w+\))", r"\g<1> WHERE %s\g<2>" % conf.dumpWhere, query), ""
             else:
                 match = re.search(r" (LIMIT|ORDER).+", query, re.I)
@@ -1225,7 +1235,7 @@ class Agent(object):
                 prefix += " WHERE %s" % conf.dumpWhere
 
             query = prefix
-            if suffix:
+            if suffix and not all(re.search(r"ORDER BY", _, re.I) is not None for _ in (query, suffix)):
                 query += suffix
 
         return query

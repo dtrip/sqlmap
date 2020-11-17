@@ -8,6 +8,7 @@ See the file 'LICENSE' for copying permission
 from __future__ import division
 
 import codecs
+import collections
 import functools
 import glob
 import inspect
@@ -412,6 +413,37 @@ def _doSearch():
             else:
                 conf.googlePage += 1
 
+def _setStdinPipeTargets():
+    if isinstance(conf.stdinPipe, collections.Iterable):
+        infoMsg = "using 'STDIN' for parsing targets list"
+        logger.info(infoMsg)
+
+        class _(object):
+            def __init__(self):
+                self.__rest = OrderedSet()
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                return self.next()
+
+            def next(self):
+                line = next(conf.stdinPipe)
+                if line:
+                    match = re.search(r"\b(https?://[^\s'\"]+|[\w.]+\.\w{2,3}[/\w+]*\?[^\s'\"]+)", line, re.I)
+                    if match:
+                        return (match.group(0), conf.method, conf.data, conf.cookie, None)
+                elif self.__rest:
+                    return self.__rest.pop()
+
+                raise StopIteration()
+
+            def add(self, elem):
+                self.__rest.add(elem)
+
+        kb.targets = _()
+
 def _setBulkMultipleTargets():
     if not conf.bulkFile:
         return
@@ -431,7 +463,7 @@ def _setBulkMultipleTargets():
         if conf.scope and not re.search(conf.scope, line, re.I):
             continue
 
-        if re.match(r"[^ ]+\?(.+)", line, re.I) or kb.customInjectionMark in line:
+        if re.match(r"[^ ]+\?(.+)", line, re.I) or kb.customInjectionMark in line or conf.data:
             found = True
             kb.targets.add((line.strip(), conf.method, conf.data, conf.cookie, None))
 
@@ -870,13 +902,16 @@ def _setPreprocessFunctions():
                 raise SqlmapSyntaxException("cannot import preprocess module '%s' (%s)" % (getUnicode(filename[:-3]), getSafeExString(ex)))
 
             for name, function in inspect.getmembers(module, inspect.isfunction):
-                if name == "preprocess" and inspect.getargspec(function).args and all(_ in inspect.getargspec(function).args for _ in ("req",)):
-                    found = True
+                try:
+                    if name == "preprocess" and inspect.getargspec(function).args and all(_ in inspect.getargspec(function).args for _ in ("req",)):
+                        found = True
 
-                    kb.preprocessFunctions.append(function)
-                    function.__name__ = module.__name__
+                        kb.preprocessFunctions.append(function)
+                        function.__name__ = module.__name__
 
-                    break
+                        break
+                except ValueError:  # Note: https://github.com/sqlmapproject/sqlmap/issues/4357
+                    pass
 
             if not found:
                 errMsg = "missing function 'preprocess(req)' "
@@ -1525,8 +1560,8 @@ def _createHomeDirectories():
     if conf.get("purge"):
         return
 
-    for context in "output", "history":
-        directory = paths["SQLMAP_%s_PATH" % context.upper()]
+    for context in ("output", "history"):
+        directory = paths["SQLMAP_%s_PATH" % getUnicode(context).upper()]   # NOTE: https://github.com/sqlmapproject/sqlmap/issues/4363
         try:
             if not os.path.isdir(directory):
                 os.makedirs(directory)
@@ -1628,7 +1663,8 @@ def _cleanupOptions():
 
     for key, value in conf.items():
         if value and any(key.endswith(_) for _ in ("Path", "File", "Dir")):
-            conf[key] = safeExpandUser(value)
+            if isinstance(value, str):
+                conf[key] = safeExpandUser(value)
 
     if conf.testParameter:
         conf.testParameter = urldecode(conf.testParameter)
@@ -1655,7 +1691,7 @@ def _cleanupOptions():
 
     if conf.base64Parameter:
         conf.base64Parameter = urldecode(conf.base64Parameter)
-        conf.base64Parameter = conf.base64Parameter.replace(" ", "")
+        conf.base64Parameter = conf.base64Parameter.strip()
         conf.base64Parameter = re.split(PARAMETER_SPLITTING_REGEX, conf.base64Parameter)
     else:
         conf.base64Parameter = []
@@ -2022,12 +2058,12 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.identifiedWafs = set()
     kb.injection = InjectionDict()
     kb.injections = []
+    kb.jsonAggMode = False
     kb.laggingChecked = False
     kb.lastParserStatus = None
-    kb.lastCtrlCTime = None
 
     kb.locks = AttribDict()
-    for _ in ("cache", "connError", "count", "handlers", "hint", "index", "io", "limit", "log", "socket", "redirect", "request", "value"):
+    for _ in ("cache", "connError", "count", "handlers", "hint", "index", "io", "limit", "liveCookies", "log", "socket", "redirect", "request", "value"):
         kb.locks[_] = threading.Lock()
 
     kb.matchRatio = None
@@ -2077,7 +2113,6 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.responseTimeMode = None
     kb.responseTimePayload = None
     kb.resumeValues = True
-    kb.rowXmlMode = False
     kb.safeCharEncode = False
     kb.safeReq = AttribDict()
     kb.secondReq = None
@@ -2113,6 +2148,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
         kb.checkSitemap = None
         kb.headerPaths = {}
         kb.keywords = set(getFileItems(paths.SQL_KEYWORDS))
+        kb.lastCtrlCTime = None
         kb.normalizeCrawlingChoice = None
         kb.passwordMgr = None
         kb.postprocessFunctions = []
@@ -2770,7 +2806,7 @@ def init():
 
     parseTargetDirect()
 
-    if any((conf.url, conf.logFile, conf.bulkFile, conf.requestFile, conf.googleDork)):
+    if any((conf.url, conf.logFile, conf.bulkFile, conf.requestFile, conf.googleDork, conf.stdinPipe)):
         _setHostname()
         _setHTTPTimeout()
         _setHTTPExtraHeaders()
@@ -2784,6 +2820,7 @@ def init():
         _setSocketPreConnect()
         _setSafeVisit()
         _doSearch()
+        _setStdinPipeTargets()
         _setBulkMultipleTargets()
         _checkTor()
         _setCrawler()

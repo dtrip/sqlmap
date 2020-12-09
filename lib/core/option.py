@@ -21,6 +21,7 @@ import sys
 import tempfile
 import threading
 import time
+import traceback
 
 from lib.controller.checks import checkConnection
 from lib.core.common import Backend
@@ -921,6 +922,11 @@ def _setPreprocessFunctions():
                 try:
                     function(_urllib.request.Request("http://localhost"))
                 except:
+                    tbMsg = traceback.format_exc()
+
+                    if conf.debug:
+                        dataToStdout(tbMsg)
+
                     handle, filename = tempfile.mkstemp(prefix=MKSTEMP_PREFIX.PREPROCESS, suffix=".py")
                     os.close(handle)
 
@@ -1754,7 +1760,7 @@ def _cleanupOptions():
     if conf.tmpPath:
         conf.tmpPath = ntToPosixSlashes(normalizePath(conf.tmpPath))
 
-    if any((conf.googleDork, conf.logFile, conf.bulkFile, conf.forms, conf.crawlDepth)):
+    if any((conf.googleDork, conf.logFile, conf.bulkFile, conf.forms, conf.crawlDepth, conf.stdinPipe)):
         conf.multipleTargets = True
 
     if conf.optimize:
@@ -2071,6 +2077,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.mergeCookies = None
     kb.multipleCtrlC = False
     kb.negativeLogic = False
+    kb.nchar = True
     kb.nullConnection = None
     kb.oldMsf = None
     kb.orderByColumns = None

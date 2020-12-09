@@ -499,6 +499,9 @@ class Agent(object):
         if suffix:
             nulledCastedField += suffix
 
+        if not kb.nchar:
+            nulledCastedField = re.sub(r"( AS )N(CHAR|VARCHAR)", r"\g<1>\g<2>", nulledCastedField)
+
         return nulledCastedField
 
     def nullCastConcatFields(self, fields):
@@ -788,7 +791,6 @@ class Agent(object):
                 concatenatedQuery += "),'%s')" % kb.chars.stop
             elif fieldsNoSelect:
                 concatenatedQuery = "CONCAT(CONCAT('%s',%s),'%s')" % (kb.chars.start, concatenatedQuery, kb.chars.stop)
-
 
         return concatenatedQuery
 

@@ -222,7 +222,7 @@ class Connect(object):
                         try:
                             part = conn.read(MAX_CONNECTION_READ_SIZE)
                         except AssertionError:
-                            part = ""
+                            part = b""
 
                     if len(part) == MAX_CONNECTION_READ_SIZE:
                         warnMsg = "large response detected. This could take a while"
@@ -597,6 +597,10 @@ class Connect(object):
                     code = (code or conn.code) if conn.code == kb.originalCode else conn.code  # do not override redirection code (for comparison purposes)
                     responseHeaders = conn.info()
                     responseHeaders[URI_HTTP_HEADER] = conn.geturl()
+
+                    if hasattr(conn, "redurl"):
+                        responseHeaders[HTTP_HEADER.LOCATION] = conn.redurl
+
                     patchHeaders(responseHeaders)
                     kb.serverHeader = responseHeaders.get(HTTP_HEADER.SERVER, kb.serverHeader)
                 else:
@@ -703,7 +707,7 @@ class Connect(object):
             responseMsg += "[#%d] (%s %s):\r\n" % (threadData.lastRequestUID, code, status)
 
             if responseHeaders:
-                logHeaders = getUnicode("".join(responseHeaders.headers).strip())
+                logHeaders = "".join(getUnicode(responseHeaders.headers)).strip()
 
             logHTTPTraffic(requestMsg, "%s%s\r\n\r\n%s" % (responseMsg, logHeaders, (page or "")[:MAX_CONNECTION_READ_SIZE]), start, time.time())
 
@@ -883,7 +887,7 @@ class Connect(object):
                 responseMsg += "[#%d] (%s %s):\r\n" % (threadData.lastRequestUID, code, status)
 
             if responseHeaders:
-                logHeaders = getUnicode("".join(responseHeaders.headers).strip())
+                logHeaders = "".join(getUnicode(responseHeaders.headers)).strip()
 
             logHTTPTraffic(requestMsg, "%s%s\r\n\r\n%s" % (responseMsg, logHeaders, (page or "")[:MAX_CONNECTION_READ_SIZE]), start, time.time())
 
@@ -1121,7 +1125,7 @@ class Connect(object):
                         match = re.search(r"(?P<name>%s)[\"']:[\"'](?P<value>[^\"']+)" % conf.csrfToken, page or "", re.I)
 
                         if not match:
-                            match = re.search(r"\b(?P<name>%s)\s*[:=]\s*(?P<value>\w+)" % conf.csrfToken, str(headers), re.I)
+                            match = re.search(r"\b(?P<name>%s)\s*[:=]\s*(?P<value>\w+)" % conf.csrfToken, getUnicode(headers), re.I)
 
                             if not match:
                                 match = re.search(r"\b(?P<name>%s)\s*=\s*['\"]?(?P<value>[^;'\"]+)" % conf.csrfToken, page or "", re.I)
@@ -1274,7 +1278,7 @@ class Connect(object):
 
             for name, value in variables.items():
                 if name != "__builtins__" and originals.get(name, "") != value:
-                    if isinstance(value, (int, float, six.string_types)):
+                    if isinstance(value, (int, float, six.string_types, six.binary_type)):
                         found = False
                         value = getUnicode(value, UNICODE_ENCODING)
 

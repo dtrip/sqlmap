@@ -30,6 +30,7 @@ from lib.core.common import getSortedInjectionTests
 from lib.core.common import hashDBRetrieve
 from lib.core.common import hashDBWrite
 from lib.core.common import intersect
+from lib.core.common import isDigit
 from lib.core.common import joinValue
 from lib.core.common import listToStrValue
 from lib.core.common import parseFilePaths
@@ -117,7 +118,7 @@ def checkSqlInjection(place, parameter, value):
     threadData = getCurrentThreadData()
 
     # Favoring non-string specific boundaries in case of digit-like parameter values
-    if value.isdigit():
+    if isDigit(value):
         kb.cache.intBoundaries = kb.cache.intBoundaries or sorted(copy.deepcopy(conf.boundaries), key=lambda boundary: any(_ in (boundary.prefix or "") or _ in (boundary.suffix or "") for _ in ('"', '\'')))
         boundaries = kb.cache.intBoundaries
     elif value.isalpha():
@@ -226,8 +227,8 @@ def checkSqlInjection(place, parameter, value):
             # Skip test if the user's wants to test only for a specific
             # technique
             if conf.technique and isinstance(conf.technique, list) and stype not in conf.technique:
-                debugMsg = "skipping test '%s' because the user " % title
-                debugMsg += "specified to test only for "
+                debugMsg = "skipping test '%s' because user " % title
+                debugMsg += "specified testing of only "
                 debugMsg += "%s techniques" % " & ".join(PAYLOAD.SQLINJECTION[_] for _ in conf.technique)
                 logger.debug(debugMsg)
                 continue
@@ -651,7 +652,7 @@ def checkSqlInjection(place, parameter, value):
                             except SqlmapConnectionException as ex:
                                 debugMsg = "problem occurred most likely because the "
                                 debugMsg += "server hasn't recovered as expected from the "
-                                debugMsg += "error-based payload used ('%s')" % getSafeExString(ex)
+                                debugMsg += "used error-based payload ('%s')" % getSafeExString(ex)
                                 logger.debug(debugMsg)
 
                         # In case of time-based blind or stacked queries
@@ -855,7 +856,9 @@ def checkSqlInjection(place, parameter, value):
             logger.warn(warnMsg)
 
         if not checkFalsePositives(injection):
-            kb.vulnHosts.remove(conf.hostname)
+            if conf.hostname in kb.vulnHosts:
+                kb.vulnHosts.remove(conf.hostname)
+
             if NOTE.FALSE_POSITIVE_OR_UNEXPLOITABLE not in injection.notes:
                 injection.notes.append(NOTE.FALSE_POSITIVE_OR_UNEXPLOITABLE)
 
@@ -876,7 +879,11 @@ def heuristicCheckDbms(injection):
     to identify with a simple DBMS specific boolean-based test what the DBMS
     may be
     """
+
     retVal = False
+
+    if conf.skipHeuristics:
+        return retVal
 
     pushValue(kb.injection)
     kb.injection = injection
@@ -1031,6 +1038,9 @@ def checkFilteredChars(injection):
     kb.injection = popValue()
 
 def heuristicCheckSqlInjection(place, parameter):
+    if conf.skipHeuristics:
+        return None
+
     if kb.heavilyDynamic:
         debugMsg = "heuristic check skipped because of heavy dynamicity"
         logger.debug(debugMsg)
@@ -1131,10 +1141,17 @@ def heuristicCheckSqlInjection(place, parameter):
         infoMsg = "heuristic (XSS) test shows that %sparameter '%s' might be vulnerable to cross-site scripting (XSS) attacks" % ("%s " % paramType if paramType != parameter else "", parameter)
         logger.info(infoMsg)
 
+        if conf.beep:
+            beep()
+
     for match in re.finditer(FI_ERROR_REGEX, page or ""):
         if randStr1.lower() in match.group(0).lower():
             infoMsg = "heuristic (FI) test shows that %sparameter '%s' might be vulnerable to file inclusion (FI) attacks" % ("%s " % paramType if paramType != parameter else "", parameter)
             logger.info(infoMsg)
+
+            if conf.beep:
+                beep()
+
             break
 
     kb.disableHtmlDecoding = False

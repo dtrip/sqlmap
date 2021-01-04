@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2021 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -61,7 +61,7 @@ class HTTPSConnection(_http_client.HTTPSConnection):
 
         # Reference(s): https://docs.python.org/2/library/ssl.html#ssl.SSLContext
         #               https://www.mnot.net/blog/2014/12/27/python_2_and_tls_sni
-        if re.search(r"\A[\d.]+\Z", conf.hostname) is None and kb.tlsSNI.get(conf.hostname) is not False and hasattr(ssl, "SSLContext"):
+        if re.search(r"\A[\d.]+\Z", conf.hostname or "") is None and kb.tlsSNI.get(conf.hostname) is not False and hasattr(ssl, "SSLContext"):
             for protocol in (_ for _ in _protocols if _ >= ssl.PROTOCOL_TLSv1):
                 try:
                     sock = create_sock()

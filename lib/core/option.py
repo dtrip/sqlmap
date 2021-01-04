@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2021 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -430,7 +430,11 @@ def _setStdinPipeTargets():
                 return self.next()
 
             def next(self):
-                line = next(conf.stdinPipe)
+                try:
+                    line = next(conf.stdinPipe)
+                except (IOError, OSError):
+                    line = None
+
                 if line:
                     match = re.search(r"\b(https?://[^\s'\"]+|[\w.]+\.\w{2,3}[/\w+]*\?[^\s'\"]+)", line, re.I)
                     if match:
@@ -2591,6 +2595,13 @@ def _basicOptionValidation():
         errMsg = "switch '--no-cast' is incompatible with switch '--hex'"
         raise SqlmapSyntaxException(errMsg)
 
+    if conf.crawlDepth:
+        try:
+            xrange(conf.crawlDepth)
+        except OverflowError as ex:
+            errMsg = "invalid value used for option '--crawl' ('%s')" % getSafeExString(ex)
+            raise SqlmapSyntaxException(errMsg)
+
     if conf.dumpAll and conf.search:
         errMsg = "switch '--dump-all' is incompatible with switch '--search'"
         raise SqlmapSyntaxException(errMsg)
@@ -2705,6 +2716,10 @@ def _basicOptionValidation():
 
     if conf.proxy and conf.proxyFile:
         errMsg = "switch '--proxy' is incompatible with option '--proxy-file'"
+        raise SqlmapSyntaxException(errMsg)
+
+    if conf.proxyFreq and not conf.proxyFile:
+        errMsg = "option '--proxy-freq' requires usage of option '--proxy-file'"
         raise SqlmapSyntaxException(errMsg)
 
     if conf.checkTor and not any((conf.tor, conf.proxy)):

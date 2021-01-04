@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2020 sqlmap developers (http://sqlmap.org/)
+Copyright (c) 2006-2021 sqlmap developers (http://sqlmap.org/)
 See the file 'LICENSE' for copying permission
 """
 
@@ -412,6 +412,7 @@ PART_RUN_CONTENT_TYPES = {
 HTML_ENTITIES = {
     "quot": 34,
     "amp": 38,
+    "apos": 39,
     "lt": 60,
     "gt": 62,
     "nbsp": 160,

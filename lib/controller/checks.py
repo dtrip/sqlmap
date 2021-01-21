@@ -157,6 +157,7 @@ def checkSqlInjection(place, parameter, value):
                 # error message, simple heuristic check or via DBMS-specific
                 # payload), ask the user to limit the tests to the fingerprinted
                 # DBMS
+
                 if kb.reduceTests is None and not conf.testFilter and (intersect(Backend.getErrorParsedDBMSes(), SUPPORTED_DBMS, True) or kb.heuristicDbms or injection.dbms):
                     msg = "it looks like the back-end DBMS is '%s'. " % (Format.getErrorParsedDBMSes() or kb.heuristicDbms or joinValue(injection.dbms, '/'))
                     msg += "Do you want to skip test payloads specific for other DBMSes? [Y/n]"
@@ -1041,11 +1042,6 @@ def heuristicCheckSqlInjection(place, parameter):
     if conf.skipHeuristics:
         return None
 
-    if kb.heavilyDynamic:
-        debugMsg = "heuristic check skipped because of heavy dynamicity"
-        logger.debug(debugMsg)
-        return None
-
     origValue = conf.paramDict[place][parameter]
     paramType = conf.method if conf.method not in (None, HTTPMETHOD.GET, HTTPMETHOD.POST) else place
 
@@ -1082,7 +1078,7 @@ def heuristicCheckSqlInjection(place, parameter):
 
     casting = _(page) and not _(kb.originalPage)
 
-    if not casting and not result and kb.dynamicParameter and origValue.isdigit():
+    if not casting and not result and kb.dynamicParameter and origValue.isdigit() and not kb.heavilyDynamic:
         randInt = int(randomInt())
         payload = "%s%s%s" % (prefix, "%d-%d" % (int(origValue) + randInt, randInt), suffix)
         payload = agent.payload(place, parameter, newValue=payload, where=PAYLOAD.WHERE.REPLACE)
@@ -1095,6 +1091,11 @@ def heuristicCheckSqlInjection(place, parameter):
             casting = Request.queryPage(payload, place, raise404=False)
 
     kb.heuristicTest = HEURISTIC_TEST.CASTED if casting else HEURISTIC_TEST.NEGATIVE if not result else HEURISTIC_TEST.POSITIVE
+
+    if kb.heavilyDynamic:
+        debugMsg = "heuristic check stopped because of heavy dynamicity"
+        logger.debug(debugMsg)
+        return kb.heuristicTest
 
     if casting:
         errMsg = "possible %s casting detected (e.g. '" % ("integer" if origValue.isdigit() else "type")
@@ -1167,7 +1168,7 @@ def checkDynParam(place, parameter, value):
     dynamicity might depend on another parameter.
     """
 
-    if kb.redirectChoice:
+    if kb.choices.redirect:
         return None
 
     kb.matchRatio = None
@@ -1268,7 +1269,7 @@ def checkStability():
 
     secondPage, _, _ = Request.queryPage(content=True, noteResponseTime=False, raise404=False)
 
-    if kb.redirectChoice:
+    if kb.choices.redirect:
         return None
 
     kb.pageStable = (firstPage == secondPage)
@@ -1415,11 +1416,11 @@ def checkWaf():
         value = "" if not conf.parameters.get(PLACE.GET) else conf.parameters[PLACE.GET] + DEFAULT_GET_POST_DELIMITER
         value += "%s=%s" % (randomStr(), agent.addPayloadDelimiters(payload))
 
-    pushValue(kb.redirectChoice)
+    pushValue(kb.choices.redirect)
     pushValue(kb.resendPostOnRedirect)
     pushValue(conf.timeout)
 
-    kb.redirectChoice = REDIRECTION.YES
+    kb.choices.redirect = REDIRECTION.YES
     kb.resendPostOnRedirect = False
     conf.timeout = IPS_WAF_CHECK_TIMEOUT
 
@@ -1432,7 +1433,7 @@ def checkWaf():
 
         conf.timeout = popValue()
         kb.resendPostOnRedirect = popValue()
-        kb.redirectChoice = popValue()
+        kb.choices.redirect = popValue()
 
     hashDBWrite(HASHDB_KEYS.CHECK_WAF_RESULT, retVal, True)
 
@@ -1565,7 +1566,7 @@ def checkConnection(suppressOutput=False):
         else:
             kb.errorIsNone = True
 
-        if kb.redirectChoice == REDIRECTION.YES and threadData.lastRedirectURL and threadData.lastRedirectURL[0] == threadData.lastRequestUID:
+        if kb.choices.redirect == REDIRECTION.YES and threadData.lastRedirectURL and threadData.lastRedirectURL[0] == threadData.lastRequestUID:
             if (threadData.lastRedirectURL[1] or "").startswith("https://") and conf.hostname in getUnicode(threadData.lastRedirectURL[1]):
                 conf.url = re.sub(r"https?://", "https://", conf.url)
                 match = re.search(r":(\d+)", threadData.lastRedirectURL[1])

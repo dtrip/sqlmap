@@ -9,7 +9,6 @@ from __future__ import division
 
 import binascii
 import codecs
-import collections
 import contextlib
 import copy
 import distutils.version
@@ -194,6 +193,7 @@ from thirdparty.colorama.initialise import init as coloramainit
 from thirdparty.magic import magic
 from thirdparty.odict import OrderedDict
 from thirdparty.six import unichr as _unichr
+from thirdparty.six.moves import collections_abc as _collections
 from thirdparty.six.moves import configparser as _configparser
 from thirdparty.six.moves import http_client as _http_client
 from thirdparty.six.moves import input as _input
@@ -216,7 +216,7 @@ class UnicodeRawConfigParser(_configparser.RawConfigParser):
             fp.write("[%s]\n" % _configparser.DEFAULTSECT)
 
             for (key, value) in self._defaults.items():
-                fp.write("\t%s = %s" % (key, getUnicode(value, UNICODE_ENCODING)))
+                fp.write("%s = %s" % (key, getUnicode(value, UNICODE_ENCODING)))
 
             fp.write("\n")
 
@@ -226,9 +226,9 @@ class UnicodeRawConfigParser(_configparser.RawConfigParser):
             for (key, value) in self._sections[section].items():
                 if key != "__name__":
                     if value is None:
-                        fp.write("\t%s\n" % (key))
+                        fp.write("%s\n" % (key))
                     elif not isListLike(value):
-                        fp.write("\t%s = %s\n" % (key, getUnicode(value, UNICODE_ENCODING)))
+                        fp.write("%s = %s\n" % (key, getUnicode(value, UNICODE_ENCODING)))
 
             fp.write("\n")
 
@@ -1059,7 +1059,8 @@ def dataToDumpFile(dumpFile, data):
             errMsg = "permission denied when flushing dump data"
             logger.error(errMsg)
         else:
-            raise
+            errMsg = "error occurred when writing dump data to file ('%s')" % getUnicode(ex)
+            logger.error(errMsg)
 
 def dataToOutFile(filename, data):
     """
@@ -1269,6 +1270,8 @@ def sanitizeStr(value):
     Sanitizes string value in respect to newline and line-feed characters
 
     >>> sanitizeStr('foo\\n\\rbar') == 'foo bar'
+    True
+    >>> sanitizeStr(None) == 'None'
     True
     """
 
@@ -1829,6 +1832,9 @@ def getLimitRange(count, plusOne=False):
 def parseUnionPage(page):
     """
     Returns resulting items from UNION query inside provided page content
+
+    >>> parseUnionPage("%sfoo%s%sbar%s" % (kb.chars.start, kb.chars.stop, kb.chars.start, kb.chars.stop))
+    ['foo', 'bar']
     """
 
     if page is None:
@@ -2062,6 +2068,9 @@ def safeFilepathEncode(filepath):
 def safeExpandUser(filepath):
     """
     Patch for a Python Issue18171 (http://bugs.python.org/issue18171)
+
+    >>> os.path.basename(__file__) in safeExpandUser(__file__)
+    True
     """
 
     retVal = filepath
@@ -3259,7 +3268,7 @@ def filterNone(values):
 
     retVal = values
 
-    if isinstance(values, collections.Iterable):
+    if isinstance(values, _collections.Iterable):
         retVal = [_ for _ in values if _]
 
     return retVal
@@ -3550,7 +3559,7 @@ def arrayizeValue(value):
     ['1']
     """
 
-    if isinstance(value, collections.KeysView):
+    if isinstance(value, _collections.KeysView):
         value = [_ for _ in value]
     elif not isListLike(value):
         value = [value]
@@ -4191,7 +4200,7 @@ def safeSQLIdentificatorNaming(name, isTable=False):
 
                 if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS, DBMS.CUBRID, DBMS.SQLITE):  # Note: in SQLite double-quotes are treated as string if column/identifier is non-existent (e.g. SELECT "foobar" FROM users)
                     retVal = "`%s`" % retVal
-                elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO, DBMS.CRATEDB, DBMS.CACHE, DBMS.EXTREMEDB, DBMS.FRONTBASE):
+                elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO, DBMS.CRATEDB, DBMS.CACHE, DBMS.EXTREMEDB, DBMS.FRONTBASE, DBMS.RAIMA):
                     retVal = "\"%s\"" % retVal
                 elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.ALTIBASE, DBMS.MIMERSQL):
                     retVal = "\"%s\"" % retVal.upper()
@@ -4229,7 +4238,7 @@ def unsafeSQLIdentificatorNaming(name):
     if isinstance(name, six.string_types):
         if Backend.getIdentifiedDbms() in (DBMS.MYSQL, DBMS.ACCESS, DBMS.CUBRID, DBMS.SQLITE):
             retVal = name.replace("`", "")
-        elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO, DBMS.CRATEDB, DBMS.CACHE, DBMS.EXTREMEDB, DBMS.FRONTBASE):
+        elif Backend.getIdentifiedDbms() in (DBMS.PGSQL, DBMS.DB2, DBMS.HSQLDB, DBMS.H2, DBMS.INFORMIX, DBMS.MONETDB, DBMS.VERTICA, DBMS.MCKOI, DBMS.PRESTO, DBMS.CRATEDB, DBMS.CACHE, DBMS.EXTREMEDB, DBMS.FRONTBASE, DBMS.RAIMA):
             retVal = name.replace("\"", "")
         elif Backend.getIdentifiedDbms() in (DBMS.ORACLE, DBMS.ALTIBASE, DBMS.MIMERSQL):
             retVal = name.replace("\"", "").upper()
@@ -4595,7 +4604,7 @@ def findPageForms(content, url, raise_=False, addToTargets=False):
             if filtered and filtered != content:
                 try:
                     forms = ParseResponse(filtered, backwards_compat=False)
-                except ParseError:
+                except:
                     errMsg = "no success"
                     if raise_:
                         raise SqlmapGenericException(errMsg)

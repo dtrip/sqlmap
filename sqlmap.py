@@ -37,8 +37,10 @@ try:
     warnings.filterwarnings(action="ignore", message=".*was already imported", category=UserWarning)
     warnings.filterwarnings(action="ignore", message=".*using a very old release", category=UserWarning)
     warnings.filterwarnings(action="ignore", message=".*default buffer size will be used", category=RuntimeWarning)
-    warnings.filterwarnings(action="ignore", category=DeprecationWarning)
     warnings.filterwarnings(action="ignore", category=UserWarning, module="psycopg2")
+
+    if "--deprecations" not in sys.argv:
+        warnings.filterwarnings(action="ignore", category=DeprecationWarning)
 
     from lib.core.data import logger
 
@@ -80,7 +82,6 @@ try:
     from lib.core.settings import VERSION
     from lib.parse.cmdline import cmdLineParser
     from lib.utils.crawler import crawl
-    from thirdparty import six
 except KeyboardInterrupt:
     errMsg = "user aborted"
 
@@ -182,7 +183,7 @@ def main():
                 fuzzTest()
             else:
                 from lib.controller.controller import start
-                if conf.profile and six.PY2:
+                if conf.profile:
                     from lib.core.profiling import profile
                     globals()["start"] = start
                     profile()

@@ -8,7 +8,6 @@ See the file 'LICENSE' for copying permission
 from __future__ import division
 
 import codecs
-import collections
 import functools
 import glob
 import inspect
@@ -154,6 +153,7 @@ from lib.utils.search import search
 from thirdparty import six
 from thirdparty.keepalive import keepalive
 from thirdparty.multipart import multipartpost
+from thirdparty.six.moves import collections_abc as _collections
 from thirdparty.six.moves import http_client as _http_client
 from thirdparty.six.moves import http_cookiejar as _http_cookiejar
 from thirdparty.six.moves import urllib as _urllib
@@ -415,7 +415,7 @@ def _doSearch():
                 conf.googlePage += 1
 
 def _setStdinPipeTargets():
-    if isinstance(conf.stdinPipe, collections.Iterable):
+    if isinstance(conf.stdinPipe, _collections.Iterable):
         infoMsg = "using 'STDIN' for parsing targets list"
         logger.info(infoMsg)
 
@@ -2013,12 +2013,10 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.chars.stop = "%s%s%s" % (KB_CHARS_BOUNDARY_CHAR, randomStr(length=3, alphabet=KB_CHARS_LOW_FREQUENCY_ALPHABET), KB_CHARS_BOUNDARY_CHAR)
     kb.chars.at, kb.chars.space, kb.chars.dollar, kb.chars.hash_ = ("%s%s%s" % (KB_CHARS_BOUNDARY_CHAR, _, KB_CHARS_BOUNDARY_CHAR) for _ in randomStr(length=4, lowercase=True))
 
+    kb.choices = AttribDict(keycheck=False)
     kb.codePage = None
-    kb.columnExistsChoice = None
     kb.commonOutputs = None
-    kb.connErrorChoice = None
     kb.connErrorCounter = 0
-    kb.cookieEncodeChoice = None
     kb.copyExecTest = None
     kb.counters = {}
     kb.customInjectionMark = CUSTOM_INJECTION_MARK_CHAR
@@ -2122,7 +2120,6 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.proxyAuthHeader = None
     kb.queryCounter = 0
     kb.randomPool = {}
-    kb.redirectChoice = None
     kb.reflectiveMechanism = True
     kb.reflectiveCounters = {REFLECTIVE_COUNTER.MISS: 0, REFLECTIVE_COUNTER.HIT: 0}
     kb.requestCounter = 0
@@ -2142,9 +2139,7 @@ def _setKnowledgeBaseAttributes(flushAll=True):
     kb.reduceTests = None
     kb.sslSuccess = False
     kb.stickyDBMS = False
-    kb.storeHashesChoice = None
     kb.suppressResumeInfo = False
-    kb.tableExistsChoice = None
     kb.tableFrom = None
     kb.technique = None
     kb.tempDir = None

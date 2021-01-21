@@ -6,6 +6,7 @@ See the file 'LICENSE' for copying permission
 """
 
 import binascii
+import inspect
 import logging
 import os
 import random
@@ -13,6 +14,7 @@ import re
 import socket
 import string
 import struct
+import sys
 import time
 import traceback
 
@@ -145,6 +147,10 @@ class Connect(object):
 
     @staticmethod
     def _getPageProxy(**kwargs):
+        if (len(inspect.stack()) > sys.getrecursionlimit() // 2):   # Note: https://github.com/sqlmapproject/sqlmap/issues/4525
+            warnMsg = "unable to connect to the target URL"
+            raise SqlmapConnectionException(warnMsg)
+
         try:
             return Connect.getPage(**kwargs)
         except RuntimeError:
@@ -182,16 +188,23 @@ class Connect(object):
                 warnMsg += "you could successfully use "
                 warnMsg += "switch '--tor' "
                 if IS_WIN:
-                    warnMsg += "(e.g. 'https://www.torproject.org/download/download.html.en')"
+                    warnMsg += "(e.g. 'https://www.torproject.org/download/')"
                 else:
                     warnMsg += "(e.g. 'https://help.ubuntu.com/community/Tor')"
             else:
                 warnMsg = "if the problem persists please check that the provided "
-                warnMsg += "target URL is reachable. In case that it is, "
-                warnMsg += "you can try to rerun with "
+                warnMsg += "target URL is reachable"
+
+                items = []
                 if not conf.randomAgent:
-                    warnMsg += "switch '--random-agent' and/or "
-                warnMsg += "proxy switches ('--ignore-proxy', '--proxy',...)"
+                    items.append("switch '--random-agent'")
+                if not any((conf.proxy, conf.proxyFile, conf.tor)):
+                    items.append("proxy switches ('--proxy', '--proxy-file'...)")
+                if items:
+                    warnMsg += ". In case that it is, "
+                    warnMsg += "you can try to rerun with "
+                    warnMsg += " and/or ".join(items)
+
             singleTimeWarnMessage(warnMsg)
 
         elif conf.threads > 1:
@@ -228,7 +241,7 @@ class Connect(object):
                     if len(part) == MAX_CONNECTION_READ_SIZE:
                         warnMsg = "large response detected. This could take a while"
                         singleTimeWarnMessage(warnMsg)
-                        part = re.sub(r"(?si)%s.+?%s" % (kb.chars.stop, kb.chars.start), "%s%s%s" % (kb.chars.stop, LARGE_READ_TRIM_MARKER, kb.chars.start), part)
+                        part = re.sub(getBytes(r"(?si)%s.+?%s" % (kb.chars.stop, kb.chars.start)), getBytes("%s%s%s" % (kb.chars.stop, LARGE_READ_TRIM_MARKER, kb.chars.start)), part)
                         retVal += part
                     else:
                         retVal += part
@@ -597,8 +610,8 @@ class Connect(object):
 
                 # Get HTTP response
                 if hasattr(conn, "redurl"):
-                    page = (threadData.lastRedirectMsg[1] if kb.redirectChoice == REDIRECTION.NO else Connect._connReadProxy(conn)) if not skipRead else None
-                    skipLogTraffic = kb.redirectChoice == REDIRECTION.NO
+                    page = (threadData.lastRedirectMsg[1] if kb.choices.redirect == REDIRECTION.NO else Connect._connReadProxy(conn)) if not skipRead else None
+                    skipLogTraffic = kb.choices.redirect == REDIRECTION.NO
                     code = conn.redcode if not finalCode else code
                 else:
                     page = Connect._connReadProxy(conn) if not skipRead else None
@@ -831,13 +844,13 @@ class Connect(object):
             with kb.locks.connError:
                 kb.connErrorCounter += 1
 
-                if kb.connErrorCounter >= MAX_CONSECUTIVE_CONNECTION_ERRORS and kb.connErrorChoice is None:
+                if kb.connErrorCounter >= MAX_CONSECUTIVE_CONNECTION_ERRORS and kb.choices.connError is None:
                     message = "there seems to be a continuous problem with connection to the target. "
                     message += "Are you sure that you want to continue? [y/N] "
 
-                    kb.connErrorChoice = readInput(message, default='N', boolean=True)
+                    kb.choices.connError = readInput(message, default='N', boolean=True)
 
-                if kb.connErrorChoice is False:
+                if kb.choices.connError is False:
                     raise SqlmapSkipTargetException
 
             if "forcibly closed" in tbMsg:
@@ -1012,10 +1025,10 @@ class Connect(object):
                     skip = False
 
                     if place == PLACE.COOKIE or place == PLACE.CUSTOM_HEADER and value.split(',')[0].upper() == HTTP_HEADER.COOKIE.upper():
-                        if kb.cookieEncodeChoice is None:
+                        if kb.choices.cookieEncode is None:
                             msg = "do you want to URL encode cookie values (implementation specific)? %s" % ("[Y/n]" if not conf.url.endswith(".aspx") else "[y/N]")  # Reference: https://support.microsoft.com/en-us/kb/313282
-                            kb.cookieEncodeChoice = readInput(msg, default='Y' if not conf.url.endswith(".aspx") else 'N', boolean=True)
-                        if not kb.cookieEncodeChoice:
+                            kb.choices.cookieEncode = readInput(msg, default='Y' if not conf.url.endswith(".aspx") else 'N', boolean=True)
+                        if not kb.choices.cookieEncode:
                             skip = True
 
                     if not skip:

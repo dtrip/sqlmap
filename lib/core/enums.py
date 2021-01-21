@@ -57,6 +57,7 @@ class DBMS(object):
     CACHE = "InterSystems Cache"
     EXTREMEDB = "eXtremeDB"
     FRONTBASE = "FrontBase"
+    RAIMA = "Raima Database Manager"
 
 class DBMS_DIRECTORY_NAME(object):
     ACCESS = "access"
@@ -84,6 +85,7 @@ class DBMS_DIRECTORY_NAME(object):
     CACHE = "cache"
     EXTREMEDB = "extremedb"
     FRONTBASE = "frontbase"
+    RAIMA = "raima"
 
 class FORK(object):
     MARIADB = "MariaDB"
@@ -99,6 +101,7 @@ class FORK(object):
     ENTERPRISEDB = "EnterpriseDB"
     YELLOWBRICK = "Yellowbrick"
     IRIS = "Iris"
+    YUGABYTEDB = "YugabyteDB"
 
 class CUSTOM_LOGGING(object):
     PAYLOAD = 9
